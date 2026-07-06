@@ -47,7 +47,7 @@ const relationshipTypeExpectations = {
   related_runbooks: new Set(['runbook']),
   related_decisions: new Set(['decision']),
   related_incidents: new Set(['incident']),
-  related_evidence: new Set(['evidence', 'audit'])
+  related_evidence: new Set(['evidence', 'audit', 'incident', 'release'])
 };
 
 const structuredFolders = new Set([
