@@ -23,6 +23,7 @@ const allowedTypes = new Set([
 const allowedStatuses = new Set([
   'draft',
   'active',
+  'in-progress',
   'blocked',
   'verified',
   'stale',
