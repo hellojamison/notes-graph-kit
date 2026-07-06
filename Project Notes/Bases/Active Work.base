@@ -1,0 +1,6 @@
+views:
+  - type: table
+    name: Active Work
+    filters:
+      and:
+        - status != "done"

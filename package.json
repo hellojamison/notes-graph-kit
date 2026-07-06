@@ -1,0 +1,16 @@
+{
+  "name": "notes-graph-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portable Obsidian project notes graph helper kit.",
+  "scripts": {
+    "notes": "node scripts/project-notes.cjs",
+    "notes:route": "node scripts/project-notes.cjs route",
+    "notes:new": "node scripts/project-notes.cjs new",
+    "notes:closeout": "node scripts/project-notes.cjs closeout",
+    "notes:validate": "node scripts/validate-project-notes-graph.cjs"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

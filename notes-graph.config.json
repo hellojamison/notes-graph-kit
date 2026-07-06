@@ -1,0 +1,19 @@
+{
+  "appName": "My Project",
+  "vaultDir": "Project Notes",
+  "scriptName": "project-notes",
+  "appRel": "Apps/My Project.md",
+  "routes": [
+    {
+      "id": "notes-graph-maintenance",
+      "processRel": "Processes/Notes Graph Maintenance.md",
+      "aliases": [
+        "notes",
+        "obsidian",
+        "graph",
+        "vault",
+        "notes graph"
+      ]
+    }
+  ]
+}

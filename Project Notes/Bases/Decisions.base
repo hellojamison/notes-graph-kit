@@ -1,0 +1,6 @@
+views:
+  - type: table
+    name: Decisions
+    filters:
+      and:
+        - type == "decision"

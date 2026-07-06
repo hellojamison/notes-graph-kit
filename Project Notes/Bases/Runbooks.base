@@ -1,0 +1,6 @@
+views:
+  - type: table
+    name: Runbooks
+    filters:
+      and:
+        - type == "runbook"

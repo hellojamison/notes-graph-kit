@@ -1,0 +1,52 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'schema_version == 1'
+
+properties:
+  file.name:
+    displayName: "Note"
+  type:
+    displayName: "Type"
+  status:
+    displayName: "Status"
+  area:
+    displayName: "Area"
+  last_verified:
+    displayName: "Last Verified"
+  freshness:
+    displayName: "Freshness"
+  file.mtime:
+    displayName: "Modified"
+
+views:
+  - type: table
+    name: "Open Review"
+    filters:
+      or:
+        - 'status == "active"'
+        - 'status == "blocked"'
+        - 'status == "stale"'
+        - 'status == "draft"'
+    order:
+      - file.name
+      - type
+      - status
+      - area
+      - freshness
+      - last_verified
+      - file.mtime
+
+  - type: table
+    name: "Verified Facts"
+    filters:
+      or:
+        - 'status == "verified"'
+        - 'type == "known-good"'
+    order:
+      - file.name
+      - type
+      - status
+      - last_verified
+      - freshness
+      - file.mtime

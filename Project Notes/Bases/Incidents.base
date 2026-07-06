@@ -1,0 +1,6 @@
+views:
+  - type: table
+    name: Incidents
+    filters:
+      and:
+        - type == "incident"
