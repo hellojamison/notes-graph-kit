@@ -1,87 +1,92 @@
 # notes-graph-kit
 
-Portable starter kit for the project notes graph workflow.
+Portable kit for the project notes graph workflow. This repo at
+`/Users/jamisonrabbe/Projects/notes-graph-kit` is the **single authoritative
+source** — earlier copies inside OverCue-main and OverMarker are retired
+pointers.
 
 ## What is included
 
+- `install-notes-graph.cjs` — installer/upgrader (preferred way to use the kit).
 - `scripts/project-notes.cjs` — route/create/closeout helper for task notes.
 - `scripts/validate-project-notes-graph.cjs` — structured note/link validator.
 - `scripts/lib/project-notes-graph.cjs` — shared graph utilities.
 - `notes-graph.config.json` — app name, vault folder, app note, and route aliases.
 - `Project Notes/` — starter Obsidian vault skeleton with templates, Bases, and graph seed notes.
-- `AGENTS-snippet.md` — agent-instructions block to paste into the target repo.
+- `AGENTS-snippet.md` — agent-instructions block for the target repo.
+- `tests/` — self-test (`npm test`) that scaffolds a temp repo and runs the full workflow.
 
-## Use this in another repo
+The helper scripts are fully config-driven (`notes-graph.config.json` plus
+`PROJECT_NOTES_*` env overrides), so installs copy them verbatim — no
+per-project rewriting. Placeholder substitution (app name, vault folder) only
+touches the kit-owned vault skeleton.
 
-This kit is meant to be copied into the root of a project repo and then customized.
-
-### 1. Copy the kit
-
-From the target repo root:
-
-```bash
-cp -R /Users/jamisonrabbe/Projects/notes-graph-kit/scripts ./scripts
-cp -R "/Users/jamisonrabbe/Projects/notes-graph-kit/Project Notes" "./Project Notes"
-cp /Users/jamisonrabbe/Projects/notes-graph-kit/notes-graph.config.json ./notes-graph.config.json
-cp /Users/jamisonrabbe/Projects/notes-graph-kit/AGENTS-snippet.md ./AGENTS-snippet.md
-```
-
-If the repo has no `package.json`, copy this kit's `package.json` and `package-lock.json` too:
+## Install into a repo
 
 ```bash
-cp /Users/jamisonrabbe/Projects/notes-graph-kit/package.json ./package.json
-cp /Users/jamisonrabbe/Projects/notes-graph-kit/package-lock.json ./package-lock.json
+node /Users/jamisonrabbe/Projects/notes-graph-kit/install-notes-graph.cjs \
+  --repo /path/to/target/repo \
+  --app "App Name" \
+  --vault "Project Notes"
 ```
 
-If the repo already has a `package.json`, merge these scripts and dependency instead of overwriting it:
+Options:
 
-```json
-{
-  "scripts": {
-    "notes": "node scripts/project-notes.cjs",
-    "notes:route": "node scripts/project-notes.cjs route",
-    "notes:new": "node scripts/project-notes.cjs new",
-    "notes:closeout": "node scripts/project-notes.cjs closeout",
-    "notes:validate": "node scripts/validate-project-notes-graph.cjs"
-  },
-  "dependencies": {
-    "js-yaml": "^4.1.0"
-  }
-}
-```
+- `--repo` — target repo root (defaults to current directory).
+- `--app` — required app/product name.
+- `--vault` — vault directory name (defaults to `Project Notes`).
+- `--force` — overwrite existing kit-managed files.
+- `--dry-run` — print planned writes without changing files.
 
-Then run:
+The installer:
+
+1. Copies the three helper scripts verbatim into `scripts/`.
+2. Writes `notes-graph.config.json` with the app name, vault dir, and a
+   `kitVersion` stamp.
+3. Copies the vault skeleton with the app name substituted (existing vault
+   files are never overwritten without `--force`).
+4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, and
+   `notes:validate` into `package.json` (existing customized commands are
+   preserved) and adds the `js-yaml` dependency.
+5. Prints the AGENTS.md snippet customized for the target repo — paste it into
+   the repo's `AGENTS.md`.
+
+Then in the target repo:
 
 ```bash
 npm install
-```
-
-### 2. Customize the graph
-
-Edit `notes-graph.config.json`:
-
-   - `appName`: the project/app name.
-   - `vaultDir`: the notes vault folder name inside the repo.
-   - `appRel`: the app note path inside the vault.
-   - `routes`: process aliases and their target process notes.
-
-If you changed `vaultDir`, rename `Project Notes/` to match.
-
-If you changed `appName` or `appRel`, rename/update `Project Notes/Apps/My Project.md` and the starter wikilinks in `_Codex/Start Here.md`, process, runbook, decision, and evidence notes.
-
-### 3. Add agent instructions
-
-Copy the block from `AGENTS-snippet.md` into the target repo's `AGENTS.md`, `CLAUDE.md`, or equivalent instructions file. Update the vault/app names in that snippet if you changed them.
-
-### 4. Verify install
-
-```bash
 npm run notes:route -- "notes graph"
 npm run notes:validate
 git diff --check
 ```
 
-If validation reports broken wikilinks after renaming the app or vault, fix the renamed note paths/links and rerun `npm run notes:validate`.
+## Upgrade an existing install
+
+```bash
+node /Users/jamisonrabbe/Projects/notes-graph-kit/install-notes-graph.cjs \
+  --repo /path/to/target/repo --upgrade
+```
+
+Re-copies the kit-managed scripts, bumps `kitVersion` in the target config, and
+never touches vault content. Use `--dry-run` to preview. The target's
+`kitVersion` tells you which kit vintage a repo has.
+
+Existing repos with older or renamed helper scripts (e.g. `overcue-notes.cjs`,
+`notes.cjs`, split `notes-*.cjs`) keep working through their `notes:*` npm
+scripts; upgrade them only when a fix needs propagating.
+
+## Customize the graph
+
+Edit `notes-graph.config.json` in the target repo:
+
+- `appName` — the project/app name.
+- `vaultDir` — the notes vault folder name inside the repo.
+- `appRel` — the app note path inside the vault.
+- `routes` — process aliases and their target process notes. Add
+  project-specific processes (and matching notes under `Processes/`) as the
+  project grows.
+
+Run `npm run notes:validate` after any structural change.
 
 ## Daily use
 
@@ -106,4 +111,15 @@ Typical agent workflow:
 - `PROJECT_NOTES_NOTES_VAULT_ROOT=/path/to/vault`
 - `PROJECT_NOTES_CONFIG=/path/to/notes-graph.config.json`
 
-Generated from PTMaestro on 20260705171118. Product build artifacts and project-specific evidence were intentionally excluded.
+## Kit development
+
+Run `npm test` after changing the installer, helper scripts, or vault skeleton.
+It scaffolds a temp repo, runs install → route → new → closeout → validate, and
+exercises upgrade and the no-clobber guard.
+
+## Manual copy (fallback)
+
+If you cannot run the installer, copy `scripts/`, `Project Notes/`,
+`notes-graph.config.json`, and the `package.json` script/dependency block by
+hand, then customize per "Customize the graph" above. The installer is
+preferred because it handles renames and stamps `kitVersion`.
