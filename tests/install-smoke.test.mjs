@@ -134,6 +134,59 @@ test('install rejects vault paths that would escape the target repo', () => {
   }
 });
 
+test('install keeps punctuation-heavy app names valid in YAML and wikilinks', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-appname-'));
+  const appName = 'Bad "App": Take/One #1 & Co';
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', appName
+    ]);
+    const config = JSON.parse(fs.readFileSync(path.join(repoRoot, 'notes-graph.config.json'), 'utf8'));
+    assert.equal(config.appName, appName);
+    assert.equal(config.appRel, 'Apps/Bad App Take One 1 & Co.md');
+
+    const appNotePath = path.join(repoRoot, 'Project Notes/Apps/Bad App Take One 1 & Co.md');
+    const appNote = fs.readFileSync(appNotePath, 'utf8');
+    const appFrontmatter = yaml.load(appNote.match(/^---\n([\s\S]*?)\n---\n/)[1]);
+    assert.equal(appFrontmatter.title, appName);
+    assert.deepEqual(appFrontmatter.related_apps, [
+      '[[Apps/Bad App Take One 1 & Co|Bad "App": Take/One #1 & Co]]'
+    ]);
+
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+    const newOutput = run(repoRoot, [
+      'scripts/project-notes.cjs', 'new',
+      '--title', 'Punctuation app smoke',
+      '--process', 'notes-graph-maintenance',
+      '--summary', 'Verify generated links remain parseable.'
+    ]);
+    assert.match(newOutput, /^Created /m);
+    const validateOutput = run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    assert.match(validateOutput, /validation passed/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('install rejects app names with Obsidian wikilink delimiters', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-appname-delimiter-'));
+  try {
+    assert.throws(
+      () => run(kitRoot, [
+        'install-notes-graph.cjs',
+        '--repo', repoRoot,
+        '--app', 'Bad | [[Name]]'
+      ]),
+      /break Obsidian wikilinks/
+    );
+    assert.deepEqual(fs.readdirSync(repoRoot), []);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
 test('install refuses to overwrite existing managed helper scripts without force', () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-script-guard-'));
   try {

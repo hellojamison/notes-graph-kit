@@ -39,7 +39,9 @@ node install-notes-graph.cjs \
 Options:
 
 - `--repo` — target repo root (defaults to current directory).
-- `--app` — required app/product name.
+- `--app` — required app/product name. Quotes and filename punctuation are
+  supported; `[`, `]`, and `|` are rejected because they break Obsidian
+  wikilinks.
 - `--vault` — vault directory name, not a path (defaults to `Project Notes`).
 - `--force` — overwrite existing kit-managed scripts or vault files.
 - `--dry-run` — print planned writes without changing files.
@@ -127,6 +129,10 @@ See `AGENTS.md` for the agent-oriented repo map, install commands, and gotchas.
 Run `npm test` after changing the installer, helper scripts, or vault skeleton.
 It scaffolds a temp repo, runs install → route → new → closeout → validate, and
 exercises upgrade and the no-clobber guard.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
 
 ## Manual copy (fallback)
 

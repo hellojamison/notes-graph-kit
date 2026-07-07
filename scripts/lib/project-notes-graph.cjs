@@ -308,8 +308,18 @@ function getNoteTitle(noteOrFrontmatter, rel = '') {
   return frontmatter.title || path.basename(rel || noteOrFrontmatter?.rel || '', '.md');
 }
 
+function wikilinkAlias(value) {
+  return String(value || '')
+    .replace(/[\[\]|]/g, ' ')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function linkForRel(rel, title) {
-  return `[[${noteKeyForRel(rel)}|${title || path.basename(rel, '.md')}]]`;
+  const target = noteKeyForRel(rel);
+  const alias = wikilinkAlias(title) || path.basename(target);
+  return `[[${target}|${alias}]]`;
 }
 
 function normalizeInput(value) {
@@ -469,6 +479,7 @@ module.exports = {
   asArray,
   loadVaultGraph,
   getNoteTitle,
+  wikilinkAlias,
   linkForRel,
   normalizeInput,
   findRouteDefinition,

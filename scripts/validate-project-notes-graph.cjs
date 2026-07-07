@@ -71,7 +71,10 @@ if (!fs.existsSync(vaultRoot)) {
   const appNoteNames = new Set(
     notes
       .filter((note) => note.rel.startsWith('Apps/') && note.frontmatter?.type === 'app')
-      .map((note) => path.basename(note.rel, '.md'))
+      .flatMap((note) => [
+        path.basename(note.rel, '.md'),
+        note.frontmatter.title
+      ].filter(Boolean))
   );
 
   for (const definition of routeDefinitions) {

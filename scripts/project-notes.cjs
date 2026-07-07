@@ -125,7 +125,16 @@ function appendLine(filePath, initialHeading, line) {
 }
 
 function dailyInitialText(date, appLink) {
-  return `---\ntitle: ${date}\nschema_version: 1\ntype: daily\nstatus: active\ndate: ${date}\ntags:\n  - notes/daily\nrelated_apps:\n  - "${appLink}"\n---\n\n# ${date}`;
+  const frontmatter = {
+    title: date,
+    schema_version: 1,
+    type: 'daily',
+    status: 'active',
+    date,
+    tags: ['notes/daily'],
+    related_apps: [appLink]
+  };
+  return `---\n${dumpFrontmatter(frontmatter)}\n---\n\n# ${date}`;
 }
 
 function routeToJson(route) {

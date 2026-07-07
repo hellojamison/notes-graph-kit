@@ -41,7 +41,7 @@ node install-notes-graph.cjs \
   --vault "Project Notes"
 ```
 
-Options: `--repo` (defaults to cwd), `--app` (required), `--vault` (directory name only, defaults to `Project Notes`), `--force` (overwrite kit-managed scripts or vault files), `--dry-run` (preview only).
+Options: `--repo` (defaults to cwd), `--app` (required; rejects `[`, `]`, and `|` because they break Obsidian wikilinks), `--vault` (directory name only, defaults to `Project Notes`), `--force` (overwrite kit-managed scripts or vault files), `--dry-run` (preview only).
 
 The installer:
 

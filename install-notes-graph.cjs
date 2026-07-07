@@ -16,6 +16,8 @@ const kitVersion = JSON.parse(fs.readFileSync(path.join(kitRoot, 'package.json')
 const PLACEHOLDER_APP = 'My Project';
 const SKELETON_VAULT_DIR = 'Project Notes';
 const DATED_NOTE_RE = /^\d{4}-\d{2}-\d{2}(?: .+)?\.md$/;
+const CONTROL_CHAR_RE = /[\u0000-\u001f\u007f]/;
+const WIKILINK_DELIMITER_RE = /[\[\]|]/;
 
 const MANAGED_SCRIPTS = [
   'scripts/project-notes.cjs',
@@ -81,13 +83,58 @@ function parseArgs(argv) {
 
 function fileBaseForApp(appName) {
   const sanitized = String(appName)
-    .replace(/[\\/:*?"<>|]/g, ' ')
+    .replace(/[\\/:*?"<>|[\]#^\r\n]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  if (!sanitized) {
+  if (!sanitized || sanitized === '.' || sanitized === '..') {
     throw new Error(`App name "${appName}" does not produce a usable file name`);
   }
   return sanitized;
+}
+
+function validateAppName(value) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error('Missing required --app "App Name"');
+  }
+  const appName = value.trim();
+  if (CONTROL_CHAR_RE.test(appName)) {
+    throw new Error('--app must be a single-line app name without control characters');
+  }
+  if (WIKILINK_DELIMITER_RE.test(appName)) {
+    throw new Error('--app must not contain [, ], or | because those characters break Obsidian wikilinks');
+  }
+  fileBaseForApp(appName);
+  return appName;
+}
+
+function yamlDoubleQuoted(value) {
+  return JSON.stringify(String(value));
+}
+
+function replaceAppPlaceholders(content, appName, appFileBase) {
+  const appLink = `[[Apps/${appFileBase}|${appName}]]`;
+  const sentinels = {
+    quotedAppLink: '\u0000NOTES_GRAPH_QUOTED_APP_LINK\u0000',
+    appLink: '\u0000NOTES_GRAPH_APP_LINK\u0000',
+    appPath: '\u0000NOTES_GRAPH_APP_PATH\u0000',
+    quotedAppName: '\u0000NOTES_GRAPH_QUOTED_APP_NAME\u0000',
+    releaseTitle: '\u0000NOTES_GRAPH_RELEASE_TITLE\u0000',
+    appName: '\u0000NOTES_GRAPH_APP_NAME\u0000'
+  };
+
+  return content
+    .split(`"[[Apps/${PLACEHOLDER_APP}|${PLACEHOLDER_APP}]]"`).join(sentinels.quotedAppLink)
+    .split(`[[Apps/${PLACEHOLDER_APP}|${PLACEHOLDER_APP}]]`).join(sentinels.appLink)
+    .split(`Apps/${PLACEHOLDER_APP}.md`).join(sentinels.appPath)
+    .split(`"${PLACEHOLDER_APP}"`).join(sentinels.quotedAppName)
+    .split(`title: ${PLACEHOLDER_APP} Version`).join(sentinels.releaseTitle)
+    .split(PLACEHOLDER_APP).join(sentinels.appName)
+    .split(sentinels.quotedAppLink).join(yamlDoubleQuoted(appLink))
+    .split(sentinels.appLink).join(appLink)
+    .split(sentinels.appPath).join(`Apps/${appFileBase}.md`)
+    .split(sentinels.quotedAppName).join(yamlDoubleQuoted(appName))
+    .split(sentinels.releaseTitle).join(`title: ${yamlDoubleQuoted(`${appName} Version`)}`)
+    .split(sentinels.appName).join(appName);
 }
 
 function validateVaultDir(value) {
@@ -164,10 +211,7 @@ function buildVaultWrites(appName, vaultDir, appFileBase) {
     const targetRel = rel === `Apps/${PLACEHOLDER_APP}.md`
       ? `Apps/${appFileBase}.md`
       : rel;
-    const content = fs
-      .readFileSync(filePath, 'utf8')
-      .split(PLACEHOLDER_APP)
-      .join(appName);
+    const content = replaceAppPlaceholders(fs.readFileSync(filePath, 'utf8'), appName, appFileBase);
     writes.push({ rel: `${vaultDir}/${targetRel}`, content, kind: 'vault' });
   }
   return writes;
@@ -215,9 +259,7 @@ function agentsSnippet(appName, vaultDir, appFileBase) {
   const raw = fs.readFileSync(path.join(kitRoot, 'AGENTS-snippet.md'), 'utf8');
   const blockMatch = raw.match(/```md\n([\s\S]*?)```/);
   const block = blockMatch ? blockMatch[1] : raw;
-  return block
-    .split(`Apps/${PLACEHOLDER_APP}.md`).join(`Apps/${appFileBase}.md`)
-    .split(PLACEHOLDER_APP).join(appName)
+  return replaceAppPlaceholders(block, appName, appFileBase)
     .split(SKELETON_VAULT_DIR).join(vaultDir);
 }
 
@@ -302,10 +344,7 @@ function install(args) {
   if (!fs.existsSync(repoRoot)) {
     throw new Error(`Repo does not exist: ${repoRoot}`);
   }
-  const appName = args.app;
-  if (typeof appName !== 'string' || appName.trim() === '') {
-    throw new Error('Missing required --app "App Name"');
-  }
+  const appName = validateAppName(args.app);
   const vaultDir = validateVaultDir(args.vault || SKELETON_VAULT_DIR);
   const appFileBase = fileBaseForApp(appName);
   const dryRun = Boolean(args['dry-run']);
@@ -315,10 +354,10 @@ function install(args) {
     ...buildScriptWrites(),
     {
       rel: 'notes-graph.config.json',
-      content: `${JSON.stringify(buildConfig(appName.trim(), vaultDir, appFileBase), null, 2)}\n`,
+      content: `${JSON.stringify(buildConfig(appName, vaultDir, appFileBase), null, 2)}\n`,
       kind: 'config'
     },
-    ...buildVaultWrites(appName.trim(), vaultDir, appFileBase)
+    ...buildVaultWrites(appName, vaultDir, appFileBase)
   ];
   const configExists = fs.existsSync(path.join(repoRoot, 'notes-graph.config.json'));
   if (configExists && !force) {
@@ -333,7 +372,7 @@ function install(args) {
 
   assertNoProtectedExistingWrites(repoRoot, writes, { force });
   const results = applyWrites(repoRoot, writes, { force, dryRun });
-  const agentsResult = applyAgentsBlock(repoRoot, appName.trim(), vaultDir, appFileBase, { dryRun });
+  const agentsResult = applyAgentsBlock(repoRoot, appName, vaultDir, appFileBase, { dryRun });
   const lines = [
     `${dryRun ? '[dry-run] ' : ''}Installed notes graph kit ${kitVersion} into ${repoRoot}`,
     ...results.written.map((rel) => `  write ${rel}`),
@@ -409,6 +448,8 @@ module.exports = {
   agentsSnippet,
   applyAgentsBlock,
   validateVaultDir,
+  validateAppName,
+  replaceAppPlaceholders,
   isInstallSkeletonRel,
   assertNoProtectedExistingWrites
 };
