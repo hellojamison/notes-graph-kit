@@ -20,7 +20,7 @@ function printHelp() {
 Usage:
   node scripts/project-notes.cjs route "matisse dark mode buttons" [--json]
   node scripts/project-notes.cjs new --title "Task title" --process theme-qa [--summary "..."] [--type task|evidence] [--runbook "..."]
-  node scripts/project-notes.cjs closeout --note "PTMaestro Notes/Evidence/2026-07-03 Task title.md" --working "..." --verified "..." --not-verified "..."
+  node scripts/project-notes.cjs closeout --note "Project Notes/Evidence/2026-07-03 Task title.md" --working "..." --verified "..." --not-verified "..."
 `;
 }
 

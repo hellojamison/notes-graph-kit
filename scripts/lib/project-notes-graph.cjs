@@ -98,7 +98,8 @@ const defaultRouteDefinitions = [
       'bug',
       'regression',
       'review',
-      'ptmaestro'
+      'app',
+      'product'
     ]
   },
   {
