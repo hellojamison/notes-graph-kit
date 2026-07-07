@@ -1,8 +1,7 @@
 # notes-graph-kit
 
-Portable kit for the project notes graph workflow. This repo at
-`/Users/jamisonrabbe/Projects/notes-graph-kit` is the **single authoritative
-source** — earlier copies inside OverCue-main and OverMarker are retired
+Portable kit for the project notes graph workflow. This repo is the **single
+authoritative source** — earlier copies inside individual app repos are retired
 pointers.
 
 ## What is included
@@ -23,8 +22,15 @@ touches the kit-owned vault skeleton.
 
 ## Install into a repo
 
+Clone this kit, then run the installer from the kit checkout:
+
 ```bash
-node /Users/jamisonrabbe/Projects/notes-graph-kit/install-notes-graph.cjs \
+git clone https://github.com/hellojamison/notes-graph-kit.git
+cd notes-graph-kit
+```
+
+```bash
+node install-notes-graph.cjs \
   --repo /path/to/target/repo \
   --app "App Name" \
   --vault "Project Notes"
@@ -65,8 +71,7 @@ git diff --check
 ## Upgrade an existing install
 
 ```bash
-node /Users/jamisonrabbe/Projects/notes-graph-kit/install-notes-graph.cjs \
-  --repo /path/to/target/repo --upgrade
+node install-notes-graph.cjs --repo /path/to/target/repo --upgrade
 ```
 
 Re-copies the kit-managed scripts, bumps `kitVersion` in the target config, and

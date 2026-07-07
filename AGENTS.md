@@ -1,6 +1,6 @@
 # notes-graph-kit
 
-Portable installer and helper scripts for the project notes graph workflow used across `/Users/jamisonrabbe/Projects/`. This repo is the **single authoritative source** for the kit — retired copies inside individual app repos are pointers only; change the kit here, then install or upgrade target repos.
+Portable installer and helper scripts for the project notes graph workflow used across multiple project repos. This repo is the **single authoritative source** for the kit — retired copies inside individual app repos are pointers only; change the kit here, then install or upgrade target repos.
 
 The kit scaffolds an Obsidian vault skeleton, copies config-driven CLI helpers (`notes:route`, `notes:new`, `notes:closeout`, `notes:validate`), merges npm scripts, stamps `kitVersion`, and writes the `## Project Notes Graph` block into each target repo's `AGENTS.md`.
 
@@ -27,8 +27,15 @@ Kit development (this repo):
 
 Install into a target repo:
 
+Clone this kit, then run the installer from the kit checkout:
+
 ```bash
-node /Users/jamisonrabbe/Projects/notes-graph-kit/install-notes-graph.cjs \
+git clone https://github.com/hellojamison/notes-graph-kit.git
+cd notes-graph-kit
+```
+
+```bash
+node install-notes-graph.cjs \
   --repo /path/to/target/repo \
   --app "App Name" \
   --vault "Project Notes"
@@ -55,8 +62,7 @@ npm run notes:validate
 Upgrade an existing install (scripts + `kitVersion` only; vault untouched):
 
 ```bash
-node /Users/jamisonrabbe/Projects/notes-graph-kit/install-notes-graph.cjs \
-  --repo /path/to/target/repo --upgrade
+node install-notes-graph.cjs --repo /path/to/target/repo --upgrade
 ```
 
 Use `--dry-run` on install or upgrade to preview writes.
