@@ -1,6 +1,6 @@
 # Agent Instructions Snippet
 
-Copy this block into the target repo's `AGENTS.md`, `CLAUDE.md`, or equivalent agent-instructions file after installing the kit. Replace `Project Notes` and `My Project` if you changed `vaultDir` or `appName` in `notes-graph.config.json`.
+The installer writes this block into the target repo's `AGENTS.md` automatically (creating the file if needed, appending if it exists, and skipping if a `## Project Notes Graph` section is already present). For manual installs, copy the block into `AGENTS.md`, `CLAUDE.md`, or equivalent, replacing `Project Notes` and `My Project` if you changed `vaultDir` or `appName` in `notes-graph.config.json`.
 
 ```md
 ## Project Notes Graph

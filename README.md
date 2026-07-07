@@ -48,8 +48,10 @@ The installer:
 4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, and
    `notes:validate` into `package.json` (existing customized commands are
    preserved) and adds the `js-yaml` dependency.
-5. Prints the AGENTS.md snippet customized for the target repo — paste it into
-   the repo's `AGENTS.md`.
+5. Writes or appends the `## Project Notes Graph` block to `AGENTS.md` (creates
+   the file if missing; skips if the section already exists).
+
+See `AGENTS.md` in this repo for the full agent-oriented install reference.
 
 Then in the target repo:
 
@@ -112,6 +114,8 @@ Typical agent workflow:
 - `PROJECT_NOTES_CONFIG=/path/to/notes-graph.config.json`
 
 ## Kit development
+
+See `AGENTS.md` for the agent-oriented repo map, install commands, and gotchas.
 
 Run `npm test` after changing the installer, helper scripts, or vault skeleton.
 It scaffolds a temp repo, runs install → route → new → closeout → validate, and

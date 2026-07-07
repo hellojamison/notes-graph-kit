@@ -175,6 +175,8 @@ function mergePackageJson(repoRoot) {
     : null;
 }
 
+const AGENTS_SECTION_HEADER = '## Project Notes Graph';
+
 function agentsSnippet(appName, vaultDir, appFileBase) {
   const raw = fs.readFileSync(path.join(kitRoot, 'AGENTS-snippet.md'), 'utf8');
   const blockMatch = raw.match(/```md\n([\s\S]*?)```/);
@@ -183,6 +185,35 @@ function agentsSnippet(appName, vaultDir, appFileBase) {
     .split(`Apps/${PLACEHOLDER_APP}.md`).join(`Apps/${appFileBase}.md`)
     .split(PLACEHOLDER_APP).join(appName)
     .split(SKELETON_VAULT_DIR).join(vaultDir);
+}
+
+function applyAgentsBlock(repoRoot, appName, vaultDir, appFileBase, { dryRun }) {
+  const agentsPath = path.join(repoRoot, 'AGENTS.md');
+  const section = agentsSnippet(appName, vaultDir, appFileBase).trimEnd();
+  const result = { rel: 'AGENTS.md', kind: 'agents' };
+
+  if (fs.existsSync(agentsPath)) {
+    const content = fs.readFileSync(agentsPath, 'utf8');
+    if (content.includes(AGENTS_SECTION_HEADER)) {
+      result.action = 'skip';
+      return result;
+    }
+    const separator = content.endsWith('\n') ? '\n' : '\n\n';
+    result.content = `${content}${separator}${section}\n`;
+    result.action = 'append';
+    if (!dryRun) {
+      fs.writeFileSync(agentsPath, result.content);
+    }
+    return result;
+  }
+
+  const title = path.basename(repoRoot);
+  result.content = `# ${title}\n\n${section}\n`;
+  result.action = 'create';
+  if (!dryRun) {
+    fs.writeFileSync(agentsPath, result.content);
+  }
+  return result;
 }
 
 function applyWrites(repoRoot, writes, { force, dryRun }) {
@@ -243,20 +274,23 @@ function install(args) {
   }
 
   const results = applyWrites(repoRoot, writes, { force, dryRun });
+  const agentsResult = applyAgentsBlock(repoRoot, appName.trim(), vaultDir, appFileBase, { dryRun });
   const lines = [
     `${dryRun ? '[dry-run] ' : ''}Installed notes graph kit ${kitVersion} into ${repoRoot}`,
     ...results.written.map((rel) => `  write ${rel}`),
     ...results.skipped.map((rel) => `  skip  ${rel} (exists)`),
+    agentsResult.action === 'skip'
+      ? '  skip  AGENTS.md (Project Notes Graph section exists)'
+      : `  ${dryRun ? 'write' : agentsResult.action} AGENTS.md`,
     '',
     'Next steps:',
     '  npm install',
     `  npm run notes:route -- "notes graph"`,
-    '  npm run notes:validate',
-    '',
-    'Paste this block into the target repo AGENTS.md:',
-    '',
-    agentsSnippet(appName.trim(), vaultDir, appFileBase)
+    '  npm run notes:validate'
   ];
+  if (agentsResult.action === 'skip') {
+    lines.push('', 'AGENTS.md already had a Project Notes Graph section; snippet not changed.');
+  }
   return `${lines.join('\n')}\n`;
 }
 
@@ -309,4 +343,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { main, parseArgs, buildConfig, agentsSnippet };
+module.exports = { main, parseArgs, buildConfig, agentsSnippet, applyAgentsBlock };

@@ -22,9 +22,15 @@ test('install, route, new, closeout, validate in a scaffolded repo', () => {
       '--vault', 'Project Notes'
     ]);
     assert.match(installOutput, /Installed notes graph kit/);
+    assert.match(installOutput, /AGENTS\.md/);
     assert.ok(fs.existsSync(path.join(repoRoot, 'scripts/project-notes.cjs')));
     assert.ok(fs.existsSync(path.join(repoRoot, 'Project Notes/Apps/Smoke App.md')));
     assert.ok(fs.existsSync(path.join(repoRoot, 'Project Notes/Notes System.md')));
+
+    const agentsMd = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
+    assert.match(agentsMd, /## Project Notes Graph/);
+    assert.match(agentsMd, /Apps\/Smoke App\.md/);
+    assert.match(agentsMd, /npm run notes:route/);
 
     const config = JSON.parse(fs.readFileSync(path.join(repoRoot, 'notes-graph.config.json'), 'utf8'));
     assert.equal(config.appName, 'Smoke App');
@@ -89,6 +95,43 @@ test('upgrade refreshes scripts and stamps kitVersion', () => {
     assert.ok(refreshed.length > 100, 'stale script should be replaced');
     const upgraded = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     assert.notEqual(upgraded.kitVersion, '0.0.0');
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('install skips AGENTS.md when Project Notes Graph section exists', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-agents-'));
+  try {
+    const agentsPath = path.join(repoRoot, 'AGENTS.md');
+    fs.writeFileSync(agentsPath, '# Existing\n\n## Project Notes Graph\n\nCustom block.\n');
+    const installOutput = run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    assert.match(installOutput, /skip\s+AGENTS\.md/);
+    assert.equal(fs.readFileSync(agentsPath, 'utf8'), '# Existing\n\n## Project Notes Graph\n\nCustom block.\n');
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('install appends Project Notes Graph to existing AGENTS.md', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-agents-append-'));
+  try {
+    const agentsPath = path.join(repoRoot, 'AGENTS.md');
+    fs.writeFileSync(agentsPath, '# Existing App\n\n## Commands\n\n- build\n');
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    const agentsMd = fs.readFileSync(agentsPath, 'utf8');
+    assert.match(agentsMd, /^# Existing App/m);
+    assert.match(agentsMd, /## Commands/);
+    assert.match(agentsMd, /## Project Notes Graph/);
+    assert.match(agentsMd, /Apps\/Smoke App\.md/);
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
