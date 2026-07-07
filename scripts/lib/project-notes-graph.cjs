@@ -258,6 +258,87 @@ function extractWikilinkTargets(text) {
   return targets;
 }
 
+function routeDefinitionLabel(definition, index) {
+  return typeof definition?.id === 'string' && definition.id.trim()
+    ? `route "${definition.id.trim()}"`
+    : `route #${index + 1}`;
+}
+
+function routeAliases(definition) {
+  return Array.isArray(definition?.aliases)
+    ? definition.aliases.filter((alias) => typeof alias === 'string' && alias.trim())
+    : [];
+}
+
+function isUsableRouteDefinition(definition) {
+  return Boolean(
+    definition
+    && typeof definition === 'object'
+    && !Array.isArray(definition)
+    && typeof definition.id === 'string'
+    && definition.id.trim()
+    && typeof definition.processRel === 'string'
+    && definition.processRel.trim()
+  );
+}
+
+function validateRouteDefinitions(definitions, graph = null) {
+  const errors = [];
+  if (!Array.isArray(definitions)) {
+    return ['notes-graph.config.json: routes must be an array'];
+  }
+
+  definitions.forEach((definition, index) => {
+    const label = routeDefinitionLabel(definition, index);
+    if (!definition || typeof definition !== 'object' || Array.isArray(definition)) {
+      errors.push(`${label}: must be an object`);
+      return;
+    }
+    if (typeof definition.id !== 'string' || !definition.id.trim()) {
+      errors.push(`${label}: id must be a non-empty string`);
+    }
+    if (typeof definition.processRel !== 'string' || !definition.processRel.trim()) {
+      errors.push(`${label}: processRel must be a non-empty string`);
+    }
+    if (definition.aliases != null && !Array.isArray(definition.aliases)) {
+      errors.push(`${label}: aliases must be an array of strings`);
+    } else if (Array.isArray(definition.aliases)) {
+      definition.aliases.forEach((alias, aliasIndex) => {
+        if (typeof alias !== 'string' || !alias.trim()) {
+          errors.push(`${label}: aliases[${aliasIndex}] must be a non-empty string`);
+        }
+      });
+    }
+
+    if (!graph || typeof definition.processRel !== 'string' || !definition.processRel.trim()) {
+      return;
+    }
+    const resolved = resolveTarget(definition.processRel, graph.index);
+    if (!resolved) {
+      return;
+    }
+    const targetFrontmatter = graph.frontmatterByRel?.get(resolved)
+      || graph.noteByRel?.get(resolved)?.frontmatter;
+    if (targetFrontmatter?.type !== 'process') {
+      errors.push(
+        `${label}: processRel ${definition.processRel} must target type process; found ${targetFrontmatter?.type || 'missing type'}`
+      );
+    }
+  });
+
+  return errors;
+}
+
+function validateRouteConfig(config = {}, graph = null) {
+  if (config.routes != null && !Array.isArray(config.routes)) {
+    return ['notes-graph.config.json: routes must be an array'];
+  }
+  const definitions = Array.isArray(config.routes) && config.routes.length > 0
+    ? config.routes
+    : defaultRouteDefinitions;
+  return validateRouteDefinitions(definitions, graph);
+}
+
 function findMalformedWikilinks(text) {
   const source = String(text || '');
   const malformed = [];
@@ -284,6 +365,9 @@ function findMalformedWikilinks(text) {
 }
 
 function resolveTarget(target, index) {
+  if (typeof target !== 'string' || !target.trim()) {
+    return null;
+  }
   const normalized = target.replace(/\.(md|base)$/i, '').replace(/\\/g, '/').toLowerCase();
   if (index.byPath.has(normalized)) {
     return index.byPath.get(normalized);
@@ -365,6 +449,9 @@ function inputContainsAlias(input, alias) {
 function findRouteDefinition(input) {
   const normalizedInput = normalizeInput(input);
   for (const definition of routeDefinitions) {
+    if (!isUsableRouteDefinition(definition)) {
+      continue;
+    }
     const processName = normalizeInput(path.basename(definition.processRel, '.md'));
     const processPath = normalizeInput(noteKeyForRel(definition.processRel));
     if (
@@ -376,7 +463,8 @@ function findRouteDefinition(input) {
     }
   }
   return routeDefinitions.find((definition) =>
-    definition.aliases.some((alias) => inputContainsAlias(input, alias))
+    isUsableRouteDefinition(definition)
+    && routeAliases(definition).some((alias) => inputContainsAlias(input, alias))
   ) || null;
 }
 
@@ -415,7 +503,17 @@ function resolveRelationshipLinks(values, graph) {
 function buildRoute(input, options = {}) {
   const graph = options.graph || loadVaultGraph(options);
   const definition = findRouteDefinition(input);
-  const processRel = definition?.processRel || resolveNoteInput(input, graph, 'process');
+  const processRel = definition
+    ? resolveNoteInput(definition.processRel, graph, 'process')
+    : resolveNoteInput(input, graph, 'process');
+  if (definition && !processRel) {
+    return {
+      graph,
+      definition,
+      processRel: null,
+      error: `Route "${definition.id}" points to missing or non-process note ${definition.processRel}`
+    };
+  }
   if (!processRel) {
     return { graph, definition: null, processRel: null, error: `No notes route matched "${input}"` };
   }
@@ -497,6 +595,8 @@ module.exports = {
   buildNoteIndex,
   buildFrontmatterByRel,
   extractWikilinkTargets,
+  validateRouteDefinitions,
+  validateRouteConfig,
   findMalformedWikilinks,
   resolveTarget,
   firstFolder,

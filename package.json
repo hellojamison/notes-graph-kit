@@ -1,6 +1,6 @@
 {
   "name": "notes-graph-kit",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "private": true,
   "description": "Portable Obsidian project notes graph helper kit.",
   "license": "MIT",

@@ -57,7 +57,7 @@ The installer:
    overwritten without `--force`).
 4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, and
    `notes:validate` into `package.json` (existing customized commands are
-   preserved) and adds the `js-yaml` dependency.
+   preserved with a warning) and adds the `js-yaml` dependency.
 5. Writes or appends the `## Project Notes Graph` block to `AGENTS.md` (creates
    the file if missing; skips if the section already exists).
 
@@ -108,11 +108,13 @@ npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Task title.m
 npm run notes:validate
 ```
 
+`notes:new` creates `type: task` by default. Pass `--type evidence` for an evidence-shaped note.
+
 Typical agent workflow:
 
 1. Read `Project Notes/_Codex/Start Here.md`.
 2. Run `npm run notes:route -- "<task>"`.
-3. Create a task/evidence note with `npm run notes:new`.
+3. Create a task note with `npm run notes:new`; pass `--type evidence` for an evidence-shaped note.
 4. Do the work and record exact verification.
 5. Close the task note with `npm run notes:closeout`.
 

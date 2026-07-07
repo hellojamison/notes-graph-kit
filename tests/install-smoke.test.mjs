@@ -30,6 +30,13 @@ function readFrontmatter(rel) {
   return yaml.load(match[1]);
 }
 
+function readRepoFrontmatter(repoRoot, rel) {
+  const text = fs.readFileSync(path.join(repoRoot, 'Project Notes', rel), 'utf8');
+  const match = text.match(/^---\n([\s\S]*?)\n---\n/);
+  assert.ok(match, `${rel} should have frontmatter`);
+  return yaml.load(match[1]);
+}
+
 test('template frontmatter uses the intended note types', () => {
   const expectedTypes = {
     'Project Notes/Templates/App Template.md': 'app',
@@ -204,6 +211,48 @@ test('new sanitizes task filenames so generated wikilink targets are parseable',
   }
 });
 
+test('new honors task and evidence note types', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-note-type-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+
+    const taskOutput = run(repoRoot, [
+      'scripts/project-notes.cjs', 'new',
+      '--title', 'Task type smoke',
+      '--process', 'notes-graph-maintenance',
+      '--summary', 'Verify task type.'
+    ]);
+    const taskRel = taskOutput.match(/^Created (.+)$/m)?.[1];
+    assert.ok(taskRel, `expected created task note path in output: ${taskOutput}`);
+    assert.equal(readRepoFrontmatter(repoRoot, taskRel).type, 'task');
+    const taskText = fs.readFileSync(path.join(repoRoot, 'Project Notes', taskRel), 'utf8');
+    assert.match(taskText, /## Goal/);
+
+    const evidenceOutput = run(repoRoot, [
+      'scripts/project-notes.cjs', 'new',
+      '--title', 'Evidence type smoke',
+      '--process', 'notes-graph-maintenance',
+      '--summary', 'Verify evidence type.',
+      '--type', 'evidence'
+    ]);
+    const evidenceRel = evidenceOutput.match(/^Created (.+)$/m)?.[1];
+    assert.ok(evidenceRel, `expected created evidence note path in output: ${evidenceOutput}`);
+    assert.equal(readRepoFrontmatter(repoRoot, evidenceRel).type, 'evidence');
+    const evidenceText = fs.readFileSync(path.join(repoRoot, 'Project Notes', evidenceRel), 'utf8');
+    assert.match(evidenceText, /## Scope/);
+
+    const validateOutput = run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    assert.match(validateOutput, /validation passed/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
 test('validator reports malformed wikilinks in daily notes', () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-malformed-'));
   try {
@@ -235,6 +284,81 @@ test('validator reports malformed wikilinks in daily notes', () => {
     }
     assert.ok(failure, 'validation should fail for malformed wikilinks');
     assert.match(`${failure.stdout || ''}${failure.stderr || ''}${failure.message}`, /malformed wikilink/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('validator reports malformed route config without a stack trace', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-route-schema-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+    const configPath = path.join(repoRoot, 'notes-graph.config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.routes = [{ id: 'bad-route' }];
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+    let failure = null;
+    try {
+      run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    } catch (error) {
+      failure = error;
+    }
+    assert.ok(failure, 'validation should fail for malformed route config');
+    const output = `${failure.stdout || ''}${failure.stderr || ''}${failure.message}`;
+    assert.match(output, /route "bad-route": processRel must be a non-empty string/);
+    assert.doesNotMatch(output, /TypeError|at resolveTarget/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('route config processRel must target a process note', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-route-type-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+    const configPath = path.join(repoRoot, 'notes-graph.config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.routes = [{
+      id: 'bad-route',
+      processRel: 'Apps/Smoke App.md',
+      aliases: ['bad']
+    }];
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+    let validateFailure = null;
+    try {
+      run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    } catch (error) {
+      validateFailure = error;
+    }
+    assert.ok(validateFailure, 'validation should fail when route processRel targets an app');
+    assert.match(
+      `${validateFailure.stdout || ''}${validateFailure.stderr || ''}${validateFailure.message}`,
+      /route "bad-route": processRel Apps\/Smoke App\.md must target type process; found app/
+    );
+
+    let routeFailure = null;
+    try {
+      run(repoRoot, ['scripts/project-notes.cjs', 'route', 'bad']);
+    } catch (error) {
+      routeFailure = error;
+    }
+    assert.ok(routeFailure, 'routing should fail when route processRel targets an app');
+    assert.match(
+      `${routeFailure.stdout || ''}${routeFailure.stderr || ''}${routeFailure.message}`,
+      /Route "bad-route" points to missing or non-process note Apps\/Smoke App\.md/
+    );
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
@@ -298,6 +422,44 @@ test('install still merges an existing package.json', () => {
     assert.equal(pkg.scripts.build, 'echo build');
     assert.equal(pkg.scripts.notes, 'node scripts/project-notes.cjs');
     assert.equal(pkg.dependencies['js-yaml'], '^4.1.0');
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('install and upgrade warn when preserving custom notes scripts', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-custom-scripts-'));
+  try {
+    const packagePath = path.join(repoRoot, 'package.json');
+    fs.writeFileSync(packagePath, `${JSON.stringify({
+      name: 'custom-notes-package',
+      scripts: {
+        'notes:validate': 'node old-validator.cjs'
+      }
+    }, null, 2)}\n`);
+
+    const installOutput = run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    assert.match(installOutput, /warn\s+package\.json preserved custom notes:validate: node old-validator\.cjs/);
+    assert.match(installOutput, /custom notes:\* scripts/);
+    const installedPkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    assert.equal(installedPkg.scripts['notes:validate'], 'node old-validator.cjs');
+    assert.equal(installedPkg.scripts.notes, 'node scripts/project-notes.cjs');
+
+    const configPath = path.join(repoRoot, 'notes-graph.config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.kitVersion = '0.0.0';
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+    const upgradeOutput = run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--upgrade'
+    ]);
+    assert.match(upgradeOutput, /warn\s+package\.json preserved custom notes:validate: node old-validator\.cjs/);
+    assert.match(upgradeOutput, /custom notes:\* scripts/);
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }

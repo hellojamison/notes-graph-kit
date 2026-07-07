@@ -233,11 +233,13 @@ function mergePackageJson(repoRoot) {
     : { name: path.basename(repoRoot), private: true };
   pkg.scripts = pkg.scripts || {};
   pkg.dependencies = pkg.dependencies || {};
+  const preservedScripts = [];
   let changed = !exists;
   for (const [name, command] of Object.entries(NOTES_NPM_SCRIPTS)) {
     if (pkg.scripts[name] !== command) {
       if (pkg.scripts[name] && pkg.scripts[name] !== command) {
         // Preserve a repo's customized notes command; only fill gaps.
+        preservedScripts.push({ name, current: pkg.scripts[name], expected: command });
         continue;
       }
       pkg.scripts[name] = command;
@@ -248,9 +250,18 @@ function mergePackageJson(repoRoot) {
     pkg.dependencies['js-yaml'] = '^4.1.0';
     changed = true;
   }
-  return changed
+  return {
+    write: changed
     ? { rel: 'package.json', content: `${JSON.stringify(pkg, null, 2)}\n`, kind: 'package' }
-    : null;
+      : null,
+    preservedScripts
+  };
+}
+
+function preservedScriptLines(preservedScripts) {
+  return preservedScripts.map(({ name, current }) =>
+    `  warn  package.json preserved custom ${name}: ${current}`
+  );
 }
 
 const AGENTS_SECTION_HEADER = '## Project Notes Graph';
@@ -365,9 +376,9 @@ function install(args) {
       `notes-graph.config.json already exists in ${repoRoot}. Use --upgrade to refresh scripts or --force to reinstall.`
     );
   }
-  const packageWrite = mergePackageJson(repoRoot);
-  if (packageWrite) {
-    writes.push(packageWrite);
+  const packageMerge = mergePackageJson(repoRoot);
+  if (packageMerge.write) {
+    writes.push(packageMerge.write);
   }
 
   assertNoProtectedExistingWrites(repoRoot, writes, { force });
@@ -377,6 +388,7 @@ function install(args) {
     `${dryRun ? '[dry-run] ' : ''}Installed notes graph kit ${kitVersion} into ${repoRoot}`,
     ...results.written.map((rel) => `  write ${rel}`),
     ...results.skipped.map((rel) => `  skip  ${rel} (exists)`),
+    ...preservedScriptLines(packageMerge.preservedScripts),
     agentsResult.action === 'skip'
       ? '  skip  AGENTS.md (Project Notes Graph section exists)'
       : `  ${dryRun ? 'write' : agentsResult.action} AGENTS.md`,
@@ -388,6 +400,9 @@ function install(args) {
   ];
   if (agentsResult.action === 'skip') {
     lines.push('', 'AGENTS.md already had a Project Notes Graph section; snippet not changed.');
+  }
+  if (packageMerge.preservedScripts.length > 0) {
+    lines.push('', 'package.json has custom notes:* scripts; verify they call the refreshed kit or update them manually.');
   }
   return `${lines.join('\n')}\n`;
 }
@@ -409,18 +424,22 @@ function upgrade(args) {
     content: `${JSON.stringify(config, null, 2)}\n`,
     kind: 'config'
   });
-  const packageWrite = mergePackageJson(repoRoot);
-  if (packageWrite) {
-    writes.push(packageWrite);
+  const packageMerge = mergePackageJson(repoRoot);
+  if (packageMerge.write) {
+    writes.push(packageMerge.write);
   }
 
   const results = applyWrites(repoRoot, writes, { force: true, dryRun });
   const lines = [
     `${dryRun ? '[dry-run] ' : ''}Upgraded notes graph kit ${previousVersion} -> ${kitVersion} in ${repoRoot}`,
     ...results.written.map((rel) => `  write ${rel}`),
+    ...preservedScriptLines(packageMerge.preservedScripts),
     '',
     'Vault content was not touched. Run npm run notes:validate to confirm.'
   ];
+  if (packageMerge.preservedScripts.length > 0) {
+    lines.push('', 'package.json has custom notes:* scripts; verify they call the refreshed kit or update them manually.');
+  }
   return `${lines.join('\n')}\n`;
 }
 

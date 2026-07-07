@@ -48,7 +48,7 @@ The installer:
 1. Copies the three helper scripts into `scripts/` (refuses to overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with app name, vault dir, routes, and `kitVersion`.
 3. Copies the vault skeleton with the app name substituted, excluding this kit repo's dated local task notes (existing vault files are not overwritten without `--force`).
-4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:validate` into `package.json` and adds `js-yaml`.
+4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:validate` into `package.json` and adds `js-yaml`; existing customized `notes:*` commands are preserved with a warning.
 5. Writes or appends the `## Project Notes Graph` block to `AGENTS.md` (creates the file if missing; skips if the section already exists).
 
 Then in the target repo:

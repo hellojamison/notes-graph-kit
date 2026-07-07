@@ -9,9 +9,11 @@ const {
   allowedConfidence,
   relationshipTypeExpectations,
   routeDefinitions,
+  getConfig,
   getVaultRoot,
   loadVaultGraph,
   extractWikilinkTargets,
+  validateRouteConfig,
   findMalformedWikilinks,
   resolveTarget,
   noteKeyForRel,
@@ -46,6 +48,7 @@ if (!fs.existsSync(vaultRoot)) {
   const graph = loadVaultGraph({ vaultRoot });
   const { notes, baseFiles, index, frontmatterByRel } = graph;
   const inboundByRel = new Map();
+  errors.push(...validateRouteConfig(getConfig(), graph));
 
   for (const note of notes) {
     const inboundTargets = extractWikilinkTargets(note.text);
@@ -79,6 +82,9 @@ if (!fs.existsSync(vaultRoot)) {
   );
 
   for (const definition of routeDefinitions) {
+    if (typeof definition?.processRel !== 'string' || !definition.processRel.trim()) {
+      continue;
+    }
     if (!resolveTarget(definition.processRel, index)) {
       warnings.push(`route alias "${definition.id}" points to missing ${definition.processRel}`);
     }

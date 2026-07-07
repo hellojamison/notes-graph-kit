@@ -20,7 +20,7 @@ For substantive tasks:
 
 Prefer the repo-local notes helper:
 - Use `npm run notes:route -- "<task description>"` to choose the app/process/runbook path.
-- Use `npm run notes:new -- --title "<task title>" --process <process-alias> --summary "<goal>"` to create a task/evidence note.
+- Use `npm run notes:new -- --title "<task title>" --process <process-alias> --summary "<goal>"` to create a task note; pass `--type evidence` for an evidence-shaped note.
 - Use `npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD <task title>.md" --working "..." --verified "..." --not-verified "..."` when closing a task note.
 - Run `npm run notes:validate` after graph metadata, templates, Bases, validator, helper script, or structured note changes.
 ```
