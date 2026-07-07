@@ -95,7 +95,8 @@ Edit `notes-graph.config.json` in the target repo:
 - `appRel` — the app note path inside the vault.
 - `routes` — process aliases and their target process notes. Add
   project-specific processes (and matching notes under `Processes/`) as the
-  project grows.
+  project grows. Each `processRel` must point to an existing note with
+  `type: process`; `npm run notes:validate` fails invalid route configs.
 
 Run `npm run notes:validate` after any structural change.
 

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 
 const kitRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const requireFromTest = createRequire(import.meta.url);
 
 function run(cwd, args) {
   return execFileSync('node', args, { cwd, encoding: 'utf8' });
@@ -361,6 +363,99 @@ test('route config processRel must target a process note', () => {
     );
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('validator fails when configured route target is missing', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-route-missing-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+    const configPath = path.join(repoRoot, 'notes-graph.config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.routes = [{
+      id: 'missing-route',
+      processRel: 'Processes/Missing Process.md',
+      aliases: ['missing']
+    }];
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+    let validateFailure = null;
+    try {
+      run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    } catch (error) {
+      validateFailure = error;
+    }
+    assert.ok(validateFailure, 'validation should fail when configured route processRel is missing');
+    const output = `${validateFailure.stdout || ''}${validateFailure.stderr || ''}${validateFailure.message}`;
+    assert.match(
+      output,
+      /route "missing-route": processRel Processes\/Missing Process\.md must target an existing process note/
+    );
+    assert.doesNotMatch(output, /WARN route alias "missing-route"/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('buildRoute uses per-call env route config in a reused process', () => {
+  const repoA = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-env-a-'));
+  const repoB = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-env-b-'));
+  const libPath = path.join(kitRoot, 'scripts/lib/project-notes-graph.cjs');
+  const previousRepoRoot = process.env.PROJECT_NOTES_NOTES_REPO_ROOT;
+  const previousConfig = process.env.PROJECT_NOTES_CONFIG;
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoA,
+      '--app', 'Repo A'
+    ]);
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoB,
+      '--app', 'Repo B'
+    ]);
+
+    const repoBConfigPath = path.join(repoB, 'notes-graph.config.json');
+    const repoBConfig = JSON.parse(fs.readFileSync(repoBConfigPath, 'utf8'));
+    repoBConfig.routes = [{
+      id: 'custom-b',
+      processRel: 'Processes/Notes Graph Maintenance.md',
+      aliases: ['custom b']
+    }];
+    fs.writeFileSync(repoBConfigPath, `${JSON.stringify(repoBConfig, null, 2)}\n`);
+
+    process.env.PROJECT_NOTES_NOTES_REPO_ROOT = repoA;
+    delete process.env.PROJECT_NOTES_CONFIG;
+    delete requireFromTest.cache[requireFromTest.resolve(libPath)];
+    const graphLib = requireFromTest(libPath);
+
+    const route = graphLib.buildRoute('custom b', {
+      env: {
+        PROJECT_NOTES_NOTES_REPO_ROOT: repoB
+      }
+    });
+    assert.equal(route.error, null);
+    assert.equal(route.definition.id, 'custom-b');
+    assert.equal(route.processRel, 'Processes/Notes Graph Maintenance.md');
+  } finally {
+    if (previousRepoRoot == null) {
+      delete process.env.PROJECT_NOTES_NOTES_REPO_ROOT;
+    } else {
+      process.env.PROJECT_NOTES_NOTES_REPO_ROOT = previousRepoRoot;
+    }
+    if (previousConfig == null) {
+      delete process.env.PROJECT_NOTES_CONFIG;
+    } else {
+      process.env.PROJECT_NOTES_CONFIG = previousConfig;
+    }
+    delete requireFromTest.cache[requireFromTest.resolve(libPath)];
+    fs.rmSync(repoA, { recursive: true, force: true });
+    fs.rmSync(repoB, { recursive: true, force: true });
   }
 });
 

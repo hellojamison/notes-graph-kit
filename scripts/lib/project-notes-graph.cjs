@@ -135,8 +135,6 @@ function getRouteDefinitions(env = process.env) {
     : defaultRouteDefinitions;
 }
 
-const routeDefinitions = getRouteDefinitions();
-
 function getRepoRoot(env = process.env) {
   return path.resolve(env.PROJECT_NOTES_NOTES_REPO_ROOT || defaultRepoRoot);
 }
@@ -282,11 +280,12 @@ function isUsableRouteDefinition(definition) {
   );
 }
 
-function validateRouteDefinitions(definitions, graph = null) {
+function validateRouteDefinitions(definitions, graph = null, options = {}) {
   const errors = [];
   if (!Array.isArray(definitions)) {
     return ['notes-graph.config.json: routes must be an array'];
   }
+  const requireExistingProcessTargets = Boolean(options.requireExistingProcessTargets);
 
   definitions.forEach((definition, index) => {
     const label = routeDefinitionLabel(definition, index);
@@ -315,6 +314,9 @@ function validateRouteDefinitions(definitions, graph = null) {
     }
     const resolved = resolveTarget(definition.processRel, graph.index);
     if (!resolved) {
+      if (requireExistingProcessTargets) {
+        errors.push(`${label}: processRel ${definition.processRel} must target an existing process note`);
+      }
       return;
     }
     const targetFrontmatter = graph.frontmatterByRel?.get(resolved)
@@ -333,10 +335,11 @@ function validateRouteConfig(config = {}, graph = null) {
   if (config.routes != null && !Array.isArray(config.routes)) {
     return ['notes-graph.config.json: routes must be an array'];
   }
-  const definitions = Array.isArray(config.routes) && config.routes.length > 0
-    ? config.routes
-    : defaultRouteDefinitions;
-  return validateRouteDefinitions(definitions, graph);
+  const hasConfiguredRoutes = Array.isArray(config.routes) && config.routes.length > 0;
+  const definitions = hasConfiguredRoutes ? config.routes : defaultRouteDefinitions;
+  return validateRouteDefinitions(definitions, graph, {
+    requireExistingProcessTargets: hasConfiguredRoutes
+  });
 }
 
 function findMalformedWikilinks(text) {
@@ -446,9 +449,9 @@ function inputContainsAlias(input, alias) {
   return aliasTokens.length > 0 && aliasTokens.every((token) => normalizedInput.includes(` ${token} `));
 }
 
-function findRouteDefinition(input) {
+function findRouteDefinition(input, definitions = getRouteDefinitions()) {
   const normalizedInput = normalizeInput(input);
-  for (const definition of routeDefinitions) {
+  for (const definition of definitions) {
     if (!isUsableRouteDefinition(definition)) {
       continue;
     }
@@ -462,7 +465,7 @@ function findRouteDefinition(input) {
       return definition;
     }
   }
-  return routeDefinitions.find((definition) =>
+  return definitions.find((definition) =>
     isUsableRouteDefinition(definition)
     && routeAliases(definition).some((alias) => inputContainsAlias(input, alias))
   ) || null;
@@ -501,8 +504,10 @@ function resolveRelationshipLinks(values, graph) {
 }
 
 function buildRoute(input, options = {}) {
+  const env = options.env || process.env;
   const graph = options.graph || loadVaultGraph(options);
-  const definition = findRouteDefinition(input);
+  const definitions = options.routeDefinitions || getRouteDefinitions(env);
+  const definition = findRouteDefinition(input, definitions);
   const processRel = definition
     ? resolveNoteInput(definition.processRel, graph, 'process')
     : resolveNoteInput(input, graph, 'process');
@@ -580,7 +585,9 @@ module.exports = {
   allowedStatuses,
   allowedConfidence,
   relationshipTypeExpectations,
-  routeDefinitions,
+  get routeDefinitions() {
+    return getRouteDefinitions();
+  },
   defaultRouteDefinitions,
   getConfig,
   getRouteDefinitions,

@@ -8,8 +8,8 @@ const {
   allowedStatuses,
   allowedConfidence,
   relationshipTypeExpectations,
-  routeDefinitions,
   getConfig,
+  getRouteDefinitions,
   getVaultRoot,
   loadVaultGraph,
   extractWikilinkTargets,
@@ -48,7 +48,8 @@ if (!fs.existsSync(vaultRoot)) {
   const graph = loadVaultGraph({ vaultRoot });
   const { notes, baseFiles, index, frontmatterByRel } = graph;
   const inboundByRel = new Map();
-  errors.push(...validateRouteConfig(getConfig(), graph));
+  const config = getConfig();
+  errors.push(...validateRouteConfig(config, graph));
 
   for (const note of notes) {
     const inboundTargets = extractWikilinkTargets(note.text);
@@ -81,12 +82,14 @@ if (!fs.existsSync(vaultRoot)) {
       ].filter(Boolean))
   );
 
-  for (const definition of routeDefinitions) {
-    if (typeof definition?.processRel !== 'string' || !definition.processRel.trim()) {
-      continue;
-    }
-    if (!resolveTarget(definition.processRel, index)) {
-      warnings.push(`route alias "${definition.id}" points to missing ${definition.processRel}`);
+  if (config.routes == null || (Array.isArray(config.routes) && config.routes.length === 0)) {
+    for (const definition of getRouteDefinitions()) {
+      if (typeof definition?.processRel !== 'string' || !definition.processRel.trim()) {
+        continue;
+      }
+      if (!resolveTarget(definition.processRel, index)) {
+        warnings.push(`route alias "${definition.id}" points to missing ${definition.processRel}`);
+      }
     }
   }
 

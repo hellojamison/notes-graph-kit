@@ -150,8 +150,8 @@ function routeToJson(route) {
   };
 }
 
-function formatRoute(route) {
-  const config = getConfig();
+function formatRoute(route, options = {}) {
+  const config = getConfig(options.env || process.env);
   const appName = config.appName || 'My Project';
   const processTitle = getNoteTitle(route.processNote, route.processRel);
   const runbookTitles = route.runbookRels.map((rel) => getNoteTitle(route.graph.noteByRel.get(rel), rel));
@@ -200,7 +200,7 @@ function printRoute(args, options = {}) {
   if (route.error) {
     throw new Error(route.error);
   }
-  return args.json ? `${JSON.stringify(routeToJson(route), null, 2)}\n` : formatRoute(route);
+  return args.json ? `${JSON.stringify(routeToJson(route), null, 2)}\n` : formatRoute(route, options);
 }
 
 function frontmatterLinksForRels(route, rels) {
@@ -221,7 +221,7 @@ function createNewNote(args, options = {}) {
     throw new Error('--type must be task or evidence');
   }
 
-  const route = buildRoute(processInput, { vaultRoot, runbook: args.runbook });
+  const route = buildRoute(processInput, { env, vaultRoot, runbook: args.runbook });
   if (route.error) {
     throw new Error(route.error);
   }
