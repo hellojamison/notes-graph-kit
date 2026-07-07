@@ -50,6 +50,6 @@ Replace machine-specific public install commands with clone-relative usage in RE
 
 ## Closeout 2026-07-06 23:04 PDT
 
-- Working: README.md and AGENTS.md now use clone-relative public install and upgrade commands instead of machine-specific /Users paths.
+- Working: README.md and AGENTS.md now use clone-relative public install and upgrade commands instead of machine-specific local paths.
 - Verified: rg found no remaining machine-specific install path; git diff --check passed; npm run notes:validate passed with 0 warnings; npm test passed 5 tests.
 - Not verified: No real external target repo install was run for this docs-only change.
