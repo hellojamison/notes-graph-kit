@@ -257,6 +257,31 @@ function extractWikilinkTargets(text) {
   return targets;
 }
 
+function findMalformedWikilinks(text) {
+  const source = String(text || '');
+  const malformed = [];
+  let index = 0;
+
+  while ((index = source.indexOf('[[', index)) !== -1) {
+    const lineEnd = source.indexOf('\n', index);
+    const scanEnd = lineEnd === -1 ? source.length : lineEnd;
+    const closeIndex = source.indexOf(']]', index + 2);
+    if (closeIndex === -1 || closeIndex > scanEnd) {
+      malformed.push(source.slice(index, scanEnd).trim());
+      index += 2;
+      continue;
+    }
+
+    const inner = source.slice(index + 2, closeIndex);
+    if (!inner.trim() || inner.includes('[') || inner.includes(']')) {
+      malformed.push(source.slice(index, closeIndex + 2));
+    }
+    index = closeIndex + 2;
+  }
+
+  return malformed;
+}
+
 function resolveTarget(target, index) {
   const normalized = target.replace(/\.(md|base)$/i, '').replace(/\\/g, '/').toLowerCase();
   if (index.byPath.has(normalized)) {
@@ -471,6 +496,7 @@ module.exports = {
   buildNoteIndex,
   buildFrontmatterByRel,
   extractWikilinkTargets,
+  findMalformedWikilinks,
   resolveTarget,
   firstFolder,
   isTemplate,

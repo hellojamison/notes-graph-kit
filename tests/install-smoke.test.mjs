@@ -170,6 +170,76 @@ test('install keeps punctuation-heavy app names valid in YAML and wikilinks', ()
   }
 });
 
+test('new sanitizes task filenames so generated wikilink targets are parseable', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-title-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+
+    const newOutput = run(repoRoot, [
+      'scripts/project-notes.cjs', 'new',
+      '--title', 'Fix parser #1 [case]',
+      '--process', 'notes-graph-maintenance',
+      '--summary', 'Verify generated links remain parseable.'
+    ]);
+    const createdRel = newOutput.match(/^Created (.+)$/m)?.[1];
+    const dailyRel = newOutput.match(/^Updated (.+)$/m)?.[1];
+    assert.ok(createdRel, `expected created note path in output: ${newOutput}`);
+    assert.ok(dailyRel, `expected daily note path in output: ${newOutput}`);
+    assert.match(createdRel, /^Evidence\/\d{4}-\d{2}-\d{2} Fix parser 1 case\.md$/);
+
+    const createdTarget = createdRel.replace(/\.md$/i, '');
+    assert.doesNotMatch(createdTarget, /[\[\]#^]/);
+    const dailyText = fs.readFileSync(path.join(repoRoot, 'Project Notes', dailyRel), 'utf8');
+    assert.ok(dailyText.includes(`[[${createdTarget}|Fix parser #1 case]]`));
+
+    const validateOutput = run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    assert.match(validateOutput, /validation passed/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('validator reports malformed wikilinks in daily notes', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-malformed-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+
+    const newOutput = run(repoRoot, [
+      'scripts/project-notes.cjs', 'new',
+      '--title', 'Normal task',
+      '--process', 'notes-graph-maintenance',
+      '--summary', 'Create a daily note for validation.'
+    ]);
+    const dailyRel = newOutput.match(/^Updated (.+)$/m)?.[1];
+    assert.ok(dailyRel, `expected daily note path in output: ${newOutput}`);
+    fs.appendFileSync(
+      path.join(repoRoot, 'Project Notes', dailyRel),
+      '- Bad generated link [[Evidence/Broken [target]|Alias]]\n'
+    );
+
+    let failure = null;
+    try {
+      run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    } catch (error) {
+      failure = error;
+    }
+    assert.ok(failure, 'validation should fail for malformed wikilinks');
+    assert.match(`${failure.stdout || ''}${failure.stderr || ''}${failure.message}`, /malformed wikilink/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
 test('install rejects app names with Obsidian wikilink delimiters', () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-appname-delimiter-'));
   try {

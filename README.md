@@ -130,6 +130,9 @@ Run `npm test` after changing the installer, helper scripts, or vault skeleton.
 It scaffolds a temp repo, runs install → route → new → closeout → validate, and
 exercises upgrade and the no-clobber guard.
 
+GitHub Actions CI also runs `npm ci`, `npm test`, `npm run notes:validate`,
+`git diff --check`, and `npm audit --omit=dev` on pushes and pull requests.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

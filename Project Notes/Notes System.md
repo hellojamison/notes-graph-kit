@@ -34,8 +34,8 @@ New structured notes should include frontmatter with `schema_version: 1`.
 Required properties:
 
 - `title`: human-readable note title.
-- `type`: one of `daily`, `task`, `decision`, `incident`, `release`, `runbook`, `known-good`, `index`, or `template`.
-- `status`: one of `draft`, `active`, `blocked`, `verified`, `stale`, or `superseded`.
+- `type`: one of `index`, `app`, `task`, `process`, `runbook`, `decision`, `incident`, `evidence`, `daily`, `release`, `audit`, `known-good`, or `template`.
+- `status`: one of `draft`, `active`, `in-progress`, `blocked`, `verified`, `stale`, `superseded`, `partial`, `current`, `done`, `complete`, `implemented`, `investigating`, `investigated`, `fixed-uncommitted`, `packaged`, or `archived`.
 - `date`: creation or task date in `YYYY-MM-DD` form.
 - `tags`: Obsidian tags.
 
@@ -45,7 +45,7 @@ Recommended properties:
 - `last_verified`: date when mutable claims were last checked.
 - `freshness`: use `reverify-before-use` when the note contains facts that can drift.
 - `superseded_by`: wikilink or path when a note is replaced.
-- `related`: wikilinks to connected notes.
+- `related_apps`, `related_processes`, `related_runbooks`, `related_decisions`, `related_incidents`, and `related_evidence`: wikilinks to connected notes, grouped by target type.
 
 Use this contract for new notes. Older notes do not need a bulk migration unless they become active again.
 
@@ -75,14 +75,10 @@ Any `verified` or `known-good` note that contains mutable facts should include `
 Run the notes validator before handing off note-system changes:
 
 ```bash
-python3 Scripts/validate_notes.py
+npm run notes:validate
 ```
 
-The default mode validates structured notes with `schema_version: 1`. Structured daily notes also get bullet-format checks. To audit legacy notes during a cleanup, run:
-
-```bash
-python3 Scripts/validate_notes.py --strict-all
-```
+The validator is `scripts/validate-project-notes-graph.cjs`. It checks schema-managed frontmatter, typed relationship links, Bases YAML, malformed wikilinks, and broken body links in structured notes and daily notes. Legacy notes without frontmatter are preserved as warnings so existing history does not need a bulk rewrite.
 
 ## Task Note Shape
 

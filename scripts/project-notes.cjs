@@ -63,8 +63,8 @@ function requireArg(args, name) {
 }
 
 function sanitizeFileTitle(title) {
-  const sanitized = title
-    .replace(/[\\/:*?"<>|]/g, ' ')
+  const sanitized = String(title || '')
+    .replace(/[\\/:*?"<>|[\]#^\r\n]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   return sanitized || 'Untitled Notes Task';

@@ -73,7 +73,7 @@ Use `--dry-run` on install or upgrade to preview writes.
 - After install/upgrade in a real repo, run `npm run notes:validate` in that repo.
 - State what was smoke-tested vs. manually verified when closing kit work notes.
 
-There is no lint step and no CI workflow in this repo.
+GitHub Actions CI runs `npm ci`, `npm test`, `npm run notes:validate`, `git diff --check`, and `npm audit --omit=dev` on pushes and pull requests.
 
 ## Hard rules and gotchas
 

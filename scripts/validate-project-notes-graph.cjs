@@ -12,6 +12,7 @@ const {
   getVaultRoot,
   loadVaultGraph,
   extractWikilinkTargets,
+  findMalformedWikilinks,
   resolveTarget,
   noteKeyForRel,
   asArray,
@@ -87,6 +88,10 @@ if (!fs.existsSync(vaultRoot)) {
     const { rel, frontmatter, text, frontmatterError } = note;
     const structured = isStructured(rel);
     const template = isTemplate(rel);
+
+    for (const malformed of findMalformedWikilinks(text)) {
+      errors.push(`${rel}: malformed wikilink ${malformed}`);
+    }
 
     if (frontmatterError) {
       errors.push(`${rel}: ${frontmatterError}`);
@@ -185,7 +190,7 @@ if (!fs.existsSync(vaultRoot)) {
       }
     }
 
-    if (!template && structured) {
+    if (!template && (structured || isDaily(rel) || frontmatter.type === 'daily')) {
       const linkTargets = extractWikilinkTargets(text);
       for (const target of linkTargets) {
         if (!resolveTarget(target, index)) {
