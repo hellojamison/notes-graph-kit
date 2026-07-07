@@ -40,17 +40,19 @@ Options:
 
 - `--repo` — target repo root (defaults to current directory).
 - `--app` — required app/product name.
-- `--vault` — vault directory name (defaults to `Project Notes`).
-- `--force` — overwrite existing kit-managed files.
+- `--vault` — vault directory name, not a path (defaults to `Project Notes`).
+- `--force` — overwrite existing kit-managed scripts or vault files.
 - `--dry-run` — print planned writes without changing files.
 
 The installer:
 
-1. Copies the three helper scripts verbatim into `scripts/`.
+1. Copies the three helper scripts verbatim into `scripts/` (refuses to
+   overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with the app name, vault dir, and a
    `kitVersion` stamp.
-3. Copies the vault skeleton with the app name substituted (existing vault
-   files are never overwritten without `--force`).
+3. Copies the vault skeleton with the app name substituted, excluding this
+   kit repo's dated local task notes (existing vault files are never
+   overwritten without `--force`).
 4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, and
    `notes:validate` into `package.json` (existing customized commands are
    preserved) and adds the `js-yaml` dependency.

@@ -1,6 +1,6 @@
 {
   "name": "notes-graph-kit",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "description": "Portable Obsidian project notes graph helper kit.",
   "scripts": {

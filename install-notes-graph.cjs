@@ -15,6 +15,7 @@ const kitVersion = JSON.parse(fs.readFileSync(path.join(kitRoot, 'package.json')
 
 const PLACEHOLDER_APP = 'My Project';
 const SKELETON_VAULT_DIR = 'Project Notes';
+const DATED_NOTE_RE = /^\d{4}-\d{2}-\d{2}(?: .+)?\.md$/;
 
 const MANAGED_SCRIPTS = [
   'scripts/project-notes.cjs',
@@ -89,6 +90,28 @@ function fileBaseForApp(appName) {
   return sanitized;
 }
 
+function validateVaultDir(value) {
+  if (typeof value !== 'string') {
+    throw new Error('--vault must be a directory name');
+  }
+  const vaultDir = value.trim();
+  if (!vaultDir) {
+    throw new Error('--vault must not be empty');
+  }
+  if (
+    path.isAbsolute(vaultDir)
+    || vaultDir === '.'
+    || vaultDir === '..'
+    || vaultDir.includes('/')
+    || vaultDir.includes('\\')
+    || vaultDir.split(path.sep).includes('..')
+    || /[\r\n]/.test(vaultDir)
+  ) {
+    throw new Error('--vault must be a simple directory name, not a path');
+  }
+  return vaultDir;
+}
+
 function walk(dirPath) {
   const entries = [];
   for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
@@ -103,6 +126,14 @@ function walk(dirPath) {
     }
   }
   return entries;
+}
+
+function isInstallSkeletonRel(rel) {
+  const basename = path.posix.basename(rel);
+  if (DATED_NOTE_RE.test(basename) && (rel === basename || rel.startsWith('Evidence/'))) {
+    return false;
+  }
+  return true;
 }
 
 function buildConfig(appName, vaultDir, appFileBase) {
@@ -127,6 +158,9 @@ function buildVaultWrites(appName, vaultDir, appFileBase) {
   const writes = [];
   for (const filePath of walk(skeletonRoot)) {
     const rel = path.relative(skeletonRoot, filePath).split(path.sep).join('/');
+    if (!isInstallSkeletonRel(rel)) {
+      continue;
+    }
     const targetRel = rel === `Apps/${PLACEHOLDER_APP}.md`
       ? `Apps/${appFileBase}.md`
       : rel;
@@ -221,12 +255,21 @@ function applyWrites(repoRoot, writes, { force, dryRun }) {
   for (const write of writes) {
     const targetPath = path.join(repoRoot, write.rel);
     const exists = fs.existsSync(targetPath);
-    const overwritable = write.kind !== 'vault' || force;
-    if (exists && write.kind === 'vault' && !force) {
-      results.skipped.push(write.rel);
-      continue;
-    }
-    if (exists && !overwritable) {
+    if (exists && !force) {
+      if (write.kind === 'script') {
+        throw new Error(`${write.rel} already exists in ${repoRoot}. Use --force to overwrite managed helper scripts.`);
+      }
+      if (write.kind === 'config') {
+        throw new Error(`${write.rel} already exists in ${repoRoot}. Use --upgrade to refresh scripts or --force to reinstall.`);
+      }
+      if (write.kind === 'package') {
+        results.written.push(write.rel);
+        if (!dryRun) {
+          fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+          fs.writeFileSync(targetPath, write.content);
+        }
+        continue;
+      }
       results.skipped.push(write.rel);
       continue;
     }
@@ -239,6 +282,21 @@ function applyWrites(repoRoot, writes, { force, dryRun }) {
   return results;
 }
 
+function assertNoProtectedExistingWrites(repoRoot, writes, { force }) {
+  if (force) {
+    return;
+  }
+  const existingScripts = writes
+    .filter((write) => write.kind === 'script' && fs.existsSync(path.join(repoRoot, write.rel)))
+    .map((write) => write.rel);
+  if (existingScripts.length > 0) {
+    const verb = existingScripts.length === 1 ? 'exists' : 'exist';
+    throw new Error(
+      `${existingScripts.join(', ')} already ${verb} in ${repoRoot}. Use --force to overwrite managed helper scripts.`
+    );
+  }
+}
+
 function install(args) {
   const repoRoot = path.resolve(args.repo || process.cwd());
   if (!fs.existsSync(repoRoot)) {
@@ -248,7 +306,7 @@ function install(args) {
   if (typeof appName !== 'string' || appName.trim() === '') {
     throw new Error('Missing required --app "App Name"');
   }
-  const vaultDir = (args.vault || SKELETON_VAULT_DIR).trim();
+  const vaultDir = validateVaultDir(args.vault || SKELETON_VAULT_DIR);
   const appFileBase = fileBaseForApp(appName);
   const dryRun = Boolean(args['dry-run']);
   const force = Boolean(args.force);
@@ -273,6 +331,7 @@ function install(args) {
     writes.push(packageWrite);
   }
 
+  assertNoProtectedExistingWrites(repoRoot, writes, { force });
   const results = applyWrites(repoRoot, writes, { force, dryRun });
   const agentsResult = applyAgentsBlock(repoRoot, appName.trim(), vaultDir, appFileBase, { dryRun });
   const lines = [
@@ -343,4 +402,13 @@ if (require.main === module) {
   }
 }
 
-module.exports = { main, parseArgs, buildConfig, agentsSnippet, applyAgentsBlock };
+module.exports = {
+  main,
+  parseArgs,
+  buildConfig,
+  agentsSnippet,
+  applyAgentsBlock,
+  validateVaultDir,
+  isInstallSkeletonRel,
+  assertNoProtectedExistingWrites
+};

@@ -41,13 +41,13 @@ node install-notes-graph.cjs \
   --vault "Project Notes"
 ```
 
-Options: `--repo` (defaults to cwd), `--app` (required), `--vault` (defaults to `Project Notes`), `--force` (overwrite kit-managed files), `--dry-run` (preview only).
+Options: `--repo` (defaults to cwd), `--app` (required), `--vault` (directory name only, defaults to `Project Notes`), `--force` (overwrite kit-managed scripts or vault files), `--dry-run` (preview only).
 
 The installer:
 
-1. Copies the three helper scripts into `scripts/`.
+1. Copies the three helper scripts into `scripts/` (refuses to overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with app name, vault dir, routes, and `kitVersion`.
-3. Copies the vault skeleton with the app name substituted (existing vault files are not overwritten without `--force`).
+3. Copies the vault skeleton with the app name substituted, excluding this kit repo's dated local task notes (existing vault files are not overwritten without `--force`).
 4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:validate` into `package.json` and adds `js-yaml`.
 5. Writes or appends the `## Project Notes Graph` block to `AGENTS.md` (creates the file if missing; skips if the section already exists).
 
@@ -78,7 +78,8 @@ There is no lint step and no CI workflow in this repo.
 ## Hard rules and gotchas
 
 - **Authoritative source only** — fix bugs and add features here, then `--upgrade` consuming repos. Do not edit retired `notes-graph-kit/` copies inside app repos.
-- **Vault safety** — install never overwrites existing vault files unless `--force`. Upgrade never touches vault content.
+- **Vault safety** — `--vault` must be a directory name, not a path. Install never overwrites existing vault files unless `--force`. Upgrade never touches vault content.
+- **Script safety** — install refuses to overwrite existing managed helper scripts unless `--force`; use `--upgrade` for repos already carrying this kit.
 - **Config guard** — re-install without `--force` or `--upgrade` fails if `notes-graph.config.json` already exists.
 - **Custom npm scripts** — if a target repo customized a `notes:*` command, the installer preserves it instead of overwriting.
 - **AGENTS.md merge** — install creates or appends `## Project Notes Graph`; it does not replace an existing section. Edit `AGENTS-snippet.md` here, then re-run install with `--force` on a scratch repo or patch target repos manually if the block needs updating.

@@ -12,6 +12,16 @@ function run(cwd, args) {
   return execFileSync('node', args, { cwd, encoding: 'utf8' });
 }
 
+function listFiles(root, dir = root) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return listFiles(root, entryPath);
+    }
+    return path.relative(root, entryPath).split(path.sep).join('/');
+  });
+}
+
 test('install, route, new, closeout, validate in a scaffolded repo', () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-'));
   try {
@@ -26,6 +36,13 @@ test('install, route, new, closeout, validate in a scaffolded repo', () => {
     assert.ok(fs.existsSync(path.join(repoRoot, 'scripts/project-notes.cjs')));
     assert.ok(fs.existsSync(path.join(repoRoot, 'Project Notes/Apps/Smoke App.md')));
     assert.ok(fs.existsSync(path.join(repoRoot, 'Project Notes/Notes System.md')));
+    assert.equal(
+      listFiles(path.join(repoRoot, 'Project Notes')).some((rel) =>
+        /^\d{4}-\d{2}-\d{2}\.md$/.test(rel)
+        || /^Evidence\/\d{4}-\d{2}-\d{2} .+\.md$/.test(rel)
+      ),
+      false
+    );
 
     const agentsMd = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
     assert.match(agentsMd, /## Project Notes Graph/);
@@ -65,6 +82,74 @@ test('install, route, new, closeout, validate in a scaffolded repo', () => {
 
     const validateOutput = run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
     assert.match(validateOutput, /validation passed/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('install rejects vault paths that would escape the target repo', () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-traversal-'));
+  const repoRoot = path.join(tempRoot, 'repo');
+  const outsideRoot = path.join(tempRoot, 'outside');
+  fs.mkdirSync(repoRoot);
+  try {
+    assert.throws(
+      () => run(kitRoot, [
+        'install-notes-graph.cjs',
+        '--repo', repoRoot,
+        '--app', 'Smoke App',
+        '--vault', '../outside'
+      ]),
+      /simple directory name/
+    );
+    assert.ok(!fs.existsSync(outsideRoot), 'installer should not write outside repoRoot');
+    assert.deepEqual(fs.readdirSync(repoRoot), []);
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test('install refuses to overwrite existing managed helper scripts without force', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-script-guard-'));
+  try {
+    const scriptPath = path.join(repoRoot, 'scripts/lib/project-notes-graph.cjs');
+    fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
+    fs.writeFileSync(scriptPath, '// custom helper\n');
+    assert.throws(
+      () => run(kitRoot, [
+        'install-notes-graph.cjs',
+        '--repo', repoRoot,
+        '--app', 'Smoke App'
+      ]),
+      /already exists/
+    );
+    assert.equal(fs.readFileSync(scriptPath, 'utf8'), '// custom helper\n');
+    assert.ok(!fs.existsSync(path.join(repoRoot, 'scripts/project-notes.cjs')));
+    assert.ok(!fs.existsSync(path.join(repoRoot, 'notes-graph.config.json')));
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('install still merges an existing package.json', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-package-'));
+  try {
+    const packagePath = path.join(repoRoot, 'package.json');
+    fs.writeFileSync(packagePath, `${JSON.stringify({
+      name: 'existing-package',
+      scripts: {
+        build: 'echo build'
+      }
+    }, null, 2)}\n`);
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    assert.equal(pkg.scripts.build, 'echo build');
+    assert.equal(pkg.scripts.notes, 'node scripts/project-notes.cjs');
+    assert.equal(pkg.dependencies['js-yaml'], '^4.1.0');
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
