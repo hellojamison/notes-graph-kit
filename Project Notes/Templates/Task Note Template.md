@@ -11,21 +11,6 @@ tags:
 
 # Task Name
 
-```yaml
----
-title: Task Name
-schema_version: 1
-type: task
-status: active
-date: YYYY-MM-DD
-area:
-  - area-name
-tags:
-  - notes/task
-freshness: reverify-before-use
----
-```
-
 ## Goal
 
 ## Context

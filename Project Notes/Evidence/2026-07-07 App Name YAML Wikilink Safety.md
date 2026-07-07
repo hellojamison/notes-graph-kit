@@ -1,7 +1,11 @@
 ---
 title: App Name YAML Wikilink Safety
+schema_version: 1
 type: evidence
 status: done
+date: "2026-07-07"
+tags:
+  - notes/evidence
 app: My Project
 source_of_truth: false
 last_verified: "2026-07-07"
@@ -19,20 +23,6 @@ related_decisions:
 
 # App Name YAML Wikilink Safety
 
-```yaml
----
-title: Task Name
-schema_version: 1
-type: task
-status: active
-date: YYYY-MM-DD
-area:
-  - area-name
-tags:
-  - notes/task
-freshness: reverify-before-use
----
-```
 
 ## Goal
 

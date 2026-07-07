@@ -238,8 +238,11 @@ function createNewNote(args, options = {}) {
   const decisionLinks = frontmatterLinksForRels(route, route.decisionRels);
   const frontmatter = {
     title,
+    schema_version: 1,
     type,
     status: 'active',
+    date,
+    tags: [`notes/${type}`],
     app: appName,
     source_of_truth: false,
     last_verified: date,

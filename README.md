@@ -109,7 +109,7 @@ npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Task title.m
 npm run notes:validate
 ```
 
-`notes:new` creates `type: task` by default. Pass `--type evidence` for an evidence-shaped note.
+`notes:new` writes dated work-log notes under `Project Notes/Evidence/`. It creates `type: task` by default. Pass `--type evidence` for an evidence-shaped note.
 
 Typical agent workflow:
 

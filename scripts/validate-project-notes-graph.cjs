@@ -42,6 +42,47 @@ function daysSince(value, now = new Date()) {
   return Math.floor((now.getTime() - date.getTime()) / 86400000);
 }
 
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
+function isPresentTitle(value) {
+  return isNonEmptyString(value)
+    || (value instanceof Date && !Number.isNaN(value.getTime()));
+}
+
+function isDateOnly(value) {
+  if (typeof value === 'string') {
+    return /^\d{4}-\d{2}-\d{2}$/.test(value);
+  }
+  return value instanceof Date
+    && !Number.isNaN(value.getTime())
+    && value.toISOString().endsWith('T00:00:00.000Z');
+}
+
+function validateSchemaManagedFrontmatter(rel, frontmatter) {
+  const fieldErrors = [];
+  if (!isPresentTitle(frontmatter.title)) {
+    fieldErrors.push(`${rel}: schema-managed note is missing title`);
+  }
+  for (const field of ['type', 'status']) {
+    if (!isNonEmptyString(frontmatter[field])) {
+      fieldErrors.push(`${rel}: schema-managed note is missing ${field}`);
+    }
+  }
+  if (!isDateOnly(frontmatter.date)) {
+    fieldErrors.push(`${rel}: schema-managed note date must be YYYY-MM-DD`);
+  }
+  if (
+    !Array.isArray(frontmatter.tags)
+    || frontmatter.tags.length === 0
+    || frontmatter.tags.some((tag) => !isNonEmptyString(tag))
+  ) {
+    fieldErrors.push(`${rel}: schema-managed note tags must be a non-empty array of strings`);
+  }
+  return fieldErrors;
+}
+
 if (!fs.existsSync(vaultRoot)) {
   errors.push(`Missing vault root: ${vaultRoot}`);
 } else {
@@ -118,6 +159,10 @@ if (!fs.existsSync(vaultRoot)) {
     }
     const schemaVersion = frontmatter.schema_version;
     const schemaManaged = schemaVersion === 1 || schemaVersion === '1';
+
+    if (schemaManaged) {
+      errors.push(...validateSchemaManagedFrontmatter(rel, frontmatter));
+    }
 
     if (frontmatter.type && !allowedTypes.has(frontmatter.type)) {
       const message = `${rel}: invalid type "${frontmatter.type}"`;

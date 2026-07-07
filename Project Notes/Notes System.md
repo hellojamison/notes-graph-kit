@@ -20,7 +20,8 @@ project notes are an operational memory system, not a diary. The notes should ma
 ## Core Rules
 
 - Daily notes stay at the vault root as `YYYY-MM-DD.md` and capture chronological project status.
-- Focused task notes can stay at the vault root when they already exist, but new larger work should go into the matching folder below.
+- CLI-created task and evidence work logs live under `Evidence/` so one dated operational trail captures both planned work and proof.
+- Focused task notes can stay at the vault root when they already exist, but new larger work should use the matching folder below or the CLI-managed `Evidence/` work-log folder.
 - Every substantive task should update one task-specific note and today's daily note.
 - Separate `Working`, `Not verified`, and `Tried and failed`. Do not let assumptions read like facts.
 - Production issues must cite direct evidence: logs, routes, database rows, migration rows, package hashes, notarization output, or exact commands.
@@ -53,6 +54,7 @@ Use this contract for new notes. Older notes do not need a bulk migration unless
 
 - `draft`: captured but not ready to rely on.
 - `active`: current work or maintained guidance.
+- `current`: canonical seed note or maintained entrypoint for the active notes graph.
 - `blocked`: work cannot proceed without an external input or decision.
 - `verified`: evidence has been checked and recorded.
 - `stale`: useful history, but reverify before use.
@@ -69,6 +71,7 @@ Any `verified` or `known-good` note that contains mutable facts should include `
 - [[Known-Good/_README|Known-Good]]: current verified baseline facts, supported versions, and known-good commands.
 - [[Dashboards/_README|Dashboards]]: Bases and generated indexes for open loops, stale notes, and operational review.
 - [[Templates/_README|Templates]]: copyable note templates.
+- `Evidence/`: dated task and evidence work logs created by `notes:new`.
 
 ## Validation
 

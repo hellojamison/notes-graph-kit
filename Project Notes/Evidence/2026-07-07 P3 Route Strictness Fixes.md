@@ -1,7 +1,11 @@
 ---
 title: P3 Route Strictness Fixes
+schema_version: 1
 type: task
 status: done
+date: "2026-07-07"
+tags:
+  - notes/task
 app: My Project
 source_of_truth: false
 last_verified: "2026-07-07"
@@ -19,20 +23,6 @@ related_decisions:
 
 # P3 Route Strictness Fixes
 
-```yaml
----
-title: Task Name
-schema_version: 1
-type: task
-status: active
-date: YYYY-MM-DD
-area:
-  - area-name
-tags:
-  - notes/task
-freshness: reverify-before-use
----
-```
 
 ## Goal
 

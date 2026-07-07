@@ -39,6 +39,10 @@ function readRepoFrontmatter(repoRoot, rel) {
   return yaml.load(match[1]);
 }
 
+function dateOnly(value) {
+  return value instanceof Date ? value.toISOString().slice(0, 10) : value;
+}
+
 test('template frontmatter uses the intended note types', () => {
   const expectedTypes = {
     'Project Notes/Templates/App Template.md': 'app',
@@ -231,9 +235,14 @@ test('new honors task and evidence note types', () => {
     ]);
     const taskRel = taskOutput.match(/^Created (.+)$/m)?.[1];
     assert.ok(taskRel, `expected created task note path in output: ${taskOutput}`);
-    assert.equal(readRepoFrontmatter(repoRoot, taskRel).type, 'task');
+    const taskFrontmatter = readRepoFrontmatter(repoRoot, taskRel);
+    assert.equal(taskFrontmatter.schema_version, 1);
+    assert.equal(taskFrontmatter.type, 'task');
+    assert.match(dateOnly(taskFrontmatter.date), /^\d{4}-\d{2}-\d{2}$/);
+    assert.deepEqual(taskFrontmatter.tags, ['notes/task']);
     const taskText = fs.readFileSync(path.join(repoRoot, 'Project Notes', taskRel), 'utf8');
     assert.match(taskText, /## Goal/);
+    assert.doesNotMatch(taskText, /```yaml[\s\S]*schema_version: 1[\s\S]*```/);
 
     const evidenceOutput = run(repoRoot, [
       'scripts/project-notes.cjs', 'new',
@@ -244,9 +253,84 @@ test('new honors task and evidence note types', () => {
     ]);
     const evidenceRel = evidenceOutput.match(/^Created (.+)$/m)?.[1];
     assert.ok(evidenceRel, `expected created evidence note path in output: ${evidenceOutput}`);
-    assert.equal(readRepoFrontmatter(repoRoot, evidenceRel).type, 'evidence');
+    const evidenceFrontmatter = readRepoFrontmatter(repoRoot, evidenceRel);
+    assert.equal(evidenceFrontmatter.schema_version, 1);
+    assert.equal(evidenceFrontmatter.type, 'evidence');
+    assert.match(dateOnly(evidenceFrontmatter.date), /^\d{4}-\d{2}-\d{2}$/);
+    assert.deepEqual(evidenceFrontmatter.tags, ['notes/evidence']);
     const evidenceText = fs.readFileSync(path.join(repoRoot, 'Project Notes', evidenceRel), 'utf8');
     assert.match(evidenceText, /## Scope/);
+
+    const validateOutput = run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    assert.match(validateOutput, /validation passed/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('validator enforces required fields for schema-managed notes', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-schema-required-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+
+    const newOutput = run(repoRoot, [
+      'scripts/project-notes.cjs', 'new',
+      '--title', 'Schema required smoke',
+      '--process', 'notes-graph-maintenance',
+      '--summary', 'Create schema-managed note.'
+    ]);
+    const createdRel = newOutput.match(/^Created (.+)$/m)?.[1];
+    assert.ok(createdRel, `expected created note path in output: ${newOutput}`);
+    const notePath = path.join(repoRoot, 'Project Notes', createdRel);
+    const brokenText = fs.readFileSync(notePath, 'utf8')
+      .replace(/\ndate: "?\d{4}-\d{2}-\d{2}"?\n/, '\n')
+      .replace(/\ntags:\n(?:  - .+\n)+/, '\n');
+    fs.writeFileSync(notePath, brokenText);
+
+    let failure = null;
+    try {
+      run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    } catch (error) {
+      failure = error;
+    }
+    assert.ok(failure, 'validation should fail when a schema-managed note omits required fields');
+    const output = `${failure.stdout || ''}${failure.stderr || ''}${failure.message}`;
+    assert.match(output, /schema-managed note date must be YYYY-MM-DD/);
+    assert.match(output, /schema-managed note tags must be a non-empty array of strings/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('validator preserves legacy frontmatter notes without schema_version', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-legacy-frontmatter-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+    fs.writeFileSync(
+      path.join(repoRoot, 'Project Notes/Evidence/Legacy Contract Gap.md'),
+      [
+        '---',
+        'title: Legacy Contract Gap',
+        'type: task',
+        'status: active',
+        '---',
+        '',
+        '# Legacy Contract Gap',
+        '',
+        'Legacy note intentionally has no schema_version, date, or tags.',
+        ''
+      ].join('\n')
+    );
 
     const validateOutput = run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
     assert.match(validateOutput, /validation passed/);
