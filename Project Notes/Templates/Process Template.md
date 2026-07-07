@@ -1,6 +1,6 @@
 ---
 title: "Process Template"
-type: "evidence"
+type: "process"
 status: "current"
 app: "My Project"
 source_of_truth: false

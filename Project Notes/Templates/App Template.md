@@ -1,6 +1,6 @@
 ---
 title: "App Template"
-type: "evidence"
+type: "app"
 status: "current"
 app: "My Project"
 source_of_truth: false

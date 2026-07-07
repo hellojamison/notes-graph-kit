@@ -1,6 +1,6 @@
 ---
 title: "Runbook Template"
-type: "evidence"
+type: "runbook"
 status: "current"
 app: "My Project"
 source_of_truth: false

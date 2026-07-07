@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import yaml from 'js-yaml';
 
 const kitRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -21,6 +22,30 @@ function listFiles(root, dir = root) {
     return path.relative(root, entryPath).split(path.sep).join('/');
   });
 }
+
+function readFrontmatter(rel) {
+  const text = fs.readFileSync(path.join(kitRoot, rel), 'utf8');
+  const match = text.match(/^---\n([\s\S]*?)\n---\n/);
+  assert.ok(match, `${rel} should have frontmatter`);
+  return yaml.load(match[1]);
+}
+
+test('template frontmatter uses the intended note types', () => {
+  const expectedTypes = {
+    'Project Notes/Templates/App Template.md': 'app',
+    'Project Notes/Templates/Process Template.md': 'process',
+    'Project Notes/Templates/Runbook Template.md': 'runbook',
+    'Project Notes/Templates/Evidence Template.md': 'evidence',
+    'Project Notes/Templates/Task Note Template.md': 'template',
+    'Project Notes/Templates/Decision Record Template.md': 'template',
+    'Project Notes/Templates/Incident Note Template.md': 'template',
+    'Project Notes/Templates/Release Note Template.md': 'template'
+  };
+
+  for (const [rel, expectedType] of Object.entries(expectedTypes)) {
+    assert.equal(readFrontmatter(rel).type, expectedType, rel);
+  }
+});
 
 test('install, route, new, closeout, validate in a scaffolded repo', () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-'));
