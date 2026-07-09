@@ -26,6 +26,7 @@ const {
 const vaultRoot = getVaultRoot();
 const errors = [];
 const warnings = [];
+const allowedBaseViewTypes = new Set(['table', 'cards', 'list', 'map']);
 
 function hasInbound(inboundByRel, rel) {
   return (inboundByRel.get(rel) || new Set()).size > 0;
@@ -81,6 +82,74 @@ function validateSchemaManagedFrontmatter(rel, frontmatter) {
     fieldErrors.push(`${rel}: schema-managed note tags must be a non-empty array of strings`);
   }
   return fieldErrors;
+}
+
+function isPlainObject(value) {
+  return value != null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function formulaNameFromProperty(value) {
+  if (typeof value !== 'string' || !value.startsWith('formula.')) {
+    return null;
+  }
+  return value.slice('formula.'.length);
+}
+
+function validateBaseSchema(rel, base) {
+  if (!isPlainObject(base)) {
+    return [`${rel}: Base YAML must be an object`];
+  }
+
+  const baseErrors = [];
+  const formulas = isPlainObject(base.formulas) ? base.formulas : {};
+  const formulaNames = new Set(Object.keys(formulas));
+
+  if (base.properties != null) {
+    if (!isPlainObject(base.properties)) {
+      baseErrors.push(`${rel}: properties must be an object`);
+    } else {
+      for (const key of Object.keys(base.properties)) {
+        const formulaName = formulaNameFromProperty(key);
+        if (formulaName && !formulaNames.has(formulaName)) {
+          baseErrors.push(`${rel}: properties references undefined formula.${formulaName}`);
+        }
+      }
+    }
+  }
+
+  if (!Array.isArray(base.views) || base.views.length === 0) {
+    baseErrors.push(`${rel}: views must be a non-empty array`);
+    return baseErrors;
+  }
+
+  base.views.forEach((view, index) => {
+    const label = `${rel}: views[${index}]`;
+    if (!isPlainObject(view)) {
+      baseErrors.push(`${label} must be an object`);
+      return;
+    }
+
+    if (!allowedBaseViewTypes.has(view.type)) {
+      baseErrors.push(`${label}.type must be one of table, cards, list, or map`);
+    }
+    if (!isNonEmptyString(view.name)) {
+      baseErrors.push(`${label}.name must be a non-empty string`);
+    }
+    if (view.order != null) {
+      if (!Array.isArray(view.order)) {
+        baseErrors.push(`${label}.order must be an array`);
+      } else {
+        view.order.forEach((entry, orderIndex) => {
+          const formulaName = formulaNameFromProperty(entry);
+          if (formulaName && !formulaNames.has(formulaName)) {
+            baseErrors.push(`${label}.order[${orderIndex}] references undefined formula.${formulaName}`);
+          }
+        });
+      }
+    }
+  });
+
+  return baseErrors;
 }
 
 if (!fs.existsSync(vaultRoot)) {
@@ -289,7 +358,8 @@ if (!fs.existsSync(vaultRoot)) {
   for (const baseFile of baseFiles) {
     const rel = path.relative(vaultRoot, baseFile).split(path.sep).join('/');
     try {
-      yaml.load(fs.readFileSync(baseFile, 'utf8'));
+      const base = yaml.load(fs.readFileSync(baseFile, 'utf8'));
+      errors.push(...validateBaseSchema(rel, base));
     } catch (error) {
       errors.push(`${rel}: invalid Base YAML: ${error.message}`);
     }

@@ -119,6 +119,14 @@ Typical agent workflow:
 4. Do the work and record exact verification.
 5. Close the task note with `npm run notes:closeout`.
 
+Optional: humans or agents doing heavy vault maintenance can use
+[`kepano/obsidian-skills`](https://github.com/kepano/obsidian-skills) for
+Obsidian-specific editing guidance. The relevant optional skills are
+`obsidian-markdown`, `obsidian-bases`, and `json-canvas`. The kit does not
+require those skills, Obsidian, `obsidian` CLI, or any Obsidian runtime
+dependency; the repo-local npm helpers and validator remain the source of
+truth.
+
 ## Environment overrides
 
 - `PROJECT_NOTES_NOTES_REPO_ROOT=/path/to/repo`

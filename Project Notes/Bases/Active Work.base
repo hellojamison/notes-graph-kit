@@ -4,3 +4,9 @@ views:
     filters:
       and:
         - status != "done"
+    order:
+      - file.name
+      - type
+      - status
+      - area
+      - last_verified

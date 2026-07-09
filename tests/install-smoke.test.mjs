@@ -15,6 +15,21 @@ function run(cwd, args) {
   return execFileSync('node', args, { cwd, encoding: 'utf8' });
 }
 
+function commandOutput(error) {
+  return `${error.stdout || ''}${error.stderr || ''}${error.message}`;
+}
+
+function assertValidateFails(repoRoot, pattern) {
+  let failure = null;
+  try {
+    run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+  } catch (error) {
+    failure = error;
+  }
+  assert.ok(failure, 'validation should fail');
+  assert.match(commandOutput(failure), pattern);
+}
+
 function listFiles(root, dir = root) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const entryPath = path.join(dir, entry.name);
@@ -86,6 +101,9 @@ test('install, route, new, closeout, validate in a scaffolded repo', () => {
     assert.match(agentsMd, /## Project Notes Graph/);
     assert.match(agentsMd, /Apps\/Smoke App\.md/);
     assert.match(agentsMd, /npm run notes:route/);
+    assert.match(agentsMd, /Optional agent skills/);
+    assert.match(agentsMd, /obsidian-bases/);
+    assert.match(agentsMd, /repo-local npm helpers and validator are the source of truth/);
 
     const config = JSON.parse(fs.readFileSync(path.join(repoRoot, 'notes-graph.config.json'), 'utf8'));
     assert.equal(config.appName, 'Smoke App');
@@ -93,6 +111,9 @@ test('install, route, new, closeout, validate in a scaffolded repo', () => {
 
     const appNote = fs.readFileSync(path.join(repoRoot, 'Project Notes/Apps/Smoke App.md'), 'utf8');
     assert.ok(!appNote.includes('My Project'), 'placeholder app name should be replaced');
+
+    const activeWorkBase = fs.readFileSync(path.join(repoRoot, 'Project Notes/Bases/Active Work.base'), 'utf8');
+    assert.match(activeWorkBase, /order:\n\s+- file\.name\n\s+- type\n\s+- status/);
 
     // Reuse the kit's node_modules so the smoke test stays offline.
     fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
@@ -118,6 +139,72 @@ test('install, route, new, closeout, validate in a scaffolded repo', () => {
     ]);
     assert.match(closeoutOutput, /^Closed /m);
 
+    const validateOutput = run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    assert.match(validateOutput, /validation passed/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('validator reports Base schema problems without requiring order', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-base-schema-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+    const basePath = path.join(repoRoot, 'Project Notes/Bases/Active Work.base');
+
+    fs.writeFileSync(basePath, 'views:\n  - type: [\n');
+    assertValidateFails(repoRoot, /invalid Base YAML/);
+
+    fs.writeFileSync(basePath, '{}\n');
+    assertValidateFails(repoRoot, /views must be a non-empty array/);
+
+    fs.writeFileSync(basePath, 'views: {}\n');
+    assertValidateFails(repoRoot, /views must be a non-empty array/);
+
+    fs.writeFileSync(basePath, [
+      'views:',
+      '  - type: timeline',
+      '    name: Bad View',
+      ''
+    ].join('\n'));
+    assertValidateFails(repoRoot, /views\[0\]\.type must be one of table, cards, list, or map/);
+
+    fs.writeFileSync(basePath, [
+      'views:',
+      '  - type: table',
+      '    name: Bad Formula',
+      '    order:',
+      '      - file.name',
+      '      - formula.missing',
+      ''
+    ].join('\n'));
+    assertValidateFails(repoRoot, /views\[0\]\.order\[1\] references undefined formula\.missing/);
+
+    fs.writeFileSync(basePath, [
+      'properties:',
+      '  formula.missing:',
+      '    displayName: Missing',
+      'views:',
+      '  - type: table',
+      '    name: Bad Property Formula',
+      ''
+    ].join('\n'));
+    assertValidateFails(repoRoot, /properties references undefined formula\.missing/);
+
+    fs.writeFileSync(basePath, [
+      'views:',
+      '  - type: table',
+      '    name: Simple Legacy View',
+      '    filters:',
+      '      and:',
+      '        - type == "task"',
+      ''
+    ].join('\n'));
     const validateOutput = run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
     assert.match(validateOutput, /validation passed/);
   } finally {

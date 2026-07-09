@@ -4,3 +4,8 @@ views:
     filters:
       and:
         - type == "incident"
+    order:
+      - file.name
+      - status
+      - date
+      - last_verified

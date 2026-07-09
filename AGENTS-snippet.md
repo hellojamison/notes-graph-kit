@@ -23,4 +23,11 @@ Prefer the repo-local notes helper:
 - Use `npm run notes:new -- --title "<task title>" --process <process-alias> --summary "<goal>"` to create a task note; pass `--type evidence` for an evidence-shaped note.
 - Use `npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD <task title>.md" --working "..." --verified "..." --not-verified "..."` when closing a task note.
 - Run `npm run notes:validate` after graph metadata, templates, Bases, validator, helper script, or structured note changes.
+
+Optional agent skills:
+- `obsidian-markdown` for wikilinks, frontmatter, callouts, and Obsidian-flavored Markdown.
+- `obsidian-bases` for `.base` dashboard edits.
+- `json-canvas` if this repo adds `.canvas` files.
+
+These skills are optional guidance only. This kit works without Obsidian, the `obsidian` CLI, or any Obsidian runtime dependency; the repo-local npm helpers and validator are the source of truth.
 ```
