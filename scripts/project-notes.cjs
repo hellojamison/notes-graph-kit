@@ -293,6 +293,16 @@ function resolveNotePath(input, vaultRoot) {
   return found || candidates[0];
 }
 
+function realPath(filePath) {
+  return fs.realpathSync.native ? fs.realpathSync.native(filePath) : fs.realpathSync(filePath);
+}
+
+function isPathWithin(rootPath, candidatePath) {
+  const relative = path.relative(rootPath, candidatePath);
+  return relative === ''
+    || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+}
+
 function closeoutNote(args, options = {}) {
   const env = options.env || process.env;
   const vaultRoot = getVaultRoot({ env, vaultRoot: options.vaultRoot });
@@ -308,11 +318,13 @@ function closeoutNote(args, options = {}) {
   if (!fs.existsSync(notePath)) {
     throw new Error(`Missing note: ${noteInput}`);
   }
-  const noteRel = path.relative(vaultRoot, notePath).split(path.sep).join('/');
-  if (noteRel.startsWith('..')) {
+  const realVaultRoot = realPath(vaultRoot);
+  const realNotePath = realPath(notePath);
+  if (!isPathWithin(realVaultRoot, realNotePath)) {
     throw new Error(`Note is outside vault: ${noteInput}`);
   }
-  const original = fs.readFileSync(notePath, 'utf8');
+  const noteRel = path.relative(realVaultRoot, realNotePath).split(path.sep).join('/');
+  const original = fs.readFileSync(realNotePath, 'utf8');
   const { frontmatter, body } = splitFrontmatter(original);
   if (!frontmatter) {
     throw new Error(`Note is missing frontmatter: ${noteInput}`);
@@ -324,7 +336,7 @@ function closeoutNote(args, options = {}) {
     status: 'done',
     last_verified: date
   };
-  const title = frontmatter.title || path.basename(notePath, '.md');
+  const title = frontmatter.title || path.basename(realNotePath, '.md');
   const closeout = [
     '',
     '',
@@ -335,7 +347,7 @@ function closeoutNote(args, options = {}) {
     `- Not verified: ${notVerified}`
   ].join('\n');
   const nextText = `---\n${dumpFrontmatter(nextFrontmatter)}\n---\n${body.trimEnd()}${closeout}\n`;
-  fs.writeFileSync(notePath, nextText);
+  fs.writeFileSync(realNotePath, nextText);
 
   const dailyPath = path.join(vaultRoot, `${date}.md`);
   appendLine(
@@ -344,7 +356,7 @@ function closeoutNote(args, options = {}) {
     `- ${time} ${timeZoneName}: Closed notes graph task ${linkForRel(noteRel, title)}. Working: ${working} Verified: ${verified} Not verified: ${notVerified}`
   );
 
-  return { notePath, noteRel, dailyPath };
+  return { notePath: realNotePath, noteRel, dailyPath };
 }
 
 function main(argv = process.argv.slice(2), options = {}) {

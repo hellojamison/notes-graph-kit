@@ -38,7 +38,7 @@ function usage() {
 
 Usage:
   node install-notes-graph.cjs --repo /path/to/repo --app "App Name" [--vault "Project Notes"] [--force] [--dry-run]
-  node install-notes-graph.cjs --repo /path/to/repo --upgrade [--dry-run]
+  node install-notes-graph.cjs --repo /path/to/repo --upgrade [--dry-run] [--allow-downgrade]
 
 Options:
   --repo      Target repository root. Defaults to current working directory.
@@ -46,6 +46,8 @@ Options:
   --vault     Vault directory name. Defaults to "Project Notes".
   --upgrade   Re-copy kit-managed scripts and bump kitVersion in the target
               config. Never touches vault content.
+  --allow-downgrade
+              Permit --upgrade to replace a newer installed kit version.
   --force     Overwrite existing kit-managed files on install.
   --dry-run   Print planned writes without changing files.
 `;
@@ -53,7 +55,8 @@ Options:
 
 function parseArgs(argv) {
   const parsed = { _: [] };
-  const booleanFlags = new Set(['force', 'dry-run', 'upgrade', 'help']);
+  const booleanFlags = new Set(['force', 'dry-run', 'upgrade', 'allow-downgrade', 'help']);
+  const valueFlags = new Set(['repo', 'app', 'vault']);
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (!arg.startsWith('--')) {
@@ -61,24 +64,87 @@ function parseArgs(argv) {
       continue;
     }
     const equalsIndex = arg.indexOf('=');
-    if (equalsIndex !== -1) {
-      parsed[arg.slice(2, equalsIndex)] = arg.slice(equalsIndex + 1);
+    const key = arg.slice(2, equalsIndex === -1 ? undefined : equalsIndex);
+    if (!booleanFlags.has(key) && !valueFlags.has(key)) {
+      throw new Error(`Unknown option: --${key}`);
+    }
+    if (booleanFlags.has(key)) {
+      if (equalsIndex !== -1) {
+        throw new Error(`--${key} does not take a value`);
+      }
+      const next = argv[index + 1];
+      if (next === 'true' || next === 'false') {
+        throw new Error(`--${key} does not take a value`);
+      }
+      parsed[key] = true;
       continue;
     }
-    const key = arg.slice(2);
-    if (booleanFlags.has(key)) {
-      parsed[key] = true;
+    if (equalsIndex !== -1) {
+      parsed[key] = arg.slice(equalsIndex + 1);
       continue;
     }
     const next = argv[index + 1];
-    if (next && !next.startsWith('--')) {
-      parsed[key] = next;
-      index += 1;
-    } else {
-      parsed[key] = true;
+    if (!next || next.startsWith('--')) {
+      throw new Error(`Missing value for --${key}`);
     }
+    parsed[key] = next;
+    index += 1;
   }
   return parsed;
+}
+
+function parseSemver(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const match = value.match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/);
+  if (!match) {
+    return null;
+  }
+  return {
+    numbers: [Number(match[1]), Number(match[2]), Number(match[3])],
+    prerelease: match[4] ? match[4].split('.') : []
+  };
+}
+
+function compareSemver(left, right) {
+  const leftVersion = parseSemver(left);
+  const rightVersion = parseSemver(right);
+  if (!leftVersion || !rightVersion) {
+    return null;
+  }
+  for (let index = 0; index < leftVersion.numbers.length; index += 1) {
+    if (leftVersion.numbers[index] !== rightVersion.numbers[index]) {
+      return leftVersion.numbers[index] > rightVersion.numbers[index] ? 1 : -1;
+    }
+  }
+  if (leftVersion.prerelease.length === 0 || rightVersion.prerelease.length === 0) {
+    if (leftVersion.prerelease.length === rightVersion.prerelease.length) {
+      return 0;
+    }
+    return leftVersion.prerelease.length === 0 ? 1 : -1;
+  }
+  const length = Math.max(leftVersion.prerelease.length, rightVersion.prerelease.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftPart = leftVersion.prerelease[index];
+    const rightPart = rightVersion.prerelease[index];
+    if (leftPart == null || rightPart == null) {
+      return leftPart == null ? -1 : 1;
+    }
+    if (leftPart === rightPart) {
+      continue;
+    }
+    const leftNumeric = /^\d+$/.test(leftPart);
+    const rightNumeric = /^\d+$/.test(rightPart);
+    if (leftNumeric && rightNumeric) {
+      return Number(leftPart) > Number(rightPart) ? 1 : -1;
+    }
+    if (leftNumeric !== rightNumeric) {
+      return leftNumeric ? -1 : 1;
+    }
+    return leftPart > rightPart ? 1 : -1;
+  }
+  return 0;
 }
 
 function fileBaseForApp(appName) {
@@ -416,6 +482,11 @@ function upgrade(args) {
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   const previousVersion = config.kitVersion || 'unversioned';
   const dryRun = Boolean(args['dry-run']);
+  if (!args['allow-downgrade'] && compareSemver(previousVersion, kitVersion) > 0) {
+    throw new Error(
+      `Refusing to downgrade notes graph kit ${previousVersion} -> ${kitVersion}. Use --allow-downgrade to proceed intentionally.`
+    );
+  }
 
   const writes = buildScriptWrites();
   config.kitVersion = kitVersion;
@@ -448,6 +519,12 @@ function main(argv = process.argv.slice(2)) {
   if (args.help) {
     return usage();
   }
+  if (args._.length > 0) {
+    throw new Error(`Unexpected positional argument(s): ${args._.join(' ')}`);
+  }
+  if (args['allow-downgrade'] && !args.upgrade) {
+    throw new Error('--allow-downgrade requires --upgrade');
+  }
   return args.upgrade ? upgrade(args) : install(args);
 }
 
@@ -465,6 +542,7 @@ module.exports = {
   parseArgs,
   buildConfig,
   agentsSnippet,
+  compareSemver,
   applyAgentsBlock,
   validateVaultDir,
   validateAppName,

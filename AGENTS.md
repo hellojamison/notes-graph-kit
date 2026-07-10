@@ -66,6 +66,7 @@ node install-notes-graph.cjs --repo /path/to/target/repo --upgrade
 ```
 
 Use `--dry-run` on install or upgrade to preview writes.
+Upgrades refuse a semantic-version downgrade unless `--allow-downgrade` is supplied for an intentional rollback.
 
 ## Testing and verification
 

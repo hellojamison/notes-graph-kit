@@ -82,6 +82,9 @@ Re-copies the kit-managed scripts, bumps `kitVersion` in the target config, and
 never touches vault content. Use `--dry-run` to preview. The target's
 `kitVersion` tells you which kit vintage a repo has.
 
+Upgrades refuse to replace a newer semantic kit version with an older checkout.
+Use `--allow-downgrade` only for an intentional rollback.
+
 Existing repos with older or renamed helper scripts (e.g. `overcue-notes.cjs`,
 `notes.cjs`, split `notes-*.cjs`) keep working through their `notes:*` npm
 scripts; upgrade them only when a fix needs propagating.

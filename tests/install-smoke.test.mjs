@@ -234,6 +234,23 @@ test('install rejects vault paths that would escape the target repo', () => {
   }
 });
 
+test('installer rejects dangerous boolean values and unknown options before writing', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-options-'));
+  try {
+    assert.throws(
+      () => run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--app', 'Smoke App', '--force=false']),
+      /--force does not take a value/
+    );
+    assert.throws(
+      () => run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--app', 'Smoke App', '--dryrun']),
+      /Unknown option: --dryrun/
+    );
+    assert.deepEqual(fs.readdirSync(repoRoot), []);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
 test('install keeps punctuation-heavy app names valid in YAML and wikilinks', () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-appname-'));
   const appName = 'Bad "App": Take/One #1 & Co';
@@ -352,6 +369,37 @@ test('new honors task and evidence note types', () => {
     assert.match(validateOutput, /validation passed/);
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('closeout refuses symlinked notes outside the vault', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-closeout-symlink-'));
+  const outsidePath = path.join(os.tmpdir(), `${path.basename(repoRoot)}-outside.md`);
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+    const outsideText = 'outside note must not change\n';
+    fs.writeFileSync(outsidePath, outsideText);
+    fs.symlinkSync(outsidePath, path.join(repoRoot, 'Project Notes/Evidence/Linked.md'));
+
+    assert.throws(
+      () => run(repoRoot, [
+        'scripts/project-notes.cjs', 'closeout',
+        '--note', 'Project Notes/Evidence/Linked.md',
+        '--working', 'Should not write outside the vault.',
+        '--verified', 'Guard rejected the symlink.',
+        '--not-verified', 'None.'
+      ]),
+      /Note is outside vault/
+    );
+    assert.equal(fs.readFileSync(outsidePath, 'utf8'), outsideText);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+    fs.rmSync(outsidePath, { force: true });
   }
 });
 
@@ -756,6 +804,41 @@ test('upgrade refreshes scripts and stamps kitVersion', () => {
     assert.ok(refreshed.length > 100, 'stale script should be replaced');
     const upgraded = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     assert.notEqual(upgraded.kitVersion, '0.0.0');
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('upgrade refuses downgrade unless explicitly allowed', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-downgrade-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    const configPath = path.join(repoRoot, 'notes-graph.config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.kitVersion = '999.0.0';
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+    const scriptPath = path.join(repoRoot, 'scripts/project-notes.cjs');
+    fs.writeFileSync(scriptPath, '// newer script\n');
+
+    assert.throws(
+      () => run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']),
+      /Refusing to downgrade notes graph kit 999\.0\.0 -> /
+    );
+    assert.equal(fs.readFileSync(scriptPath, 'utf8'), '// newer script\n');
+    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '999.0.0');
+
+    const output = run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--upgrade',
+      '--allow-downgrade'
+    ]);
+    assert.match(output, /Upgraded notes graph kit 999\.0\.0 -> /);
+    assert.ok(fs.readFileSync(scriptPath, 'utf8').length > 100);
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
