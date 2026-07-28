@@ -1,8 +1,9 @@
 # Agent Instructions Snippet
 
-The installer writes this block into the target repo's `AGENTS.md` automatically (creating the file if needed, appending if it exists, and skipping if a `## Project Notes Graph` section is already present). For manual installs, copy the block into `AGENTS.md`, `CLAUDE.md`, or equivalent, replacing `Project Notes` and `My Project` if you changed `vaultDir` or `appName` in `notes-graph.config.json`.
+The installer writes this managed block into the target repo's `AGENTS.md` automatically (creating the file if needed, appending if it exists, and skipping if an installed marker pair or a real `## Project Notes Graph` heading already exists outside a fenced code block). For manual installs, copy the complete marked block into `AGENTS.md`, `CLAUDE.md`, or equivalent, replacing `Project Notes` and `My Project` if you changed `vaultDir` or `appName` in `notes-graph.config.json`.
 
 ```md
+<!-- notes-graph-kit:start -->
 ## Project Notes Graph
 
 Keep concise date-and-time-stamped notes in this worktree's `Project Notes/` vault per substantive task.
@@ -30,4 +31,5 @@ Optional agent skills:
 - `json-canvas` if this repo adds `.canvas` files.
 
 These skills are optional guidance only. This kit works without Obsidian, the `obsidian` CLI, or any Obsidian runtime dependency; the repo-local npm helpers and validator are the source of truth.
+<!-- notes-graph-kit:end -->
 ```

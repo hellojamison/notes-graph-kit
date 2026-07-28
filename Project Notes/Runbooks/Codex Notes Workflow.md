@@ -1,7 +1,11 @@
 ---
 title: "Codex Notes Workflow"
+schema_version: 1
 type: "runbook"
 status: "current"
+date: "2026-07-05"
+tags:
+  - notes/runbook
 app: "My Project"
 source_of_truth: true
 last_verified: "2026-07-05"

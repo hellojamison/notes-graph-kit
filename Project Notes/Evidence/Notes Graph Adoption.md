@@ -1,7 +1,11 @@
 ---
 title: "Notes Graph Adoption"
+schema_version: 1
 type: "evidence"
 status: "done"
+date: "2026-07-05"
+tags:
+  - notes/evidence
 app: "My Project"
 source_of_truth: false
 last_verified: "2026-07-05"

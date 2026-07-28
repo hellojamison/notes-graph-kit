@@ -1,7 +1,11 @@
 ---
 title: "Notes Graph Adoption Policy"
+schema_version: 1
 type: "decision"
 status: "current"
+date: "2026-07-05"
+tags:
+  - notes/decision
 app: "My Project"
 source_of_truth: true
 last_verified: "2026-07-05"

@@ -2,6 +2,8 @@ filters:
   and:
     - 'file.ext == "md"'
     - 'schema_version == 1'
+    - not:
+        - 'file.inFolder("Templates")'
 
 properties:
   file.name:

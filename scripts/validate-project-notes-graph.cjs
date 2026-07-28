@@ -15,6 +15,7 @@ const {
   extractWikilinkTargets,
   validateRouteConfig,
   findMalformedWikilinks,
+  resolveTargetDetailed,
   resolveTarget,
   noteKeyForRel,
   asArray,
@@ -103,11 +104,21 @@ function hasInbound(inboundByRel, rel) {
   return (inboundByRel.get(rel) || new Set()).size > 0;
 }
 
+function wikilinkResolutionError(rel, target, resolution, context = '') {
+  const prefix = context ? `${context} ` : '';
+  if (resolution.status === 'ambiguous') {
+    return `${rel}: ${prefix}has ambiguous wikilink [[${target}]] matching ${resolution.candidates.join(', ')}; use a vault-relative path`;
+  }
+  return `${rel}: ${prefix}has broken wikilink [[${target}]]`;
+}
+
 function daysSince(value, now = new Date()) {
   if (!value) {
     return null;
   }
-  const date = value instanceof Date ? value : new Date(`${value}T00:00:00`);
+  const date = value instanceof Date
+    ? value
+    : new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00Z` : value);
   if (Number.isNaN(date.getTime())) {
     return null;
   }
@@ -119,17 +130,18 @@ function isNonEmptyString(value) {
 }
 
 function isPresentTitle(value) {
-  return isNonEmptyString(value)
-    || (value instanceof Date && !Number.isNaN(value.getTime()));
+  return isNonEmptyString(value);
 }
 
 function isDateOnly(value) {
-  if (typeof value === 'string') {
-    return /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
   }
-  return value instanceof Date
-    && !Number.isNaN(value.getTime())
-    && value.toISOString().endsWith('T00:00:00.000Z');
+  const [year, month, day] = value.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year
+    && parsed.getUTCMonth() === month - 1
+    && parsed.getUTCDate() === day;
 }
 
 function validateSchemaManagedFrontmatter(rel, frontmatter) {
@@ -144,6 +156,9 @@ function validateSchemaManagedFrontmatter(rel, frontmatter) {
   }
   if (!isDateOnly(frontmatter.date)) {
     fieldErrors.push(`${rel}: schema-managed note date must be YYYY-MM-DD`);
+  }
+  if (frontmatter.last_verified != null && !isDateOnly(frontmatter.last_verified)) {
+    fieldErrors.push(`${rel}: schema-managed note last_verified must be YYYY-MM-DD`);
   }
   if (
     !Array.isArray(frontmatter.tags)
@@ -275,9 +290,11 @@ if (!fs.existsSync(vaultRoot)) {
   }
 
   for (const note of notes) {
-    const { rel, frontmatter, text, frontmatterError } = note;
+    const { rel, frontmatter, text, body, frontmatterError } = note;
     const structured = isStructured(rel);
     const template = isTemplate(rel);
+    const schemaVersion = frontmatter?.schema_version;
+    const schemaManaged = schemaVersion === 1 || schemaVersion === '1';
 
     for (const malformed of findMalformedWikilinks(text)) {
       errors.push(`${rel}: malformed wikilink ${malformed}`);
@@ -285,6 +302,16 @@ if (!fs.existsSync(vaultRoot)) {
 
     if (frontmatterError) {
       errors.push(`${rel}: ${frontmatterError}`);
+    }
+
+    if (structured || isDaily(rel) || frontmatter?.type === 'daily' || schemaManaged) {
+      const linkTargets = extractWikilinkTargets(body);
+      for (const target of linkTargets) {
+        const resolution = resolveTargetDetailed(target, index);
+        if (resolution.status !== 'resolved') {
+          errors.push(wikilinkResolutionError(rel, target, resolution));
+        }
+      }
     }
 
     if (!frontmatter) {
@@ -297,8 +324,6 @@ if (!fs.existsSync(vaultRoot)) {
       }
       continue;
     }
-    const schemaVersion = frontmatter.schema_version;
-    const schemaManaged = schemaVersion === 1 || schemaVersion === '1';
 
     if (schemaManaged) {
       errors.push(...validateSchemaManagedFrontmatter(rel, frontmatter));
@@ -384,15 +409,6 @@ if (!fs.existsSync(vaultRoot)) {
       }
     }
 
-    if (!template && (structured || isDaily(rel) || frontmatter.type === 'daily')) {
-      const linkTargets = extractWikilinkTargets(text);
-      for (const target of linkTargets) {
-        if (!resolveTarget(target, index)) {
-          errors.push(`${rel}: broken wikilink [[${target}]]`);
-        }
-      }
-    }
-
     const mustHaveInbound = !template
       && frontmatter.status !== 'archived'
       && (
@@ -408,11 +424,12 @@ if (!fs.existsSync(vaultRoot)) {
       for (const value of asArray(frontmatter[field])) {
         if (typeof value === 'string') {
           for (const target of extractWikilinkTargets(value)) {
-            const resolved = resolveTarget(target, index);
-            if (!resolved) {
-              errors.push(`${rel}: ${field} has broken wikilink [[${target}]]`);
+            const resolution = resolveTargetDetailed(target, index);
+            if (resolution.status !== 'resolved') {
+              errors.push(wikilinkResolutionError(rel, target, resolution, field));
               continue;
             }
+            const resolved = resolution.rel;
             const targetFrontmatter = frontmatterByRel.get(resolved);
             const expectedTypes = relationshipTypeExpectations[field];
             if (!targetFrontmatter?.type || !expectedTypes.has(targetFrontmatter.type)) {

@@ -24,9 +24,30 @@ Usage:
 `;
 }
 
-function parseArgs(argv) {
+const commandOptions = {
+  route: {
+    booleanFlags: new Set(['json', 'help']),
+    valueFlags: new Set(),
+    allowPositionals: true
+  },
+  new: {
+    booleanFlags: new Set(['help']),
+    valueFlags: new Set(['title', 'process', 'summary', 'type', 'runbook']),
+    allowPositionals: false
+  },
+  closeout: {
+    booleanFlags: new Set(['help']),
+    valueFlags: new Set(['note', 'working', 'verified', 'not-verified']),
+    allowPositionals: false
+  }
+};
+
+function parseArgs(argv, command = 'route') {
+  const spec = commandOptions[command];
+  if (!spec) {
+    throw new Error(`Unknown command: ${command}`);
+  }
   const parsed = { _: [] };
-  const booleanFlags = new Set(['json', 'help']);
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (!arg.startsWith('--')) {
@@ -34,22 +55,35 @@ function parseArgs(argv) {
       continue;
     }
     const equalsIndex = arg.indexOf('=');
-    if (equalsIndex !== -1) {
-      parsed[arg.slice(2, equalsIndex)] = arg.slice(equalsIndex + 1);
+    const key = arg.slice(2, equalsIndex === -1 ? undefined : equalsIndex);
+    if (!spec.booleanFlags.has(key) && !spec.valueFlags.has(key)) {
+      throw new Error(`Unknown option for ${command}: --${key}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(parsed, key)) {
+      throw new Error(`Duplicate option: --${key}`);
+    }
+    if (spec.booleanFlags.has(key)) {
+      if (equalsIndex !== -1) {
+        throw new Error(`--${key} does not take a value`);
+      }
+      parsed[key] = true;
       continue;
     }
-    const key = arg.slice(2);
-    if (booleanFlags.has(key)) {
-      parsed[key] = true;
+    if (equalsIndex !== -1) {
+      parsed[key] = arg.slice(equalsIndex + 1);
       continue;
     }
     const next = argv[index + 1];
-    if (next && !next.startsWith('--')) {
-      parsed[key] = next;
-      index += 1;
-    } else {
-      parsed[key] = true;
+    if (!next || next.startsWith('--')) {
+      throw new Error(
+        `--${key} requires a value; use --${key}=<value> when the value begins with --`
+      );
     }
+    parsed[key] = next;
+    index += 1;
+  }
+  if (!spec.allowPositionals && parsed._.length > 0) {
+    throw new Error(`Unexpected positional argument(s) for ${command}: ${parsed._.join(' ')}`);
   }
   return parsed;
 }
@@ -114,6 +148,62 @@ function buildNoteBody(vaultRoot, type, title, summary) {
   let nextBody = body.trimStart().replace(/^# .+$/m, `# ${title}`);
   nextBody = insertIntoSection(nextBody, type === 'evidence' ? 'Scope' : 'Goal', summary);
   return nextBody.trimEnd();
+}
+
+function markdownLinesOutsideFences(body) {
+  const source = String(body || '');
+  const lines = source.split('\n');
+  const outside = [];
+  let fence = null;
+  let offset = 0;
+  for (const rawLine of lines) {
+    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+    if (fence) {
+      const closePattern = new RegExp(
+        `^ {0,3}\\${fence.character}{${fence.length},}[ \\t]*$`
+      );
+      if (closePattern.test(line)) {
+        fence = null;
+      }
+      offset += rawLine.length + 1;
+      continue;
+    }
+    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (fenceMatch) {
+      const marker = fenceMatch[1];
+      fence = { character: marker[0], length: marker.length };
+      offset += rawLine.length + 1;
+      continue;
+    }
+    outside.push({ line, start: offset });
+    offset += rawLine.length + 1;
+  }
+  return outside;
+}
+
+function replaceOrAppendH2Section(body, sectionName, content) {
+  const escapedName = sectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const headingPattern = new RegExp(`^ {0,3}##[ \\t]+${escapedName}[ \\t]*$`);
+  const outsideLines = markdownLinesOutsideFences(body);
+  const heading = outsideLines.find((entry) => headingPattern.test(entry.line));
+  const replacement = `## ${sectionName}\n\n${content}`;
+  if (!heading) {
+    return `${body.trimEnd()}\n\n${replacement}`;
+  }
+  const nextHeading = outsideLines.find((entry) =>
+    entry.start > heading.start && /^ {0,3}##[ \t]+[^\n]+$/.test(entry.line)
+  );
+  const parts = [
+    body.slice(0, heading.start).trimEnd(),
+    replacement,
+    nextHeading ? body.slice(nextHeading.start).trimEnd() : ''
+  ].filter(Boolean);
+  return parts.join('\n\n');
+}
+
+function hasH2OutsideFences(body, headingPattern) {
+  return markdownLinesOutsideFences(body)
+    .some(({ line }) => headingPattern.test(line));
 }
 
 function appendLine(filePath, initialHeading, line) {
@@ -259,7 +349,7 @@ function createNewNote(args, options = {}) {
     `- Process: ${linkForRel(route.processRel, processTitle)}`,
     `- Runbook: ${runbookLinks.join(', ') || 'None selected'}`
   ].join('\n');
-  const noteText = `---\n${dumpFrontmatter(frontmatter)}\n---\n\n${body.replace(/## Graph Links[\s\S]*$/m, `## Graph Links\n\n${graphLinks}`)}\n`;
+  const noteText = `---\n${dumpFrontmatter(frontmatter)}\n---\n\n${replaceOrAppendH2Section(body, 'Graph Links', graphLinks)}\n`;
 
   fs.mkdirSync(path.dirname(notePath), { recursive: true });
   fs.writeFileSync(notePath, noteText);
@@ -329,6 +419,9 @@ function closeoutNote(args, options = {}) {
   if (!frontmatter) {
     throw new Error(`Note is missing frontmatter: ${noteInput}`);
   }
+  if (hasH2OutsideFences(body, /^ {0,3}##[ \t]+Closeout(?:[ \t]+.*)?[ \t]*$/)) {
+    throw new Error(`Note already contains a closeout: ${noteInput}`);
+  }
   const now = options.now || new Date();
   const { date, time, timeZoneName } = currentDateParts(now);
   const nextFrontmatter = {
@@ -361,8 +454,14 @@ function closeoutNote(args, options = {}) {
 
 function main(argv = process.argv.slice(2), options = {}) {
   const [command, ...rest] = argv;
-  const args = parseArgs(rest);
   if (!command || command === 'help' || command === '--help' || command === '-h') {
+    return printHelp();
+  }
+  if (!Object.prototype.hasOwnProperty.call(commandOptions, command)) {
+    throw new Error(`Unknown command: ${command}`);
+  }
+  const args = parseArgs(rest, command);
+  if (args.help) {
     return printHelp();
   }
   if (command === 'route') {
@@ -376,7 +475,6 @@ function main(argv = process.argv.slice(2), options = {}) {
     const result = closeoutNote(args, options);
     return `Closed ${result.noteRel}\nUpdated ${noteKeyForRel(path.basename(result.dailyPath))}.md\n`;
   }
-  throw new Error(`Unknown command: ${command}`);
 }
 
 if (require.main === module) {
@@ -394,5 +492,8 @@ module.exports = {
   createNewNote,
   closeoutNote,
   main,
-  sanitizeFileTitle
+  sanitizeFileTitle,
+  replaceOrAppendH2Section,
+  hasH2OutsideFences,
+  markdownLinesOutsideFences
 };

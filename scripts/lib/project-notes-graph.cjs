@@ -3,6 +3,12 @@ const path = require('node:path');
 const yaml = require('js-yaml');
 
 const defaultRepoRoot = path.resolve(__dirname, '..', '..');
+const frontmatterSchema = new yaml.Schema({
+  implicit: yaml.DEFAULT_SCHEMA.compiledImplicit.filter(
+    (type) => type.tag !== 'tag:yaml.org,2002:timestamp'
+  ),
+  explicit: yaml.DEFAULT_SCHEMA.compiledExplicit
+});
 
 const allowedTypes = new Set([
   'index',
@@ -53,55 +59,18 @@ const relationshipTypeExpectations = {
 const structuredFolders = new Set([
   '_Codex',
   'Apps',
+  'Dashboards',
   'Processes',
   'Runbooks',
   'Decisions',
   'Incidents',
   'Evidence',
-  'Releases'
+  'Releases',
+  'Templates',
+  'Known-Good'
 ]);
 
 const defaultRouteDefinitions = [
-  {
-    id: 'branch-sync',
-    processRel: 'Processes/Branch Sync.md',
-    aliases: [
-      'branch',
-      'sync',
-      'merge',
-      'main',
-      'worktree',
-      'branch sync'
-    ]
-  },
-  {
-    id: 'release-packaging',
-    processRel: 'Processes/Release Packaging.md',
-    aliases: [
-      'release',
-      'package',
-      'packaging',
-      'notarize',
-      'notarization',
-      'updater',
-      'deploy'
-    ]
-  },
-  {
-    id: 'quality-qa',
-    processRel: 'Processes/Quality QA.md',
-    aliases: [
-      'qa',
-      'quality',
-      'test',
-      'tests',
-      'bug',
-      'regression',
-      'review',
-      'app',
-      'product'
-    ]
-  },
   {
     id: 'notes-graph-maintenance',
     processRel: 'Processes/Notes Graph Maintenance.md',
@@ -194,7 +163,7 @@ function parseMarkdown(filePath, vaultRoot) {
   }
   const rawFrontmatter = text.slice(4, endIndex);
   try {
-    const frontmatter = yaml.load(rawFrontmatter) || {};
+    const frontmatter = loadFrontmatter(rawFrontmatter);
     return {
       rel,
       filePath,
@@ -215,6 +184,24 @@ function parseMarkdown(filePath, vaultRoot) {
   }
 }
 
+function loadFrontmatter(rawFrontmatter) {
+  return yaml.load(rawFrontmatter, { schema: frontmatterSchema }) || {};
+}
+
+function normalizeFrontmatterDateFields(frontmatter) {
+  const normalized = { ...frontmatter };
+  for (const field of ['date', 'last_verified']) {
+    if (!(normalized[field] instanceof Date)) {
+      continue;
+    }
+    if (Number.isNaN(normalized[field].getTime())) {
+      throw new Error(`Frontmatter ${field} is an invalid Date`);
+    }
+    normalized[field] = normalized[field].toISOString().slice(0, 10);
+  }
+  return normalized;
+}
+
 function noteKeyForRel(rel) {
   return rel.replace(/\.(md|base)$/i, '');
 }
@@ -227,7 +214,13 @@ function buildNoteIndex(filePaths, vaultRoot) {
     const key = noteKeyForRel(rel);
     const basename = path.basename(key);
     byPath.set(key.toLowerCase(), rel);
-    byBasename.set(basename.toLowerCase(), rel);
+    const basenameKey = basename.toLowerCase();
+    const candidates = byBasename.get(basenameKey) || [];
+    candidates.push(rel);
+    byBasename.set(basenameKey, candidates);
+  }
+  for (const candidates of byBasename.values()) {
+    candidates.sort();
   }
   return { byPath, byBasename };
 }
@@ -286,6 +279,7 @@ function validateRouteDefinitions(definitions, graph = null, options = {}) {
     return ['notes-graph.config.json: routes must be an array'];
   }
   const requireExistingProcessTargets = Boolean(options.requireExistingProcessTargets);
+  const aliasOwners = new Map();
 
   definitions.forEach((definition, index) => {
     const label = routeDefinitionLabel(definition, index);
@@ -305,20 +299,36 @@ function validateRouteDefinitions(definitions, graph = null, options = {}) {
       definition.aliases.forEach((alias, aliasIndex) => {
         if (typeof alias !== 'string' || !alias.trim()) {
           errors.push(`${label}: aliases[${aliasIndex}] must be a non-empty string`);
+          return;
         }
+        const normalizedAlias = normalizeInput(alias);
+        if (!normalizedAlias) {
+          errors.push(`${label}: aliases[${aliasIndex}] must contain letters or numbers`);
+          return;
+        }
+        const owners = aliasOwners.get(normalizedAlias) || [];
+        owners.push(label);
+        aliasOwners.set(normalizedAlias, owners);
       });
     }
 
     if (!graph || typeof definition.processRel !== 'string' || !definition.processRel.trim()) {
       return;
     }
-    const resolved = resolveTarget(definition.processRel, graph.index);
-    if (!resolved) {
+    const resolution = resolveTargetDetailed(definition.processRel, graph.index);
+    if (resolution.status !== 'resolved') {
       if (requireExistingProcessTargets) {
-        errors.push(`${label}: processRel ${definition.processRel} must target an existing process note`);
+        if (resolution.status === 'ambiguous') {
+          errors.push(
+            `${label}: processRel ${definition.processRel} is ambiguous; matches ${resolution.candidates.join(', ')}`
+          );
+        } else {
+          errors.push(`${label}: processRel ${definition.processRel} must target an existing process note`);
+        }
       }
       return;
     }
+    const resolved = resolution.rel;
     const targetFrontmatter = graph.frontmatterByRel?.get(resolved)
       || graph.noteByRel?.get(resolved)?.frontmatter;
     if (targetFrontmatter?.type !== 'process') {
@@ -327,6 +337,14 @@ function validateRouteDefinitions(definitions, graph = null, options = {}) {
       );
     }
   });
+
+  for (const [alias, owners] of [...aliasOwners.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+    if (owners.length > 1) {
+      errors.push(
+        `route aliases normalize to duplicate "${alias}": ${[...owners].sort().join(', ')}`
+      );
+    }
+  }
 
   return errors;
 }
@@ -367,19 +385,37 @@ function findMalformedWikilinks(text) {
   return malformed;
 }
 
-function resolveTarget(target, index) {
+function resolveTargetDetailed(target, index) {
   if (typeof target !== 'string' || !target.trim()) {
-    return null;
+    return { status: 'missing', candidates: [] };
   }
-  const normalized = target.replace(/\.(md|base)$/i, '').replace(/\\/g, '/').toLowerCase();
-  if (index.byPath.has(normalized)) {
-    return index.byPath.get(normalized);
+  const normalized = target.trim().replace(/\.(md|base)$/i, '').replace(/\\/g, '/').toLowerCase();
+  if (normalized.includes('/')) {
+    if (index.byPath.has(normalized)) {
+      const rel = index.byPath.get(normalized);
+      return { status: 'resolved', rel, via: 'path', candidates: [rel] };
+    }
+    return { status: 'missing', candidates: [] };
   }
   const basename = path.basename(normalized);
-  if (index.byBasename.has(basename)) {
-    return index.byBasename.get(basename);
+  const candidates = index.byBasename.get(basename) || [];
+  if (candidates.length === 1) {
+    return {
+      status: 'resolved',
+      rel: candidates[0],
+      via: 'basename',
+      candidates: [...candidates]
+    };
   }
-  return null;
+  if (candidates.length > 1) {
+    return { status: 'ambiguous', candidates: [...candidates] };
+  }
+  return { status: 'missing', candidates: [] };
+}
+
+function resolveTarget(target, index) {
+  const resolution = resolveTargetDetailed(target, index);
+  return resolution.status === 'resolved' ? resolution.rel : null;
 }
 
 function firstFolder(rel) {
@@ -449,26 +485,81 @@ function inputContainsAlias(input, alias) {
   return aliasTokens.length > 0 && aliasTokens.every((token) => normalizedInput.includes(` ${token} `));
 }
 
-function findRouteDefinition(input, definitions = getRouteDefinitions()) {
-  const normalizedInput = normalizeInput(input);
-  for (const definition of definitions) {
-    if (!isUsableRouteDefinition(definition)) {
-      continue;
+function sortRouteCandidates(candidates) {
+  return [...candidates].sort((left, right) => {
+    const idComparison = normalizeInput(left.definition.id)
+      .localeCompare(normalizeInput(right.definition.id));
+    if (idComparison !== 0) {
+      return idComparison;
     }
-    const processName = normalizeInput(path.basename(definition.processRel, '.md'));
-    const processPath = normalizeInput(noteKeyForRel(definition.processRel));
-    if (
-      normalizedInput === normalizeInput(definition.id)
-      || normalizedInput === processName
-      || normalizedInput === processPath
-    ) {
-      return definition;
+    const pathComparison = String(left.definition.processRel)
+      .localeCompare(String(right.definition.processRel));
+    return pathComparison !== 0 ? pathComparison : left.index - right.index;
+  });
+}
+
+function routeMatchResult(matches, via) {
+  const sorted = sortRouteCandidates(matches);
+  if (sorted.length === 0) {
+    return { status: 'missing', candidates: [] };
+  }
+  if (sorted.length === 1) {
+    return {
+      status: 'resolved',
+      definition: sorted[0].definition,
+      via,
+      candidates: [sorted[0].definition]
+    };
+  }
+  return {
+    status: 'ambiguous',
+    via,
+    candidates: sorted.map((match) => match.definition)
+  };
+}
+
+function findRouteDefinitionDetailed(input, definitions = getRouteDefinitions()) {
+  const normalizedInput = normalizeInput(input);
+  const usable = definitions
+    .map((definition, index) => ({ definition, index }))
+    .filter(({ definition }) => isUsableRouteDefinition(definition));
+  const tiers = [
+    {
+      via: 'id',
+      matches: usable.filter(({ definition }) =>
+        normalizedInput === normalizeInput(definition.id)
+      )
+    },
+    {
+      via: 'process-path',
+      matches: usable.filter(({ definition }) =>
+        normalizedInput === normalizeInput(noteKeyForRel(definition.processRel))
+      )
+    },
+    {
+      via: 'process-name',
+      matches: usable.filter(({ definition }) =>
+        normalizedInput === normalizeInput(path.basename(definition.processRel, '.md'))
+      )
+    },
+    {
+      via: 'alias',
+      matches: usable.filter(({ definition }) =>
+        routeAliases(definition).some((alias) => inputContainsAlias(input, alias))
+      )
+    }
+  ];
+  for (const tier of tiers) {
+    if (tier.matches.length > 0) {
+      return routeMatchResult(tier.matches, tier.via);
     }
   }
-  return definitions.find((definition) =>
-    isUsableRouteDefinition(definition)
-    && routeAliases(definition).some((alias) => inputContainsAlias(input, alias))
-  ) || null;
+  return { status: 'missing', candidates: [] };
+}
+
+function findRouteDefinition(input, definitions = getRouteDefinitions()) {
+  const result = findRouteDefinitionDetailed(input, definitions);
+  return result.status === 'resolved' ? result.definition : null;
 }
 
 function resolveNoteInput(input, graph, expectedType = null) {
@@ -483,6 +574,7 @@ function resolveNoteInput(input, graph, expectedType = null) {
     }
   }
   const normalizedInput = normalizeInput(input);
+  const matches = [];
   for (const note of graph.notes) {
     if (expectedType && note.frontmatter?.type !== expectedType) {
       continue;
@@ -490,10 +582,11 @@ function resolveNoteInput(input, graph, expectedType = null) {
     const title = normalizeInput(getNoteTitle(note, note.rel));
     const basename = normalizeInput(path.basename(note.rel, '.md'));
     if (normalizedInput === title || normalizedInput === basename) {
-      return note.rel;
+      matches.push(note.rel);
     }
   }
-  return null;
+  const uniqueMatches = [...new Set(matches)].sort();
+  return uniqueMatches.length === 1 ? uniqueMatches[0] : null;
 }
 
 function resolveRelationshipLinks(values, graph) {
@@ -507,7 +600,19 @@ function buildRoute(input, options = {}) {
   const env = options.env || process.env;
   const graph = options.graph || loadVaultGraph(options);
   const definitions = options.routeDefinitions || getRouteDefinitions(env);
-  const definition = findRouteDefinition(input, definitions);
+  const routeMatch = findRouteDefinitionDetailed(input, definitions);
+  if (routeMatch.status === 'ambiguous') {
+    const candidates = routeMatch.candidates.map((candidate) =>
+      `route "${candidate.id}" -> ${candidate.processRel}`
+    );
+    return {
+      graph,
+      definition: null,
+      processRel: null,
+      error: `Ambiguous notes route for "${input}": ${candidates.join(', ')}; use an exact route id or process path`
+    };
+  }
+  const definition = routeMatch.status === 'resolved' ? routeMatch.definition : null;
   const processRel = definition
     ? resolveNoteInput(definition.processRel, graph, 'process')
     : resolveNoteInput(input, graph, 'process');
@@ -557,7 +662,7 @@ function currentDateParts(date = new Date()) {
 }
 
 function dumpFrontmatter(frontmatter) {
-  return yaml.dump(frontmatter, {
+  return yaml.dump(normalizeFrontmatterDateFields(frontmatter), {
     lineWidth: 120,
     noRefs: true,
     quotingType: '"',
@@ -575,7 +680,7 @@ function splitFrontmatter(text) {
   }
   return {
     rawFrontmatter: text.slice(4, endIndex),
-    frontmatter: yaml.load(text.slice(4, endIndex)) || {},
+    frontmatter: loadFrontmatter(text.slice(4, endIndex)),
     body: text.slice(endIndex + 5)
   };
 }
@@ -597,6 +702,8 @@ module.exports = {
   toPosix,
   relativePath,
   walk,
+  loadFrontmatter,
+  normalizeFrontmatterDateFields,
   parseMarkdown,
   noteKeyForRel,
   buildNoteIndex,
@@ -605,6 +712,7 @@ module.exports = {
   validateRouteDefinitions,
   validateRouteConfig,
   findMalformedWikilinks,
+  resolveTargetDetailed,
   resolveTarget,
   firstFolder,
   isTemplate,
@@ -616,6 +724,7 @@ module.exports = {
   wikilinkAlias,
   linkForRel,
   normalizeInput,
+  findRouteDefinitionDetailed,
   findRouteDefinition,
   resolveNoteInput,
   resolveRelationshipLinks,

@@ -1,3 +1,7 @@
+filters:
+  not:
+    - 'file.inFolder("Templates")'
+
 views:
   - type: table
     name: Decisions

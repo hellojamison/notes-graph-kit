@@ -1,10 +1,13 @@
 ---
 title: "Runbook Template"
+schema_version: 1
 type: "runbook"
 status: "current"
+date: "2026-07-05"
+tags:
+  - notes/runbook
 app: "My Project"
 source_of_truth: false
-last_verified: "YYYY-MM-DD"
 confidence: "medium"
 related_apps:
   - "[[Apps/My Project|My Project]]"

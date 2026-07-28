@@ -1,7 +1,11 @@
 ---
 title: "My Project"
+schema_version: 1
 type: "app"
 status: "current"
+date: "2026-07-05"
+tags:
+  - notes/app
 app: "My Project"
 source_of_truth: true
 last_verified: "2026-07-05"

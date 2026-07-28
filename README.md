@@ -38,12 +38,19 @@ node install-notes-graph.cjs \
 
 Options:
 
-- `--repo` — target repo root (defaults to current directory).
+- `--repo` — exact target Git worktree root (defaults to current directory).
+  Filesystem root and the user home directory are always rejected.
 - `--app` — required app/product name. Quotes and filename punctuation are
   supported; `[`, `]`, and `|` are rejected because they break Obsidian
   wikilinks.
 - `--vault` — vault directory name, not a path (defaults to `Project Notes`).
-- `--force` — overwrite existing kit-managed scripts or vault files.
+- `--force` — overwrite existing kit-managed scripts and config during an
+  install.
+- `--force-vault` — with `--force`, also overwrite existing vault skeleton
+  files. Use both flags only when discarding local vault customizations is
+  intentional.
+- `--allow-non-git` — explicitly permit an intentional install outside a Git
+  worktree.
 - `--dry-run` — print planned writes without changing files.
 
 The installer:
@@ -53,13 +60,19 @@ The installer:
 2. Writes `notes-graph.config.json` with the app name, vault dir, and a
    `kitVersion` stamp.
 3. Copies the vault skeleton with the app name substituted, excluding this
-   kit repo's dated local task notes (existing vault files are never
-   overwritten without `--force`).
+   kit repo's dated local task notes. Existing vault files are skipped unless
+   both `--force` and `--force-vault` are supplied.
 4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, and
    `notes:validate` into `package.json` (existing customized commands are
    preserved with a warning) and adds the `js-yaml` dependency.
-5. Writes or appends the `## Project Notes Graph` block to `AGENTS.md` (creates
-   the file if missing; skips if the section already exists).
+5. Writes or appends a marked `## Project Notes Graph` block to `AGENTS.md`
+   (creates the file if missing; skips a managed block or an exact legacy
+   heading outside fenced code).
+
+All planned files, including `package.json` and `AGENTS.md`, are staged before
+replacement. Ordinary write failures roll back files already changed. This
+cannot provide whole-install atomicity against power loss or a forced process
+termination.
 
 See `AGENTS.md` in this repo for the full agent-oriented install reference.
 
@@ -84,10 +97,63 @@ never touches vault content. Use `--dry-run` to preview. The target's
 
 Upgrades refuse to replace a newer semantic kit version with an older checkout.
 Use `--allow-downgrade` only for an intentional rollback.
+An installed but malformed `kitVersion` fails closed; a legacy config with no
+version remains upgradeable. `--upgrade` rejects install-only `--app`, `--vault`,
+`--force`, and `--force-vault` options instead of silently ignoring them.
 
 Existing repos with older or renamed helper scripts (e.g. `overcue-notes.cjs`,
 `notes.cjs`, split `notes-*.cjs`) keep working through their `notes:*` npm
 scripts; upgrade them only when a fix needs propagating.
+
+### Existing vault migration for 0.2.16
+
+Version 0.2.16 makes wikilink resolution path-safe, checks links in root
+schema-managed notes and templates, and brings the fresh-install seed notes onto
+the `schema_version: 1` contract. `--upgrade` still never edits vault content,
+so existing installs need a small manual vault migration after upgrading:
+
+1. Add schema-managed `_README.md` index notes under `Decisions/`, `Incidents/`,
+   `Releases/`, `Runbooks/`, and `Known-Good/`, including a `related_apps` link
+   to the target repo's app note. If a target repo intentionally does not use
+   one of those folders, remove or replace its link in `Notes System.md`.
+2. Add `schema_version: 1`, the original note date, and a non-empty
+   type-appropriate `tags` list to `_Codex/Start Here.md`, the starter app,
+   process, runbook, decision, and evidence notes, plus the App, Process,
+   Runbook, and Evidence templates. Preserve their existing app,
+   source-of-truth, confidence, and relationship fields.
+3. Update `Templates/Task Note Template.md` with a final `## Graph Links`
+   section. Remove the literal `last_verified: "YYYY-MM-DD"` property from the
+   App, Process, Runbook, and Evidence template frontmatter; add
+   `last_verified` only after checking the copied note's mutable claims.
+4. Update `Templates/_README.md` to list all eight shipped templates and explain
+   that copied notes must replace `title`, `type`, `date`, `status`, tags, and
+   graph relationships. App, Process, Runbook, and Evidence are direct-copy
+   templates; Task, Decision, Incident, and Release contain inner scaffolds.
+5. Add this global filter to Active Work, Decisions, Incidents, and Runbooks:
+
+   ```yaml
+   filters:
+     not:
+       - 'file.inFolder("Templates")'
+   ```
+
+   In Notes Review, preserve its existing global `and` filters and add:
+
+   ```yaml
+   - not:
+       - 'file.inFolder("Templates")'
+   ```
+
+6. Replace any timestamp-shaped schema metadata such as
+   `2026-06-03T00:00:00.000Z` with `YYYY-MM-DD`.
+7. Run `npm run notes:validate`. Wrong-folder links no longer resolve through an
+   unrelated note with the same basename, and ambiguous folderless links must
+   be replaced with explicit vault-relative paths.
+
+Fresh installs already contain these index notes and schema fields.
+Upgrade also leaves an existing `AGENTS.md` block untouched. Legacy real
+headings remain supported; add the marker lines from `AGENTS-snippet.md`
+manually only if you want the block to carry the new managed boundaries.
 
 ## Customize the graph
 
@@ -100,6 +166,9 @@ Edit `notes-graph.config.json` in the target repo:
   project-specific processes (and matching notes under `Processes/`) as the
   project grows. Each `processRel` must point to an existing note with
   `type: process`; `npm run notes:validate` fails invalid route configs.
+  Fallback routing contains only the shipped Notes Graph Maintenance process.
+  Duplicate normalized aliases fail validation, and input matching more than
+  one route reports sorted candidates instead of silently choosing one.
 
 Run `npm run notes:validate` after any structural change.
 
@@ -107,6 +176,12 @@ The default validator output summarizes recurring compatibility warnings such
 as preserved legacy notes, while errors and actionable graph warnings remain
 individual. Use `npm run notes:validate -- --verbose` to print every warning
 and its note path.
+
+Body links are checked in schema-managed notes, templates, structured folders,
+and daily notes. Vault-relative links must match their complete path. A
+folderless wikilink is accepted only when its basename uniquely identifies one
+note; otherwise validation reports every candidate and asks for an explicit
+vault-relative path.
 
 ## Daily use
 
@@ -117,7 +192,17 @@ npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Task title.m
 npm run notes:validate
 ```
 
-`notes:new` writes dated work-log notes under `Project Notes/Evidence/`. It creates `type: task` by default. Pass `--type evidence` for an evidence-shaped note.
+`notes:new` writes dated work-log notes under `Project Notes/Evidence/`. It
+creates `type: task` by default and emits the required `schema_version: 1`
+metadata plus app, verification, generator, and graph relationship fields.
+Pass `--type evidence` for an evidence-shaped note.
+Both note types receive a body-level `## Graph Links` section, even when a
+custom task template omitted it.
+
+`notes:closeout` refuses a note that already has a real `## Closeout` heading
+before changing the note or daily log. Date fields are serialized as
+`YYYY-MM-DD`. If a command value itself begins with `--`, use the equals form,
+for example `--not-verified="--force path not tested"`.
 
 Typical agent workflow:
 
@@ -146,8 +231,9 @@ truth.
 See `AGENTS.md` for the agent-oriented repo map, install commands, and gotchas.
 
 Run `npm test` after changing the installer, helper scripts, or vault skeleton.
-It scaffolds a temp repo, runs install → route → new → closeout → validate, and
-exercises upgrade and the no-clobber guard.
+It scaffolds temp targets, runs install → route → new → closeout → validate,
+and exercises Git-root, upgrade, force, ambiguity, transaction rollback, and
+no-clobber guards.
 
 GitHub Actions CI also runs `npm ci`, `npm test`, `npm run notes:validate`,
 `git diff --check`, and `npm audit --omit=dev` on pushes and pull requests.

@@ -43,10 +43,16 @@ Required properties:
 Recommended properties:
 
 - `area`: short list such as `packaging`, `licensing`, `sdk`, `notes`, or `release`.
+- `app`: title of the matching `type: app` note under `Apps/`.
+- `source_of_truth`: boolean indicating whether the note is maintained as current operational truth.
 - `last_verified`: date when mutable claims were last checked.
+- `confidence`: `high`, `medium`, or `low`; required with `last_verified` when `source_of_truth: true`.
 - `freshness`: use `reverify-before-use` when the note contains facts that can drift.
+- `created_by`: optional tool identifier such as `project-notes-cli` for generated notes.
 - `superseded_by`: wikilink or path when a note is replaced.
 - `related_apps`, `related_processes`, `related_runbooks`, `related_decisions`, `related_incidents`, and `related_evidence`: wikilinks to connected notes, grouped by target type.
+
+`notes:new` emits the required schema plus the recommended app, verification, generator, and graph relationship metadata. Treat that generated shape as the canonical starting point for task and evidence notes.
 
 Use this contract for new notes. Older notes do not need a bulk migration unless they become active again.
 
@@ -81,7 +87,7 @@ Run the notes validator before handing off note-system changes:
 npm run notes:validate
 ```
 
-The validator is `scripts/validate-project-notes-graph.cjs`. It checks schema-managed frontmatter, typed relationship links, Bases YAML, malformed wikilinks, and broken body links in structured notes and daily notes. Legacy notes without frontmatter are preserved as warnings so existing history does not need a bulk rewrite.
+The validator is `scripts/validate-project-notes-graph.cjs`. It checks schema-managed frontmatter, typed relationship links, Bases YAML, malformed wikilinks, and broken body links in schema-managed notes, templates, structured folders, and daily notes. Vault-relative targets must match their complete path; folderless links are valid only when their basename is unique. Legacy flat notes remain compatibility-preserved so existing history does not need a bulk rewrite.
 
 Recurring compatibility warnings are summarized by category. Run `npm run notes:validate -- --verbose` when every warning and note path is needed. Errors and actionable graph warnings are always printed individually.
 

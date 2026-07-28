@@ -1,7 +1,11 @@
 ---
 title: "Start Here"
+schema_version: 1
 type: "index"
 status: "current"
+date: "2026-07-05"
+tags:
+  - notes/index
 app: "My Project"
 source_of_truth: true
 last_verified: "2026-07-05"
