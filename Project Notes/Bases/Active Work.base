@@ -2,8 +2,14 @@ views:
   - type: table
     name: Active Work
     filters:
-      and:
-        - status != "done"
+      or:
+        - 'status == "draft"'
+        - 'status == "active"'
+        - 'status == "in-progress"'
+        - 'status == "blocked"'
+        - 'status == "partial"'
+        - 'status == "investigating"'
+        - 'status == "fixed-uncommitted"'
     order:
       - file.name
       - type

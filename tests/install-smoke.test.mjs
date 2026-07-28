@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,6 +13,12 @@ const requireFromTest = createRequire(import.meta.url);
 
 function run(cwd, args) {
   return execFileSync('node', args, { cwd, encoding: 'utf8' });
+}
+
+function runCaptured(cwd, args) {
+  const result = spawnSync('node', args, { cwd, encoding: 'utf8' });
+  assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+  return `${result.stdout}${result.stderr}`;
 }
 
 function commandOutput(error) {
@@ -73,6 +79,30 @@ test('template frontmatter uses the intended note types', () => {
   for (const [rel, expectedType] of Object.entries(expectedTypes)) {
     assert.equal(readFrontmatter(rel).type, expectedType, rel);
   }
+});
+
+test('starter Active Work Base uses explicit open statuses and ordered columns', () => {
+  const base = yaml.load(
+    fs.readFileSync(path.join(kitRoot, 'Project Notes/Bases/Active Work.base'), 'utf8')
+  );
+  const activeWork = base.views.find((view) => view.name === 'Active Work');
+  assert.ok(activeWork);
+  assert.deepEqual(activeWork.filters.or, [
+    'status == "draft"',
+    'status == "active"',
+    'status == "in-progress"',
+    'status == "blocked"',
+    'status == "partial"',
+    'status == "investigating"',
+    'status == "fixed-uncommitted"'
+  ]);
+  assert.deepEqual(activeWork.order, [
+    'file.name',
+    'type',
+    'status',
+    'area',
+    'last_verified'
+  ]);
 });
 
 test('install, route, new, closeout, validate in a scaffolded repo', () => {
@@ -469,6 +499,96 @@ test('validator preserves legacy frontmatter notes without schema_version', () =
 
     const validateOutput = run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
     assert.match(validateOutput, /validation passed/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('validator summarizes recurring warnings by default and expands them with --verbose', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-warning-summary-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+
+    fs.writeFileSync(
+      path.join(repoRoot, 'Project Notes/Legacy Note.md'),
+      '# Legacy Note\n'
+    );
+    fs.writeFileSync(
+      path.join(repoRoot, 'Project Notes/2020-01-01.md'),
+      '# 2020-01-01\n'
+    );
+    fs.writeFileSync(
+      path.join(repoRoot, 'Project Notes/Evidence/Legacy Structured.md'),
+      '# Legacy Structured\n'
+    );
+    fs.writeFileSync(
+      path.join(repoRoot, 'Project Notes/Evidence/Missing Type.md'),
+      [
+        '---',
+        'title: Missing Type',
+        'status: active',
+        '---',
+        '',
+        '# Missing Type',
+        ''
+      ].join('\n')
+    );
+    fs.writeFileSync(
+      path.join(repoRoot, 'Project Notes/Typed Without App.md'),
+      [
+        '---',
+        'title: Typed Without App',
+        'type: task',
+        'status: active',
+        '---',
+        '',
+        '# Typed Without App',
+        ''
+      ].join('\n')
+    );
+    fs.writeFileSync(
+      path.join(repoRoot, 'Project Notes/Runbooks/Orphan Runbook.md'),
+      [
+        '---',
+        'title: Orphan Runbook',
+        'type: runbook',
+        'status: current',
+        'related_apps:',
+        '  - "[[Apps/Smoke App|Smoke App]]"',
+        '---',
+        '',
+        '# Orphan Runbook',
+        ''
+      ].join('\n')
+    );
+
+    const defaultOutput = runCaptured(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    assert.match(defaultOutput, /WARN Runbooks\/Orphan Runbook\.md: runbook note has no inbound links/);
+    assert.match(defaultOutput, /WARN Summarized 5 recurring warning\(s\):/);
+    assert.match(defaultOutput, /WARN   1 typed notes without related_apps/);
+    assert.match(defaultOutput, /WARN   1 legacy daily notes without frontmatter/);
+    assert.match(defaultOutput, /WARN   1 other legacy notes without frontmatter/);
+    assert.match(defaultOutput, /WARN   1 structured notes without type/);
+    assert.match(defaultOutput, /WARN   1 legacy structured notes without frontmatter/);
+    assert.doesNotMatch(defaultOutput, /WARN Legacy Note\.md:/);
+    assert.match(defaultOutput, /validation passed with 6 warning\(s\)/);
+
+    const verboseOutput = runCaptured(
+      repoRoot,
+      ['scripts/validate-project-notes-graph.cjs', '--verbose']
+    );
+    assert.match(verboseOutput, /WARN Legacy Note\.md: legacy note has no frontmatter/);
+    assert.match(verboseOutput, /WARN 2020-01-01\.md: legacy daily note has no frontmatter/);
+    assert.match(verboseOutput, /WARN Evidence\/Legacy Structured\.md: legacy structured note is missing frontmatter/);
+    assert.match(verboseOutput, /WARN Evidence\/Missing Type\.md: structured note is missing type/);
+    assert.match(verboseOutput, /WARN Typed Without App\.md: typed note has no related_apps/);
+    assert.doesNotMatch(verboseOutput, /WARN Summarized/);
+    assert.match(verboseOutput, /validation passed with 6 warning\(s\)/);
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }

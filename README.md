@@ -103,6 +103,11 @@ Edit `notes-graph.config.json` in the target repo:
 
 Run `npm run notes:validate` after any structural change.
 
+The default validator output summarizes recurring compatibility warnings such
+as preserved legacy notes, while errors and actionable graph warnings remain
+individual. Use `npm run notes:validate -- --verbose` to print every warning
+and its note path.
+
 ## Daily use
 
 ```bash

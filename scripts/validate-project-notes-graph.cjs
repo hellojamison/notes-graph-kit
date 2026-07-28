@@ -27,6 +27,77 @@ const vaultRoot = getVaultRoot();
 const errors = [];
 const warnings = [];
 const allowedBaseViewTypes = new Set(['table', 'cards', 'list', 'map']);
+const args = process.argv.slice(2);
+const supportedArgs = new Set(['--verbose']);
+const unknownArgs = args.filter((arg) => !supportedArgs.has(arg));
+const verboseWarnings = args.includes('--verbose');
+
+if (unknownArgs.length > 0) {
+  console.error(`ERROR Unknown option(s): ${unknownArgs.join(', ')}. Supported option: --verbose`);
+  process.exit(2);
+}
+
+const summarizedWarningCategories = [
+  {
+    label: 'typed notes without related_apps',
+    matches: (warning) => warning.endsWith(': typed note has no related_apps')
+  },
+  {
+    label: 'legacy daily notes without frontmatter',
+    matches: (warning) => warning.endsWith(': legacy daily note has no frontmatter')
+  },
+  {
+    label: 'other legacy notes without frontmatter',
+    matches: (warning) => warning.endsWith(': legacy note has no frontmatter')
+  },
+  {
+    label: 'structured notes without type',
+    matches: (warning) => warning.endsWith(': structured note is missing type')
+  },
+  {
+    label: 'legacy structured notes without frontmatter',
+    matches: (warning) => warning.endsWith(': legacy structured note is missing frontmatter')
+  }
+];
+
+function printWarnings(allWarnings) {
+  if (verboseWarnings) {
+    for (const warning of allWarnings) {
+      console.warn(`WARN ${warning}`);
+    }
+    return;
+  }
+
+  const summaryCounts = new Map(
+    summarizedWarningCategories.map(({ label }) => [label, 0])
+  );
+  const actionableWarnings = [];
+
+  for (const warning of allWarnings) {
+    const category = summarizedWarningCategories.find(({ matches }) => matches(warning));
+    if (category) {
+      summaryCounts.set(category.label, summaryCounts.get(category.label) + 1);
+    } else {
+      actionableWarnings.push(warning);
+    }
+  }
+
+  for (const warning of actionableWarnings) {
+    console.warn(`WARN ${warning}`);
+  }
+
+  const summarizedCount = [...summaryCounts.values()].reduce((sum, count) => sum + count, 0);
+  if (summarizedCount > 0) {
+    console.warn(`WARN Summarized ${summarizedCount} recurring warning(s):`);
+    for (const { label } of summarizedWarningCategories) {
+      const count = summaryCounts.get(label);
+      if (count > 0) {
+        console.warn(`WARN   ${count} ${label}`);
+      }
+    }
+    console.warn('WARN Re-run with --verbose to print every warning.');
+  }
+}
 
 function hasInbound(inboundByRel, rel) {
   return (inboundByRel.get(rel) || new Set()).size > 0;
@@ -366,9 +437,7 @@ if (!fs.existsSync(vaultRoot)) {
   }
 }
 
-for (const warning of warnings) {
-  console.warn(`WARN ${warning}`);
-}
+printWarnings(warnings);
 
 if (errors.length > 0) {
   for (const error of errors) {

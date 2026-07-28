@@ -83,6 +83,8 @@ npm run notes:validate
 
 The validator is `scripts/validate-project-notes-graph.cjs`. It checks schema-managed frontmatter, typed relationship links, Bases YAML, malformed wikilinks, and broken body links in structured notes and daily notes. Legacy notes without frontmatter are preserved as warnings so existing history does not need a bulk rewrite.
 
+Recurring compatibility warnings are summarized by category. Run `npm run notes:validate -- --verbose` when every warning and note path is needed. Errors and actionable graph warnings are always printed individually.
+
 ## Task Note Shape
 
 Use this structure for new task notes unless a shorter bullet note is enough:
