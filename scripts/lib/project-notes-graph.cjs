@@ -235,15 +235,51 @@ function buildFrontmatterByRel(notes) {
   return byRel;
 }
 
+function markdownLinesOutsideFences(text) {
+  const source = String(text || '');
+  const lines = source.split('\n');
+  const outside = [];
+  let fence = null;
+  let offset = 0;
+  for (const rawLine of lines) {
+    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+    if (fence) {
+      const closePattern = new RegExp(
+        `^ {0,3}\\${fence.character}{${fence.length},}[ \\t]*$`
+      );
+      if (closePattern.test(line)) {
+        fence = null;
+      }
+      offset += rawLine.length + 1;
+      continue;
+    }
+    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (fenceMatch) {
+      const marker = fenceMatch[1];
+      fence = { character: marker[0], length: marker.length };
+      offset += rawLine.length + 1;
+      continue;
+    }
+    outside.push({ line, start: offset });
+    offset += rawLine.length + 1;
+  }
+  return outside;
+}
+
 function extractWikilinkTargets(text) {
   const targets = [];
-  const pattern = /!?\[\[([^\]\n]+)\]\]/g;
-  let match;
-  while ((match = pattern.exec(text))) {
-    const withoutAlias = match[1].split('|')[0].trim();
-    const withoutHeading = withoutAlias.split('#')[0].trim();
-    if (withoutHeading) {
-      targets.push(withoutHeading);
+  for (const { line } of markdownLinesOutsideFences(text)) {
+    const pattern = /!?\[\[([^\]\n]+)\]\]/g;
+    let match;
+    while ((match = pattern.exec(line))) {
+      if (match[1].includes('[') || match[1].includes(']')) {
+        continue;
+      }
+      const withoutAlias = match[1].split('|')[0].trim();
+      const withoutHeading = withoutAlias.split('#')[0].trim();
+      if (withoutHeading) {
+        targets.push(withoutHeading);
+      }
     }
   }
   return targets;
@@ -329,6 +365,12 @@ function validateRouteDefinitions(definitions, graph = null, options = {}) {
       return;
     }
     const resolved = resolution.rel;
+    if (isTemplate(resolved)) {
+      errors.push(
+        `${label}: processRel ${definition.processRel} must target a non-template process note; found template ${resolved}; instantiate the template with notes:new instead`
+      );
+      return;
+    }
     const targetFrontmatter = graph.frontmatterByRel?.get(resolved)
       || graph.noteByRel?.get(resolved)?.frontmatter;
     if (targetFrontmatter?.type !== 'process') {
@@ -361,25 +403,23 @@ function validateRouteConfig(config = {}, graph = null) {
 }
 
 function findMalformedWikilinks(text) {
-  const source = String(text || '');
   const malformed = [];
-  let index = 0;
+  for (const { line } of markdownLinesOutsideFences(text)) {
+    let index = 0;
+    while ((index = line.indexOf('[[', index)) !== -1) {
+      const closeIndex = line.indexOf(']]', index + 2);
+      if (closeIndex === -1) {
+        malformed.push(line.slice(index).trim());
+        index += 2;
+        continue;
+      }
 
-  while ((index = source.indexOf('[[', index)) !== -1) {
-    const lineEnd = source.indexOf('\n', index);
-    const scanEnd = lineEnd === -1 ? source.length : lineEnd;
-    const closeIndex = source.indexOf(']]', index + 2);
-    if (closeIndex === -1 || closeIndex > scanEnd) {
-      malformed.push(source.slice(index, scanEnd).trim());
-      index += 2;
-      continue;
+      const inner = line.slice(index + 2, closeIndex);
+      if (!inner.trim() || inner.includes('[') || inner.includes(']')) {
+        malformed.push(line.slice(index, closeIndex + 2));
+      }
+      index = closeIndex + 2;
     }
-
-    const inner = source.slice(index + 2, closeIndex);
-    if (!inner.trim() || inner.includes('[') || inner.includes(']')) {
-      malformed.push(source.slice(index, closeIndex + 2));
-    }
-    index = closeIndex + 2;
   }
 
   return malformed;
@@ -569,13 +609,19 @@ function resolveNoteInput(input, graph, expectedType = null) {
   const direct = resolveTarget(input, graph.index);
   if (direct) {
     const note = graph.noteByRel.get(direct);
-    if (!expectedType || note?.frontmatter?.type === expectedType) {
+    if (
+      (!expectedType || !isTemplate(direct))
+      && (!expectedType || note?.frontmatter?.type === expectedType)
+    ) {
       return direct;
     }
   }
   const normalizedInput = normalizeInput(input);
   const matches = [];
   for (const note of graph.notes) {
+    if (expectedType && isTemplate(note.rel)) {
+      continue;
+    }
     if (expectedType && note.frontmatter?.type !== expectedType) {
       continue;
     }
@@ -589,11 +635,26 @@ function resolveNoteInput(input, graph, expectedType = null) {
   return uniqueMatches.length === 1 ? uniqueMatches[0] : null;
 }
 
-function resolveRelationshipLinks(values, graph) {
+function resolveRelationshipLinks(values, graph, expectedTypes = null) {
+  const allowedTypes = expectedTypes == null
+    ? null
+    : expectedTypes instanceof Set
+      ? expectedTypes
+      : new Set(asArray(expectedTypes));
   return asArray(values)
     .flatMap((value) => typeof value === 'string' ? extractWikilinkTargets(value) : [])
     .map((target) => resolveTarget(target, graph.index))
-    .filter(Boolean);
+    .filter((rel) => {
+      if (!rel || isTemplate(rel)) {
+        return false;
+      }
+      if (!allowedTypes) {
+        return true;
+      }
+      const targetFrontmatter = graph.frontmatterByRel?.get(rel)
+        || graph.noteByRel?.get(rel)?.frontmatter;
+      return allowedTypes.has(targetFrontmatter?.type);
+    });
 }
 
 function buildRoute(input, options = {}) {
@@ -634,9 +695,21 @@ function buildRoute(input, options = {}) {
   const frontmatter = processNote.frontmatter;
   const runbookRels = options.runbook
     ? [resolveNoteInput(options.runbook, graph, 'runbook')].filter(Boolean)
-    : resolveRelationshipLinks(frontmatter.related_runbooks, graph);
-  const decisionRels = resolveRelationshipLinks(frontmatter.related_decisions, graph);
-  const evidenceRels = resolveRelationshipLinks(frontmatter.related_evidence, graph);
+    : resolveRelationshipLinks(
+      frontmatter.related_runbooks,
+      graph,
+      relationshipTypeExpectations.related_runbooks
+    );
+  const decisionRels = resolveRelationshipLinks(
+    frontmatter.related_decisions,
+    graph,
+    relationshipTypeExpectations.related_decisions
+  );
+  const evidenceRels = resolveRelationshipLinks(
+    frontmatter.related_evidence,
+    graph,
+    relationshipTypeExpectations.related_evidence
+  );
   return {
     graph,
     definition,
@@ -708,6 +781,7 @@ module.exports = {
   noteKeyForRel,
   buildNoteIndex,
   buildFrontmatterByRel,
+  markdownLinesOutsideFences,
   extractWikilinkTargets,
   validateRouteDefinitions,
   validateRouteConfig,

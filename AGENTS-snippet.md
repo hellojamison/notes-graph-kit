@@ -21,8 +21,9 @@ For substantive tasks:
 
 Prefer the repo-local notes helper:
 - Use `npm run notes:route -- "<task description>"` to choose the app/process/runbook path.
-- Use `npm run notes:new -- --title "<task title>" --process <process-alias> --summary "<goal>"` to create a task note; pass `--type evidence` for an evidence-shaped note.
-- Use `npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD <task title>.md" --working "..." --verified "..." --not-verified "..."` when closing a task note.
+- Use `npm run notes:new -- --title "<title>" --type <type> --summary "<goal>"` with `task`, `evidence`, `app`, `process`, `runbook`, `decision`, `incident`, or `release`. Task and evidence notes require `--process <process-alias>`; it is optional for the other types.
+- Let `notes:new` unwrap the matching marked template scaffold. Do not copy fenced scaffold metadata into a note manually.
+- Use `npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD <task title>.md" --working "..." --verified "..." --not-verified "..."` to close as `done`; add `--certify` only when the evidence supports `status: verified`.
 - Run `npm run notes:validate` after graph metadata, templates, Bases, validator, helper script, or structured note changes.
 
 Optional agent skills:

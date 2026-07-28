@@ -10,7 +10,7 @@ tags:
 
 # Templates
 
-Copy these templates for new structured notes.
+These are CLI-managed source templates for structured notes:
 
 - [[Task Note Template]]
 - [[App Template]]
@@ -21,6 +21,14 @@ Copy these templates for new structured notes.
 - [[Incident Note Template]]
 - [[Release Note Template]]
 
-All templates include a `schema_version: 1` frontmatter block. App, Process, Runbook, and Evidence templates are direct-copy notes with their intended product `type`. Task, Decision, Incident, and Release templates are wrappers; use `notes:new` for tasks/evidence or copy the inner scaffold and set the intended `type`.
+Create notes through `notes:new`:
 
-After copying, replace `title`, `type`, `date`, `status`, tags, and graph relationships with values for the new note. Add `last_verified` only after checking mutable claims, and set `source_of_truth` and `confidence` to match the evidence. Keep copied notes on the schema contract unless the note is intentionally legacy or disposable.
+```bash
+npm run notes:new -- --title "Title" --type task --process notes-graph-maintenance --summary "Goal"
+```
+
+Supported types are `task`, `evidence`, `app`, `process`, `runbook`, `decision`, `incident`, and `release`. Task and evidence notes require `--process`; it is optional for the other types.
+
+Each template note is itself `type: template`. Its single marked YAML scaffold defines the generated note metadata, and `notes:new` removes that scaffold from the finished note body. Do not copy or edit the scaffold into a destination note manually.
+
+Generated notes begin with type-appropriate status and tags. Add `last_verified` only after checking mutable claims, and set `source_of_truth` and `confidence` to match the evidence.

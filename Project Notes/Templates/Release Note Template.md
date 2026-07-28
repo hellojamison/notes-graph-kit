@@ -11,22 +11,29 @@ tags:
 
 # My Project Version
 
+<!-- notes-graph-kit:scaffold:start -->
 ```yaml
----
 title: My Project Version
 schema_version: 1
 type: release
-status: verified
+status: draft
 date: YYYY-MM-DD
 area:
   - release
   - packaging
 tags:
   - notes/release
-last_verified: YYYY-MM-DD
+app: "My Project"
+source_of_truth: false
+confidence: medium
 freshness: reverify-before-use
----
+related_apps:
+  - "[[Apps/My Project|My Project]]"
+related_processes:
+related_runbooks:
+related_decisions:
 ```
+<!-- notes-graph-kit:scaffold:end -->
 
 ## Build
 

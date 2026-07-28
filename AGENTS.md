@@ -12,7 +12,7 @@ The kit scaffolds an Obsidian vault skeleton, copies config-driven CLI helpers (
 - `scripts/lib/project-notes-graph.cjs` — shared graph utilities (statuses, wikilink rules, route resolution).
 - `notes-graph.config.json` — kit-local config (app name, vault folder, routes); target repos get their own copy on install.
 - `AGENTS-snippet.md` — source block the installer merges into target `AGENTS.md` files.
-- `Project Notes/` — starter Obsidian vault skeleton (templates, Bases, seed notes). Placeholder app name is `My Project`.
+- `Project Notes/` — starter Obsidian vault skeleton (marked typed-note templates, Bases, seed notes). Placeholder app name is `My Project`.
 - `tests/install-smoke.test.mjs` — end-to-end install/upgrade smoke test.
 - `README.md` — user-facing install and daily-use guide.
 
@@ -23,7 +23,7 @@ Helper scripts are fully config-driven (`notes-graph.config.json` plus `PROJECT_
 Kit development (this repo):
 
 - Test: `npm test` — scaffolds a temp repo, runs install → route → new → closeout → validate, and exercises upgrade/guard paths. Run after changing the installer, helpers, validator, or vault skeleton.
-- Notes helpers (dogfood): `npm run notes:route -- "<task>"`, `npm run notes:new`, `npm run notes:closeout`, `npm run notes:validate`.
+- Notes helpers (dogfood): `npm run notes:route -- "<task>"`, `npm run notes:new -- --title "<title>" --type <type> ...`, `npm run notes:closeout`, `npm run notes:validate`.
 
 Install into a target repo:
 
@@ -88,6 +88,7 @@ GitHub Actions CI runs `npm ci`, `npm test`, `npm run notes:validate`, `git diff
 - **Config guard** — re-install without `--force` or `--upgrade` fails if `notes-graph.config.json` already exists.
 - **Custom npm scripts** — if a target repo customized a `notes:*` command, the installer preserves it instead of overwriting.
 - **AGENTS.md merge** — install creates or appends a managed `## Project Notes Graph` block; it does not replace an existing section. Heading and marker examples inside fenced blocks do not count. Edit `AGENTS-snippet.md` here, then patch target repos manually if their existing block needs updating.
+- **Template contract** — all eight product templates are `type: template` source notes with exactly one marked fenced YAML mapping. Generate notes through `notes:new`; never copy scaffold metadata manually. Normal upgrade leaves these vault files untouched.
 - **Placeholder substitution** — only vault skeleton files get app/vault name substitution; scripts are copied verbatim.
 - **Version stamp** — bump `package.json` version when changing install behavior; target `notes-graph.config.json` `kitVersion` reflects what was installed.
 
@@ -108,8 +109,8 @@ For substantive tasks:
 Prefer the repo-local notes helper:
 
 - `npm run notes:route -- "<task description>"`
-- `npm run notes:new -- --title "<task title>" --process <process-alias> --summary "<goal>"`
-- `npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD <task title>.md" --working "..." --verified "..." --not-verified "..."`
+- `npm run notes:new -- --title "<title>" --type <type> --summary "<goal>"` (`task`, `evidence`, `app`, `process`, `runbook`, `decision`, `incident`, or `release`; task/evidence require `--process`)
+- `npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD <task title>.md" --working "..." --verified "..." --not-verified "..."` (add `--certify` only for `status: verified`)
 - `npm run notes:validate` after graph metadata, templates, Bases, validator, helper script, or structured note changes.
 
 ## Skills

@@ -35,8 +35,17 @@ This is the agent entrypoint for the project notes graph.
 4. Check related decisions for accepted rules.
 5. Check incidents, evidence, and daily notes for what actually happened.
 
+## Workflow
+
+1. Route the work with `npm run notes:route -- "<task description>"`.
+2. Create its note with `npm run notes:new -- --title "Title" --type <type> ...`.
+3. Close the note with `npm run notes:closeout -- --note "<note path>" --working "..." --verified "..." --not-verified "..."`; add `--certify` only when the note itself is verified.
+4. Run `npm run notes:validate`.
+
+Supported creation types are task, evidence, app, process, runbook, decision, incident, and release. Task and evidence notes require a process route. The CLI selects the matching template; do not copy fenced template scaffold metadata into a note manually.
+
 ## Validation
 
-Run `npm run notes:validate` after changing structured notes, templates, Bases, scripts, or graph links.
+Also run `npm run notes:validate` after changing structured notes, templates, Bases, scripts, or graph links.
 
 See [[Notes System|Notes System]] for note organization rules.

@@ -105,6 +105,28 @@ Existing repos with older or renamed helper scripts (e.g. `overcue-notes.cjs`,
 `notes.cjs`, split `notes-*.cjs`) keep working through their `notes:*` npm
 scripts; upgrade them only when a fix needs propagating.
 
+### Existing vault migration for 0.3.0
+
+Version 0.3.0 makes all eight structured-note templates machine-readable and
+adds typed creation for task, evidence, app, process, runbook, decision,
+incident, and release notes. `--upgrade` refreshes the CLI scripts and
+`kitVersion` but remains vault-untouched, so merge these vault changes manually:
+
+1. Replace the eight files under `Templates/` with their 0.3.0 versions after
+   preserving any local body customizations. Each template's own frontmatter
+   must be `type: template`, and each body must contain exactly one marked YAML
+   scaffold using the marker pair shipped by the kit.
+2. Merge the 0.3.0 guidance from `Templates/_README.md`, `_Codex/Start Here.md`,
+   and `Notes System.md`.
+3. Do not extract or copy fenced scaffold metadata into destination notes.
+   `notes:new` validates and removes the marked block automatically.
+4. Run `npm run notes:validate`, then create disposable examples for the note
+   types used by the target repo before relying on the migrated templates.
+
+Existing `AGENTS.md` blocks are also upgrade-untouched. Merge the `notes:new`
+type list and `notes:closeout --certify` guidance from `AGENTS-snippet.md`
+manually when updating an existing install.
+
 ### Existing vault migration for 0.2.16
 
 Version 0.2.16 makes wikilink resolution path-safe, checks links in root
@@ -127,8 +149,7 @@ so existing installs need a small manual vault migration after upgrading:
    `last_verified` only after checking the copied note's mutable claims.
 4. Update `Templates/_README.md` to list all eight shipped templates and explain
    that copied notes must replace `title`, `type`, `date`, `status`, tags, and
-   graph relationships. App, Process, Runbook, and Evidence are direct-copy
-   templates; Task, Decision, Incident, and Release contain inner scaffolds.
+   graph relationships.
 5. Add this global filter to Active Work, Decisions, Incidents, and Runbooks:
 
    ```yaml
@@ -188,29 +209,42 @@ vault-relative path.
 ```bash
 npm run notes:route -- "describe the task"
 npm run notes:new -- --title "Task title" --process notes-graph-maintenance --summary "Goal"
+npm run notes:new -- --title "Release title" --type release --summary "Release scope"
 npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Task title.md" --working "..." --verified "..." --not-verified "..."
+npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Task title.md" --certify --working "..." --verified "..." --not-verified "..."
 npm run notes:validate
 ```
 
 `notes:new` writes dated work-log notes under `Project Notes/Evidence/`. It
-creates `type: task` by default and emits the required `schema_version: 1`
-metadata plus app, verification, generator, and graph relationship fields.
-Pass `--type evidence` for an evidence-shaped note.
-Both note types receive a body-level `## Graph Links` section, even when a
-custom task template omitted it.
+creates `type: task` by default. `--type` accepts `task`, `evidence`, `app`,
+`process`, `runbook`, `decision`, `incident`, or `release`. Task and evidence
+notes require `--process` and use date-prefixed filenames under `Evidence/`;
+the other types use their matching structured folder and accept `--process`
+optionally. New process notes also add a route using a slug of the title and
+refuse route-ID or alias collisions instead of choosing a suffix.
+Draft process, runbook, decision, and release notes are exempt from operational
+completeness and inbound-link warnings. Add the required relationships before
+promoting them to an active, current, or verified status.
+
+Every shipped template is a `type: template` source note with one marked YAML
+scaffold. `notes:new` validates that scaffold, generates canonical frontmatter,
+and removes it from the finished body. Do not copy scaffold metadata manually.
 
 `notes:closeout` refuses a note that already has a real `## Closeout` heading
 before changing the note or daily log. Date fields are serialized as
 `YYYY-MM-DD`. If a command value itself begins with `--`, use the equals form,
 for example `--not-verified="--force path not tested"`.
+Normal closeout sets `status: done`; `--certify` sets `status: verified`.
+The daily closeout line records the selected status explicitly.
 
 Typical agent workflow:
 
 1. Read `Project Notes/_Codex/Start Here.md`.
 2. Run `npm run notes:route -- "<task>"`.
-3. Create a task note with `npm run notes:new`; pass `--type evidence` for an evidence-shaped note.
+3. Create the appropriate typed note with `npm run notes:new`.
 4. Do the work and record exact verification.
 5. Close the task note with `npm run notes:closeout`.
+6. Run `npm run notes:validate`.
 
 Optional: humans or agents doing heavy vault maintenance can use
 [`kepano/obsidian-skills`](https://github.com/kepano/obsidian-skills) for
@@ -247,4 +281,5 @@ MIT. See [LICENSE](LICENSE).
 If you cannot run the installer, copy `scripts/`, `Project Notes/`,
 `notes-graph.config.json`, and the `package.json` script/dependency block by
 hand, then customize per "Customize the graph" above. The installer is
-preferred because it handles renames and stamps `kitVersion`.
+preferred because it handles renames and stamps `kitVersion`. Keep each
+template file intact; do not manually extract its marked scaffold.

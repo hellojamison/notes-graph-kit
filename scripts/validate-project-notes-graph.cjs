@@ -248,7 +248,7 @@ if (!fs.existsSync(vaultRoot)) {
   errors.push(...validateRouteConfig(config, graph));
 
   for (const note of notes) {
-    const inboundTargets = extractWikilinkTargets(note.text);
+    const inboundTargets = extractWikilinkTargets(note.body);
     if (note.frontmatter) {
       for (const field of Object.keys(relationshipTypeExpectations)) {
         for (const value of asArray(note.frontmatter[field])) {
@@ -328,6 +328,7 @@ if (!fs.existsSync(vaultRoot)) {
     if (schemaManaged) {
       errors.push(...validateSchemaManagedFrontmatter(rel, frontmatter));
     }
+    const draft = frontmatter.status === 'draft';
 
     if (frontmatter.type && !allowedTypes.has(frontmatter.type)) {
       const message = `${rel}: invalid type "${frontmatter.type}"`;
@@ -381,7 +382,12 @@ if (!fs.existsSync(vaultRoot)) {
       warnings.push(`${rel}: typed note has no related_apps`);
     }
 
-    if (!template && frontmatter.type === 'process' && frontmatter.status !== 'archived') {
+    if (
+      !template
+      && frontmatter.type === 'process'
+      && frontmatter.status !== 'archived'
+      && !draft
+    ) {
       if (asArray(frontmatter.related_runbooks).length === 0) {
         warnings.push(`${rel}: process note has no related_runbooks`);
       }
@@ -411,6 +417,7 @@ if (!fs.existsSync(vaultRoot)) {
 
     const mustHaveInbound = !template
       && frontmatter.status !== 'archived'
+      && !draft
       && (
         frontmatter.type === 'process'
         || frontmatter.type === 'runbook'
@@ -430,6 +437,12 @@ if (!fs.existsSync(vaultRoot)) {
               continue;
             }
             const resolved = resolution.rel;
+            if (isTemplate(resolved)) {
+              errors.push(
+                `${rel}: ${field} target [[${target}]] is a template; instantiate it with notes:new before using it as a typed relationship`
+              );
+              continue;
+            }
             const targetFrontmatter = frontmatterByRel.get(resolved);
             const expectedTypes = relationshipTypeExpectations[field];
             if (!targetFrontmatter?.type || !expectedTypes.has(targetFrontmatter.type)) {

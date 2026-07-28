@@ -93,12 +93,12 @@ function snapshotTree(root) {
   return entries.sort();
 }
 
-test('template frontmatter uses the intended note types', () => {
+test('template frontmatter identifies every source file as a template', () => {
   const expectedTypes = {
-    'Project Notes/Templates/App Template.md': 'app',
-    'Project Notes/Templates/Process Template.md': 'process',
-    'Project Notes/Templates/Runbook Template.md': 'runbook',
-    'Project Notes/Templates/Evidence Template.md': 'evidence',
+    'Project Notes/Templates/App Template.md': 'template',
+    'Project Notes/Templates/Process Template.md': 'template',
+    'Project Notes/Templates/Runbook Template.md': 'template',
+    'Project Notes/Templates/Evidence Template.md': 'template',
     'Project Notes/Templates/Task Note Template.md': 'template',
     'Project Notes/Templates/Decision Record Template.md': 'template',
     'Project Notes/Templates/Incident Note Template.md': 'template',
@@ -108,9 +108,10 @@ test('template frontmatter uses the intended note types', () => {
   for (const [rel, expectedType] of Object.entries(expectedTypes)) {
     const frontmatter = readFrontmatter(rel);
     assert.equal(frontmatter.type, expectedType, rel);
-    if (['app', 'process', 'runbook', 'evidence'].includes(expectedType)) {
-      assert.ok(!Object.prototype.hasOwnProperty.call(frontmatter, 'last_verified'), rel);
-    }
+    assert.equal(frontmatter.status, 'active', rel);
+    assert.ok(frontmatter.tags.includes('template'), rel);
+    assert.ok(frontmatter.tags.includes('notes/template'), rel);
+    assert.ok(!Object.prototype.hasOwnProperty.call(frontmatter, 'last_verified'), rel);
   }
   assert.match(
     fs.readFileSync(path.join(kitRoot, 'Project Notes/Templates/Task Note Template.md'), 'utf8'),
@@ -1759,8 +1760,8 @@ test('upgrade permits missing legacy kitVersion but rejects malformed values', (
     delete config.kitVersion;
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
     const output = run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']);
-    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.2\.16/);
-    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.2.16');
+    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.3\.0/);
+    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.3.0');
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
