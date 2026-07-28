@@ -2,14 +2,22 @@ views:
   - type: table
     name: Active Work
     filters:
-      or:
-        - 'status == "draft"'
-        - 'status == "active"'
-        - 'status == "in-progress"'
-        - 'status == "blocked"'
-        - 'status == "partial"'
-        - 'status == "investigating"'
-        - 'status == "fixed-uncommitted"'
+      and:
+        - or:
+            - 'status == "draft"'
+            - 'status == "active"'
+            - 'status == "in-progress"'
+            - 'status == "blocked"'
+            - 'status == "partial"'
+            - 'status == "investigating"'
+            - 'status == "fixed-uncommitted"'
+        - or:
+            - 'type == "task"'
+            - 'type == "evidence"'
+            - 'type == "incident"'
+            - 'type == "decision"'
+            - 'type == "release"'
+            - 'type == "audit"'
     order:
       - file.name
       - type

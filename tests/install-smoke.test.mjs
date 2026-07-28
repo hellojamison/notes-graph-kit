@@ -81,13 +81,13 @@ test('template frontmatter uses the intended note types', () => {
   }
 });
 
-test('starter Active Work Base uses explicit open statuses and ordered columns', () => {
+test('starter Active Work Base uses explicit open statuses, operational types, and ordered columns', () => {
   const base = yaml.load(
     fs.readFileSync(path.join(kitRoot, 'Project Notes/Bases/Active Work.base'), 'utf8')
   );
   const activeWork = base.views.find((view) => view.name === 'Active Work');
   assert.ok(activeWork);
-  assert.deepEqual(activeWork.filters.or, [
+  assert.deepEqual(activeWork.filters.and[0].or, [
     'status == "draft"',
     'status == "active"',
     'status == "in-progress"',
@@ -95,6 +95,14 @@ test('starter Active Work Base uses explicit open statuses and ordered columns',
     'status == "partial"',
     'status == "investigating"',
     'status == "fixed-uncommitted"'
+  ]);
+  assert.deepEqual(activeWork.filters.and[1].or, [
+    'type == "task"',
+    'type == "evidence"',
+    'type == "incident"',
+    'type == "decision"',
+    'type == "release"',
+    'type == "audit"'
   ]);
   assert.deepEqual(activeWork.order, [
     'file.name',
