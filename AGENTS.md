@@ -7,6 +7,7 @@ The kit scaffolds an Obsidian vault skeleton, copies config-driven CLI helpers (
 ## Repo map
 
 - `install-notes-graph.cjs` — installer/upgrader; preferred way to propagate the kit.
+- `migrate-notes-graph.cjs` — audit/apply/rollback workflow for existing customized vaults.
 - `scripts/project-notes.cjs` — route/create/closeout helper for task notes.
 - `scripts/validate-project-notes-graph.cjs` — structured note/link validator.
 - `scripts/lib/project-notes-graph.cjs` — shared graph utilities (statuses, wikilink rules, route resolution).
@@ -45,8 +46,8 @@ Options: `--repo` (exact Git worktree root; defaults to cwd), `--app` (required;
 
 The installer:
 
-1. Copies the three helper scripts into `scripts/` (refuses to overwrite existing helper scripts unless `--force` is used).
-2. Writes `notes-graph.config.json` with app name, vault dir, routes, and `kitVersion`.
+1. Copies four managed helper/library files into the target's existing `scripts/` or `Scripts/` directory spelling (refuses to overwrite existing helper scripts unless `--force` is used).
+2. Writes `notes-graph.config.json` with app name, vault dir, routes, `kitVersion`, and independent `vaultMigrationState`.
 3. Copies the vault skeleton with the app name substituted, excluding this kit repo's dated local task notes (existing vault files are not overwritten unless both `--force` and `--force-vault` are used).
 4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:validate` into `package.json` and adds `js-yaml`; existing customized `notes:*` commands are preserved with a warning.
 5. Writes or appends a managed-marker-wrapped `## Project Notes Graph` block to `AGENTS.md` (creates the file if missing; skips a marker pair or exact legacy heading outside fenced code).
@@ -70,6 +71,16 @@ node install-notes-graph.cjs --repo /path/to/target/repo --upgrade
 Use `--dry-run` on install or upgrade to preview writes.
 Upgrades refuse a semantic-version downgrade unless `--allow-downgrade` is supplied for an intentional rollback.
 Upgrade rejects `--app`, `--vault`, `--force`, and `--force-vault`; a malformed installed `kitVersion` fails closed while a missing legacy version remains upgradeable.
+Upgrade output lists every cumulative vault-migration section applicable to the destination version. `kitVersion` tracks managed scripts, not completed vault migrations; the 0.4 audit classifies all applicable sections in one run without an intermediate manual rewrite.
+For 0.4.0, start with `node migrate-notes-graph.cjs audit --repo /path/to/target/repo --to 0.4.0`. Upgrade itself remains vault-untouched.
+
+Migration commands:
+
+- Audit: `node migrate-notes-graph.cjs audit --repo /path/to/repo --to 0.4.0 [--map migration.yml] [--json]`
+- Preview/apply: `node migrate-notes-graph.cjs apply --repo /path/to/repo --to 0.4.0 --all-safe [--accept <item-id> ...] [--dry-run]`
+- Rollback: `node migrate-notes-graph.cjs rollback --repo /path/to/repo --backup <backup-id>`
+
+`--dry-run` creates no backup. A real Git apply stores a durable local backup under `.notes-graph-kit/vault-migration-backups/<backup-id>` and excludes that path through `.git/info/exclude`; it is not a Git commit. All non-Git migration commands require `--allow-non-git`, and real apply additionally requires an explicit `--backup-dir`.
 
 ## Testing and verification
 
@@ -84,11 +95,13 @@ GitHub Actions CI runs `npm ci`, `npm test`, `npm run notes:validate`, `git diff
 - **Authoritative source only** — fix bugs and add features here, then `--upgrade` consuming repos. Do not edit retired `notes-graph-kit/` copies inside app repos.
 - **Target safety** — `--repo` must be the exact Git worktree root unless `--allow-non-git` is intentional. Filesystem root and the user home directory are always rejected.
 - **Vault safety** — `--vault` must be a directory name, not a path. Install never overwrites existing vault files unless both `--force` and `--force-vault` are supplied. Upgrade never touches vault content.
+- **Migration safety** — never substitute `--force --force-vault` for migration. Audit first, accept conflicts by exact item ID, preserve unmarked/custom content, and use the generated backup for rollback. Rollback refuses post-migration edits.
 - **Script safety** — install refuses to overwrite existing managed helper scripts unless `--force`; use `--upgrade` for repos already carrying this kit.
 - **Config guard** — re-install without `--force` or `--upgrade` fails if `notes-graph.config.json` already exists.
 - **Custom npm scripts** — if a target repo customized a `notes:*` command, the installer preserves it instead of overwriting.
-- **AGENTS.md merge** — install creates or appends a managed `## Project Notes Graph` block; it does not replace an existing section. Heading and marker examples inside fenced blocks do not count. Edit `AGENTS-snippet.md` here, then patch target repos manually if their existing block needs updating.
+- **AGENTS.md merge** — install creates or appends a managed `## Project Notes Graph` block; it does not replace an existing section. Heading and marker examples inside fenced blocks do not count. Migration refreshes an existing managed block automatically; a legacy unmarked heading is preserved unless its exact audited adoption item is accepted.
 - **Template contract** — all eight product templates are `type: template` source notes with exactly one marked fenced YAML mapping. Generate notes through `notes:new`; never copy scaffold metadata manually. Normal upgrade leaves these vault files untouched.
+- **Managed document sections** — `_Codex/Start Here.md`, `Notes System.md`, and `Templates/_README.md` wrap kit-owned body regions in path-specific managed markers. Put repo-specific additions outside those markers so later audited migrations can preserve them deterministically.
 - **Placeholder substitution** — only vault skeleton files get app/vault name substitution; scripts are copied verbatim.
 - **Version stamp** — bump `package.json` version when changing install behavior; target `notes-graph.config.json` `kitVersion` reflects what was installed.
 

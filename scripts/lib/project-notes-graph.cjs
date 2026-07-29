@@ -610,7 +610,7 @@ function resolveNoteInput(input, graph, expectedType = null) {
   if (direct) {
     const note = graph.noteByRel.get(direct);
     if (
-      (!expectedType || !isTemplate(direct))
+      !isTemplate(direct)
       && (!expectedType || note?.frontmatter?.type === expectedType)
     ) {
       return direct;
@@ -619,7 +619,7 @@ function resolveNoteInput(input, graph, expectedType = null) {
   const normalizedInput = normalizeInput(input);
   const matches = [];
   for (const note of graph.notes) {
-    if (expectedType && isTemplate(note.rel)) {
+    if (isTemplate(note.rel)) {
       continue;
     }
     if (expectedType && note.frontmatter?.type !== expectedType) {

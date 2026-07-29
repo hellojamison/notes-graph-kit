@@ -10,7 +10,6 @@ tags:
 
 # Templates
 
-<!-- notes-graph-kit:managed:templates-index:start -->
 These are CLI-managed source templates for structured notes:
 
 - [[Task Note Template]]
@@ -33,6 +32,3 @@ Supported types are `task`, `evidence`, `app`, `process`, `runbook`, `decision`,
 Each template note is itself `type: template`. Its single marked YAML scaffold defines the generated note metadata, and `notes:new` removes that scaffold from the finished note body. Do not copy or edit the scaffold into a destination note manually.
 
 Generated notes begin with type-appropriate status and tags. Add `last_verified` only after checking mutable claims, and set `source_of_truth` and `confidence` to match the evidence.
-
-This index's kit-owned guidance is enclosed by `notes-graph-kit:managed:templates-index` markers. Keep repo-specific template links or instructions outside the marker pair so an audited migration can preserve them.
-<!-- notes-graph-kit:managed:templates-index:end -->

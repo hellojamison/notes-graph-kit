@@ -33,6 +33,10 @@ function commandOutput(error) {
   return `${error.stdout || ''}${error.stderr || ''}${error.message}`;
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function assertValidateFails(repoRoot, pattern) {
   let failure = null;
   try {
@@ -183,6 +187,46 @@ test('note index resolves explicit paths and rejects wrong or ambiguous basename
   assert.equal(
     graphLib.resolveNoteInput('Processes/One/Shared', graph, 'process'),
     'Processes/One/Shared.md'
+  );
+
+  const templateGraph = {
+    notes: [
+      {
+        rel: 'Templates/Legacy Product.md',
+        frontmatter: { title: 'Runbook Template', type: 'runbook' }
+      },
+      {
+        rel: 'Runbooks/Real Runbook.md',
+        frontmatter: { title: 'Real Runbook', type: 'runbook' }
+      }
+    ]
+  };
+  templateGraph.index = graphLib.buildNoteIndex(
+    templateGraph.notes.map((note) => path.join(vaultRoot, note.rel)),
+    vaultRoot
+  );
+  templateGraph.noteByRel = new Map(
+    templateGraph.notes.map((note) => [note.rel, note])
+  );
+  assert.equal(
+    graphLib.resolveNoteInput('Templates/Legacy Product', templateGraph, null),
+    null,
+    'explicit template paths must not resolve without an expected type'
+  );
+  assert.equal(
+    graphLib.resolveNoteInput('Legacy Product', templateGraph, null),
+    null,
+    'template basenames must not resolve without an expected type'
+  );
+  assert.equal(
+    graphLib.resolveNoteInput('Runbook Template', templateGraph, null),
+    null,
+    'template titles must not resolve without an expected type'
+  );
+  assert.equal(
+    graphLib.resolveNoteInput('Real Runbook', templateGraph, null),
+    'Runbooks/Real Runbook.md',
+    'non-template notes should still resolve without an expected type'
   );
 });
 
@@ -1703,6 +1747,70 @@ test('semantic version comparison handles identifiers larger than Number safely'
   );
 });
 
+test('vault migration catalog is cumulative and upgrade guidance points to the auditor', () => {
+  const installer = requireFromTest(path.join(kitRoot, 'install-notes-graph.cjs'));
+  assert.deepEqual(
+    installer.applicableVaultMigrations('0.2.15'),
+    []
+  );
+  assert.deepEqual(
+    installer.applicableVaultMigrations('0.2.16').map(({ version }) => version),
+    ['0.2.16']
+  );
+  assert.deepEqual(
+    installer.applicableVaultMigrations('0.4.0').map(({ version }) => version),
+    ['0.2.16', '0.3.0', '0.4.0']
+  );
+  assert.deepEqual(
+    installer.applicableVaultMigrations('0.3.1').map(({ version }) => version),
+    ['0.2.16', '0.3.0']
+  );
+  assert.throws(
+    () => installer.applicableVaultMigrations('not-semver'),
+    /Target migration version must be valid semantic versioning/
+  );
+
+  const guidance = installer.vaultMigrationGuidance('0.4.0').join('\n');
+  assert.match(guidance, /migrate-notes-graph\.cjs audit --repo "<target-repo>" --to 0\.4\.0/);
+  assert.match(guidance, /kitVersion tracks managed scripts, not whether vault migrations were completed/);
+});
+
+test('upgrade output surfaces all applicable migrations for direct and previously stamped upgrades', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-upgrade-guidance-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    const configPath = path.join(repoRoot, 'notes-graph.config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+    for (const installedVersion of ['0.2.15', '0.3.0']) {
+      config.kitVersion = installedVersion;
+      fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+      const output = run(kitRoot, [
+        'install-notes-graph.cjs',
+        '--repo', repoRoot,
+        '--upgrade',
+        '--dry-run'
+      ]);
+      assert.match(output, new RegExp(`\\[dry-run\\] Upgraded notes graph kit ${escapeRegExp(installedVersion)} -> 0\\.4\\.0`));
+      assert.match(
+        output,
+        new RegExp(`migrate-notes-graph\\.cjs audit --repo ${escapeRegExp(JSON.stringify(fs.realpathSync(repoRoot)))} --to 0\\.4\\.0`)
+      );
+      assert.equal(
+        JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion,
+        installedVersion,
+        'dry-run should not update the installed version'
+      );
+    }
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
 test('upgrade rejects install-only flags without changing installed files', () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-upgrade-flags-'));
   try {
@@ -1760,8 +1868,8 @@ test('upgrade permits missing legacy kitVersion but rejects malformed values', (
     delete config.kitVersion;
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
     const output = run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']);
-    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.3\.0/);
-    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.3.0');
+    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.4\.0/);
+    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.4.0');
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
@@ -2152,4 +2260,137 @@ test('install refuses to clobber an existing config without --force', () => {
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
+});
+
+test('install preserves an existing Scripts directory spelling and promotes js-yaml to runtime', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-uppercase-scripts-'));
+  try {
+    fs.mkdirSync(path.join(repoRoot, 'Scripts'));
+    fs.writeFileSync(path.join(repoRoot, 'package.json'), `${JSON.stringify({
+      name: 'uppercase-scripts',
+      private: true,
+      devDependencies: {
+        'js-yaml': '^4.0.0',
+        eslint: '^9.0.0'
+      }
+    }, null, 2)}\n`);
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Uppercase App'
+    ]);
+
+    assert.ok(fs.existsSync(path.join(repoRoot, 'Scripts/project-notes.cjs')));
+    assert.ok(fs.readdirSync(repoRoot).includes('Scripts'));
+    assert.ok(!fs.readdirSync(repoRoot).includes('scripts'));
+    const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+    assert.equal(pkg.scripts.notes, 'node Scripts/project-notes.cjs');
+    assert.equal(pkg.scripts['notes:validate'], 'node Scripts/validate-project-notes-graph.cjs');
+    assert.equal(pkg.dependencies['js-yaml'], '^4.0.0');
+    assert.equal(pkg.devDependencies.eslint, '^9.0.0');
+    assert.equal(pkg.devDependencies['js-yaml'], undefined);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('fresh installs stamp all applicable vault migration IDs', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-migration-state-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Migration State App'
+    ]);
+    const config = JSON.parse(fs.readFileSync(path.join(repoRoot, 'notes-graph.config.json'), 'utf8'));
+    assert.deepEqual(config.vaultMigrationState, {
+      schemaVersion: 1,
+      applied: [
+        'vault-0.2.16-schema-indexes',
+        'vault-0.3.0-typed-templates',
+        'vault-0.4.0-managed-sections'
+      ]
+    });
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('install does not attest migrations when preserving a colliding vault component', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-collision-state-'));
+  try {
+    fs.mkdirSync(path.join(repoRoot, 'Project Notes', 'Templates'), { recursive: true });
+    fs.writeFileSync(
+      path.join(repoRoot, 'Project Notes', 'Templates', 'Runbook Template.md'),
+      'custom collision\n'
+    );
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Collision App'
+    ]);
+    const config = JSON.parse(fs.readFileSync(path.join(repoRoot, 'notes-graph.config.json'), 'utf8'));
+    assert.deepEqual(config.vaultMigrationState, {
+      schemaVersion: 1,
+      applied: []
+    });
+    assert.equal(
+      fs.readFileSync(
+        path.join(repoRoot, 'Project Notes', 'Templates', 'Runbook Template.md'),
+        'utf8'
+      ),
+      'custom collision\n'
+    );
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('callable validator reports stable prospective virtual-tree errors', () => {
+  const validator = requireFromTest(
+    path.join(kitRoot, 'scripts/lib/validate-project-notes-graph.cjs')
+  );
+  const result = validator.validateProjectNotesGraph({
+    vaultRoot: '/virtual/Project Notes',
+    config: {
+      appName: 'Virtual App',
+      vaultDir: 'Project Notes',
+      appRel: 'Apps/Virtual App.md',
+      routes: []
+    },
+    files: new Map([
+      ['Apps/Virtual App.md', [
+        '---',
+        'title: Virtual App',
+        'schema_version: 1',
+        'type: app',
+        'status: current',
+        'date: "2026-07-28"',
+        'tags: [notes/app]',
+        'related_apps: ["[[Apps/Virtual App|Virtual App]]"]',
+        '---',
+        ''
+      ].join('\n')],
+      ['Managed Root.md', [
+        '---',
+        'title: Managed Root',
+        'schema_version: 1',
+        'type: evidence',
+        'status: active',
+        'date: "2026-07-28"',
+        'tags: [notes/evidence]',
+        'related_apps: ["[[Apps/Virtual App|Virtual App]]"]',
+        '---',
+        '',
+        '[[Missing Target]]'
+      ].join('\n')]
+    ])
+  });
+
+  assert.deepEqual(result.errors, [
+    'Managed Root.md: has broken wikilink [[Missing Target]]'
+  ]);
+  assert.deepEqual(result.warnings, [
+    'route alias "notes-graph-maintenance" points to missing Processes/Notes Graph Maintenance.md'
+  ]);
 });

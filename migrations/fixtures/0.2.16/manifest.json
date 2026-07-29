@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kitVersion": "0.2.16",
+  "files": {
+    "Project Notes/Bases/Runbooks.base": "4ce13604a839934d6193f2573df2f59096cb69dc555e04f9c7c56c38269577e8",
+    "Project Notes/Notes System.md": "0a93b344e842b0dffe2f68dfb5de78182074a0c365dd093220633384a94cfb42",
+    "Project Notes/Templates/Runbook Template.md": "f7171457100ba46a5e02671d3df2310e76842f7733747c02692112df2c9f3a9c",
+    "Project Notes/Templates/_README.md": "b2428d34d0fae0ea93c43400f8eab9788bc1b4f4fb9789d2ac1591144ead344e",
+    "Project Notes/_Codex/Start Here.md": "8f625ceaa34bcebd15fd9733f8a239e90f6e49acbe5458d19c7425c7fa2d2e4e"
+  }
+}

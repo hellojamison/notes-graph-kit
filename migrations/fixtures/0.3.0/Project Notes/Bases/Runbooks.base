@@ -1,0 +1,15 @@
+filters:
+  not:
+    - 'file.inFolder("Templates")'
+
+views:
+  - type: table
+    name: Runbooks
+    filters:
+      and:
+        - type == "runbook"
+    order:
+      - file.name
+      - status
+      - area
+      - last_verified

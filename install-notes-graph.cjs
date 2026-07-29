@@ -24,16 +24,24 @@ const WIKILINK_DELIMITER_RE = /[\[\]|]/;
 const MANAGED_SCRIPTS = [
   'scripts/project-notes.cjs',
   'scripts/validate-project-notes-graph.cjs',
-  'scripts/lib/project-notes-graph.cjs'
+  'scripts/lib/project-notes-graph.cjs',
+  'scripts/lib/validate-project-notes-graph.cjs'
 ];
 
-const NOTES_NPM_SCRIPTS = {
-  notes: 'node scripts/project-notes.cjs',
-  'notes:route': 'node scripts/project-notes.cjs route',
-  'notes:new': 'node scripts/project-notes.cjs new',
-  'notes:closeout': 'node scripts/project-notes.cjs closeout',
-  'notes:validate': 'node scripts/validate-project-notes-graph.cjs'
-};
+const VAULT_MIGRATIONS = [
+  {
+    version: '0.2.16',
+    id: 'vault-0.2.16-schema-indexes'
+  },
+  {
+    version: '0.3.0',
+    id: 'vault-0.3.0-typed-templates'
+  },
+  {
+    version: '0.4.0',
+    id: 'vault-0.4.0-managed-sections'
+  }
+];
 
 function usage() {
   return `Notes graph kit installer (kit version ${kitVersion})
@@ -170,6 +178,24 @@ function compareSemver(left, right) {
     return leftPart > rightPart ? 1 : -1;
   }
   return 0;
+}
+
+function applicableVaultMigrations(targetVersion) {
+  if (!parseSemver(targetVersion)) {
+    throw new Error(`Target migration version must be valid semantic versioning; found ${JSON.stringify(targetVersion)}`);
+  }
+  return VAULT_MIGRATIONS
+    .filter((migration) => compareSemver(migration.version, targetVersion) <= 0)
+    .map((migration) => ({ ...migration }));
+}
+
+function vaultMigrationGuidance(targetVersion, repoRoot = '<target-repo>') {
+  return [
+    'Vault content was not touched.',
+    'kitVersion tracks managed scripts, not whether vault migrations were completed.',
+    'Audit the vault against every applicable migration:',
+    `  node ${path.join(kitRoot, 'migrate-notes-graph.cjs')} audit --repo ${JSON.stringify(repoRoot)} --to ${targetVersion}`
+  ];
 }
 
 function canonicalExistingDirectory(inputPath) {
@@ -320,13 +346,45 @@ function isInstallSkeletonRel(rel) {
   return true;
 }
 
-function buildConfig(appName, vaultDir, appFileBase) {
+function detectScriptsDir(repoRoot) {
+  const names = fs.readdirSync(repoRoot)
+    .filter((name) => name === 'scripts' || name === 'Scripts');
+  const directories = names.filter((name) => {
+    const stat = fs.lstatSync(path.join(repoRoot, name));
+    if (stat.isSymbolicLink()) {
+      throw new Error(`Write target parent must not be a symlink: ${path.join(repoRoot, name)}`);
+    }
+    return stat.isDirectory();
+  });
+  if (directories.length > 1) {
+    throw new Error('Both scripts/ and Scripts/ exist; choose one before installing the notes graph kit');
+  }
+  return directories[0] || 'scripts';
+}
+
+function notesNpmScripts(scriptsDir = 'scripts') {
+  return {
+    notes: `node ${scriptsDir}/project-notes.cjs`,
+    'notes:route': `node ${scriptsDir}/project-notes.cjs route`,
+    'notes:new': `node ${scriptsDir}/project-notes.cjs new`,
+    'notes:closeout': `node ${scriptsDir}/project-notes.cjs closeout`,
+    'notes:validate': `node ${scriptsDir}/validate-project-notes-graph.cjs`
+  };
+}
+
+function buildConfig(appName, vaultDir, appFileBase, options = {}) {
+  const appliedMigrations = options.appliedMigrations
+    || applicableVaultMigrations(kitVersion).map((migration) => migration.id);
   return {
     appName,
     vaultDir,
     scriptName: 'project-notes',
     appRel: `Apps/${appFileBase}.md`,
     kitVersion,
+    vaultMigrationState: {
+      schemaVersion: 1,
+      applied: [...appliedMigrations]
+    },
     routes: [
       {
         id: 'notes-graph-maintenance',
@@ -354,15 +412,15 @@ function buildVaultWrites(appName, vaultDir, appFileBase) {
   return writes;
 }
 
-function buildScriptWrites() {
-  return MANAGED_SCRIPTS.map((rel) => ({
-    rel,
-    content: fs.readFileSync(path.join(kitRoot, rel), 'utf8'),
+function buildScriptWrites(scriptsDir = 'scripts') {
+  return MANAGED_SCRIPTS.map((sourceRel) => ({
+    rel: `${scriptsDir}/${sourceRel.slice('scripts/'.length)}`,
+    content: fs.readFileSync(path.join(kitRoot, sourceRel), 'utf8'),
     kind: 'script'
   }));
 }
 
-function mergePackageJson(repoRoot) {
+function mergePackageJson(repoRoot, scriptsDir = detectScriptsDir(repoRoot)) {
   const packagePath = path.join(repoRoot, 'package.json');
   assertRegularFileIfExists(packagePath, 'package.json');
   const exists = pathExists(packagePath);
@@ -373,7 +431,7 @@ function mergePackageJson(repoRoot) {
   pkg.dependencies = pkg.dependencies || {};
   const preservedScripts = [];
   let changed = !exists;
-  for (const [name, command] of Object.entries(NOTES_NPM_SCRIPTS)) {
+  for (const [name, command] of Object.entries(notesNpmScripts(scriptsDir))) {
     if (pkg.scripts[name] !== command) {
       if (pkg.scripts[name] && pkg.scripts[name] !== command) {
         // Preserve a repo's customized notes command; only fill gaps.
@@ -384,7 +442,14 @@ function mergePackageJson(repoRoot) {
       changed = true;
     }
   }
-  if (!pkg.dependencies['js-yaml'] && !(pkg.devDependencies || {})['js-yaml']) {
+  if (!pkg.dependencies['js-yaml'] && (pkg.devDependencies || {})['js-yaml']) {
+    pkg.dependencies['js-yaml'] = pkg.devDependencies['js-yaml'];
+    delete pkg.devDependencies['js-yaml'];
+    if (Object.keys(pkg.devDependencies).length === 0) {
+      delete pkg.devDependencies;
+    }
+    changed = true;
+  } else if (!pkg.dependencies['js-yaml']) {
     pkg.dependencies['js-yaml'] = '^4.1.0';
     changed = true;
   }
@@ -394,6 +459,67 @@ function mergePackageJson(repoRoot) {
       : null,
     preservedScripts
   };
+}
+
+function mergePackageLock(repoRoot) {
+  const lockPath = path.join(repoRoot, 'package-lock.json');
+  if (!pathExists(lockPath)) {
+    return null;
+  }
+  assertRegularFileIfExists(lockPath, 'package-lock.json');
+  const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+  const packagePath = path.join(repoRoot, 'package.json');
+  const packageJson = pathExists(packagePath)
+    ? JSON.parse(fs.readFileSync(packagePath, 'utf8'))
+    : {};
+  const jsYamlRange = packageJson.dependencies?.['js-yaml']
+    || packageJson.devDependencies?.['js-yaml']
+    || '^4.1.0';
+  const sourceLock = JSON.parse(
+    fs.readFileSync(path.join(kitRoot, 'package-lock.json'), 'utf8')
+  );
+  let changed = false;
+  if (lock.packages && lock.packages['']) {
+    lock.packages[''].dependencies = lock.packages[''].dependencies || {};
+    if (!lock.packages[''].dependencies['js-yaml']) {
+      lock.packages[''].dependencies['js-yaml'] = jsYamlRange;
+      changed = true;
+    }
+    if (lock.packages[''].devDependencies?.['js-yaml']) {
+      delete lock.packages[''].devDependencies['js-yaml'];
+      if (Object.keys(lock.packages[''].devDependencies).length === 0) {
+        delete lock.packages[''].devDependencies;
+      }
+      changed = true;
+    }
+    for (const rel of ['node_modules/js-yaml', 'node_modules/argparse']) {
+      if (!lock.packages[rel]) {
+        lock.packages[rel] = sourceLock.packages[rel];
+        changed = true;
+      }
+      if (lock.packages[rel]?.dev === true) {
+        delete lock.packages[rel].dev;
+        changed = true;
+      }
+    }
+  }
+  if (lock.dependencies?.['js-yaml']) {
+    if (lock.dependencies['js-yaml'].dev === true) {
+      delete lock.dependencies['js-yaml'].dev;
+      changed = true;
+    }
+    if (lock.dependencies.argparse?.dev === true) {
+      delete lock.dependencies.argparse.dev;
+      changed = true;
+    }
+  }
+  return changed
+    ? {
+        rel: 'package-lock.json',
+        content: `${JSON.stringify(lock, null, 2)}\n`,
+        kind: 'package'
+      }
+    : null;
 }
 
 function preservedScriptLines(preservedScripts) {
@@ -409,12 +535,15 @@ function agentsSnippet(appName, vaultDir, appFileBase) {
   const raw = fs.readFileSync(path.join(kitRoot, 'AGENTS-snippet.md'), 'utf8');
   const blockMatch = raw.match(/```md\n([\s\S]*?)```/);
   const block = blockMatch ? blockMatch[1] : raw;
+  const headingSentinel = '\u0000NOTES_GRAPH_AGENTS_HEADING\u0000';
   const rendered = replaceAppPlaceholders(block, appName, appFileBase)
+    .replace(/^## Project Notes Graph[ \t]*$/m, headingSentinel)
     .split(SKELETON_VAULT_DIR).join(vaultDir);
-  if (rendered.includes(AGENTS_SECTION_START) && rendered.includes(AGENTS_SECTION_END)) {
-    return rendered;
+  const restored = rendered.replace(headingSentinel, '## Project Notes Graph');
+  if (restored.includes(AGENTS_SECTION_START) && restored.includes(AGENTS_SECTION_END)) {
+    return restored;
   }
-  return `${AGENTS_SECTION_START}\n${rendered.trimEnd()}\n${AGENTS_SECTION_END}\n`;
+  return `${AGENTS_SECTION_START}\n${restored.trimEnd()}\n${AGENTS_SECTION_END}\n`;
 }
 
 function scanAgentsContent(content) {
@@ -623,10 +752,14 @@ function executeWriteTransaction(repoRoot, writes, options = {}) {
   let cleanupWarning = null;
   try {
     writes.forEach((write, index) => {
-      const stagedPath = path.join(transactionRoot, `${index}.new`);
-      fs.writeFileSync(stagedPath, write.content);
       const targetPath = targetPathForWrite(repoRoot, write.rel);
-      if (pathExists(targetPath)) {
+      const stagedPath = write.delete ? null : path.join(transactionRoot, `${index}.new`);
+      if (!write.delete) {
+        fs.writeFileSync(stagedPath, write.content);
+      }
+      if (!write.delete && Number.isInteger(write.mode)) {
+        fs.chmodSync(stagedPath, write.mode & 0o7777);
+      } else if (!write.delete && pathExists(targetPath)) {
         fs.chmodSync(stagedPath, fs.lstatSync(targetPath).mode & 0o7777);
       }
       staged.push({ write, stagedPath, backupPath: path.join(transactionRoot, `${index}.bak`) });
@@ -650,9 +783,13 @@ function executeWriteTransaction(repoRoot, writes, options = {}) {
         operation.hadOriginal = true;
         hook({ phase: 'after-backup', rel: write.rel, index });
       }
-      fs.renameSync(stagedPath, targetPath);
-      operation.installed = true;
-      hook({ phase: 'after-write', rel: write.rel, index });
+      if (!write.delete) {
+        fs.renameSync(stagedPath, targetPath);
+        operation.installed = true;
+        hook({ phase: 'after-write', rel: write.rel, index });
+      } else {
+        hook({ phase: 'after-delete', rel: write.rel, index });
+      }
     });
     hook({ phase: 'after-commit', rel: null, index: writes.length });
   } catch (error) {
@@ -731,19 +868,32 @@ function install(args) {
   const dryRun = Boolean(args['dry-run']);
   const force = Boolean(args.force);
   const forceVault = Boolean(args['force-vault']);
+  const scriptsDir = detectScriptsDir(repoRoot);
+  const vaultWrites = buildVaultWrites(appName, vaultDir, appFileBase);
+  const hasPreservedVaultCollision = !(force && forceVault)
+    && vaultWrites.some((write) => pathExists(targetPathForWrite(repoRoot, write.rel)));
+  const config = buildConfig(appName, vaultDir, appFileBase, {
+    appliedMigrations: hasPreservedVaultCollision
+      ? []
+      : applicableVaultMigrations(kitVersion).map((migration) => migration.id)
+  });
 
   const writes = [
-    ...buildScriptWrites(),
+    ...buildScriptWrites(scriptsDir),
     {
       rel: 'notes-graph.config.json',
-      content: `${JSON.stringify(buildConfig(appName, vaultDir, appFileBase), null, 2)}\n`,
+      content: `${JSON.stringify(config, null, 2)}\n`,
       kind: 'config'
     },
-    ...buildVaultWrites(appName, vaultDir, appFileBase)
+    ...vaultWrites
   ];
-  const packageMerge = mergePackageJson(repoRoot);
+  const packageMerge = mergePackageJson(repoRoot, scriptsDir);
   if (packageMerge.write) {
     writes.push(packageMerge.write);
+  }
+  const packageLockWrite = mergePackageLock(repoRoot);
+  if (packageLockWrite) {
+    writes.push(packageLockWrite);
   }
   const agentsResult = buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase);
   if (agentsResult.write) {
@@ -804,16 +954,21 @@ function upgrade(args) {
     );
   }
 
-  const writes = buildScriptWrites();
+  const scriptsDir = detectScriptsDir(repoRoot);
+  const writes = buildScriptWrites(scriptsDir);
   config.kitVersion = kitVersion;
   writes.push({
     rel: 'notes-graph.config.json',
     content: `${JSON.stringify(config, null, 2)}\n`,
     kind: 'config'
   });
-  const packageMerge = mergePackageJson(repoRoot);
+  const packageMerge = mergePackageJson(repoRoot, scriptsDir);
   if (packageMerge.write) {
     writes.push(packageMerge.write);
+  }
+  const packageLockWrite = mergePackageLock(repoRoot);
+  if (packageLockWrite) {
+    writes.push(packageLockWrite);
   }
 
   const results = planWrites(repoRoot, writes, { force: true, forceVault: false });
@@ -824,7 +979,7 @@ function upgrade(args) {
     ...preservedScriptLines(packageMerge.preservedScripts),
     ...(transaction?.cleanupWarning ? [`  warn  ${transaction.cleanupWarning}`] : []),
     '',
-    'Vault content was not touched. Run npm run notes:validate to confirm.'
+    ...vaultMigrationGuidance(kitVersion, repoRoot)
   ];
   if (packageMerge.preservedScripts.length > 0) {
     lines.push('', 'package.json has custom notes:* scripts; verify they call the refreshed kit or update them manually.');
@@ -872,10 +1027,18 @@ module.exports = {
   main,
   parseArgs,
   buildConfig,
+  buildVaultWrites,
+  buildScriptWrites,
+  mergePackageJson,
+  mergePackageLock,
+  detectScriptsDir,
+  notesNpmScripts,
   agentsSnippet,
   scanAgentsContent,
   compareSemver,
   parseSemver,
+  applicableVaultMigrations,
+  vaultMigrationGuidance,
   validateRepoRoot,
   buildAgentsBlock,
   applyAgentsBlock,
@@ -884,7 +1047,14 @@ module.exports = {
   executeWriteTransaction,
   validateVaultDir,
   validateAppName,
+  fileBaseForApp,
   replaceAppPlaceholders,
   isInstallSkeletonRel,
+  targetPathForWrite,
+  pathExists,
+  AGENTS_SECTION_START,
+  AGENTS_SECTION_END,
+  VAULT_MIGRATIONS,
+  kitVersion,
   assertNoProtectedExistingWrites
 };

@@ -15,7 +15,6 @@ related_apps:
 
 # Notes System
 
-<!-- notes-graph-kit:managed:notes-system:start -->
 project notes are an operational memory system, not a diary. The notes should make future work faster by recording what changed, why it changed, what proved it, and what remains unverified.
 
 ## Core Rules
@@ -73,20 +72,6 @@ Use `notes:new --type task|evidence|app|process|runbook|decision|incident|releas
 
 `--process` is optional for app, process, runbook, decision, incident, and release notes.
 Draft process, runbook, decision, and release notes are exempt from operational completeness and inbound-link warnings. Before changing a draft to an active/current/verified status, add the relationships required by the validator.
-
-## Existing Vault Migration
-
-Normal kit upgrade refreshes managed scripts and `kitVersion` but does not edit vault content. From the authoritative kit checkout, audit before applying:
-
-```bash
-node migrate-notes-graph.cjs audit --repo /path/to/repo --to 0.4.0
-```
-
-Audit is read-only. A mapping can adopt an exact existing unmanaged note in place by declaring its vault-relative path, title, type, status, date, and tags; adoption does not move the file or replace its body.
-
-Apply only audited safe changes and individually reviewed item IDs. A real apply creates a durable backup; dry-run does not. Use `rollback --backup <backup-id>` when needed. Rollback refuses files changed after migration so later user work is never silently overwritten.
-
-This note, [[_Codex/Start Here|Start Here]], and [[Templates/_README|Templates]] mark their kit-owned body regions. Keep repo-specific sections outside the managed marker pairs so later migrations can preserve them deterministically.
 
 ## Status Rules
 
@@ -194,4 +179,3 @@ That is better than:
 ```md
 - Fixed demos page.
 ```
-<!-- notes-graph-kit:managed:notes-system:end -->

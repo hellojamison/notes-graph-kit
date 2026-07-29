@@ -7,6 +7,8 @@ pointers.
 ## What is included
 
 - `install-notes-graph.cjs` — installer/upgrader (preferred way to use the kit).
+- `migrate-notes-graph.cjs` — audited, backup-backed migration of an existing
+  customized vault.
 - `scripts/project-notes.cjs` — route/create/closeout helper for task notes.
 - `scripts/validate-project-notes-graph.cjs` — structured note/link validator.
 - `scripts/lib/project-notes-graph.cjs` — shared graph utilities.
@@ -55,10 +57,11 @@ Options:
 
 The installer:
 
-1. Copies the three helper scripts verbatim into `scripts/` (refuses to
+1. Copies the four managed helper/library files verbatim into the target's
+   existing `scripts/` or `Scripts/` directory spelling (refuses to
    overwrite existing helper scripts unless `--force` is used).
-2. Writes `notes-graph.config.json` with the app name, vault dir, and a
-   `kitVersion` stamp.
+2. Writes `notes-graph.config.json` with the app name, vault dir, a
+   `kitVersion` stamp, and independent `vaultMigrationState`.
 3. Copies the vault skeleton with the app name substituted, excluding this
    kit repo's dated local task notes. Existing vault files are skipped unless
    both `--force` and `--force-vault` are supplied.
@@ -95,6 +98,25 @@ Re-copies the kit-managed scripts, bumps `kitVersion` in the target config, and
 never touches vault content. Use `--dry-run` to preview. The target's
 `kitVersion` tells you which kit vintage a repo has.
 
+After upgrading to 0.4.0, audit the still-untouched vault:
+
+```bash
+node migrate-notes-graph.cjs audit \
+  --repo /path/to/target/repo \
+  --to 0.4.0
+```
+
+Upgrade output prints this audit command. Do not use `--force --force-vault` as
+a migration shortcut for a customized vault.
+
+After every upgrade, the installer prints the cumulative vault-migration
+sections applicable to the destination version and the exact path to this
+README. The checklist is intentionally cumulative: `kitVersion` records
+managed-script installation, not whether a prior vault migration was completed.
+Run the 0.4.0 migrator once; its audit classifies every applicable historical
+change. For example, a direct `0.2.15` → `0.4.0` audit evaluates the 0.2.16,
+0.3.0, and 0.4.0 migrations without requiring an intermediate manual rewrite.
+
 Upgrades refuse to replace a newer semantic kit version with an older checkout.
 Use `--allow-downgrade` only for an intentional rollback.
 An installed but malformed `kitVersion` fails closed; a legacy config with no
@@ -105,76 +127,161 @@ Existing repos with older or renamed helper scripts (e.g. `overcue-notes.cjs`,
 `notes.cjs`, split `notes-*.cjs`) keep working through their `notes:*` npm
 scripts; upgrade them only when a fix needs propagating.
 
-### Existing vault migration for 0.3.0
-
-Version 0.3.0 makes all eight structured-note templates machine-readable and
-adds typed creation for task, evidence, app, process, runbook, decision,
-incident, and release notes. `--upgrade` refreshes the CLI scripts and
-`kitVersion` but remains vault-untouched, so merge these vault changes manually:
-
-1. Replace the eight files under `Templates/` with their 0.3.0 versions after
-   preserving any local body customizations. Each template's own frontmatter
-   must be `type: template`, and each body must contain exactly one marked YAML
-   scaffold using the marker pair shipped by the kit.
-2. Merge the 0.3.0 guidance from `Templates/_README.md`, `_Codex/Start Here.md`,
-   and `Notes System.md`.
-3. Do not extract or copy fenced scaffold metadata into destination notes.
-   `notes:new` validates and removes the marked block automatically.
-4. Run `npm run notes:validate`, then create disposable examples for the note
-   types used by the target repo before relying on the migrated templates.
-
-Existing `AGENTS.md` blocks are also upgrade-untouched. Merge the `notes:new`
-type list and `notes:closeout --certify` guidance from `AGENTS-snippet.md`
-manually when updating an existing install.
-
 ### Existing vault migration for 0.2.16
 
 Version 0.2.16 makes wikilink resolution path-safe, checks links in root
 schema-managed notes and templates, and brings the fresh-install seed notes onto
-the `schema_version: 1` contract. `--upgrade` still never edits vault content,
-so existing installs need a small manual vault migration after upgrading:
+the `schema_version: 1` contract.
 
-1. Add schema-managed `_README.md` index notes under `Decisions/`, `Incidents/`,
-   `Releases/`, `Runbooks/`, and `Known-Good/`, including a `related_apps` link
-   to the target repo's app note. If a target repo intentionally does not use
-   one of those folders, remove or replace its link in `Notes System.md`.
-2. Add `schema_version: 1`, the original note date, and a non-empty
-   type-appropriate `tags` list to `_Codex/Start Here.md`, the starter app,
-   process, runbook, decision, and evidence notes, plus the App, Process,
-   Runbook, and Evidence templates. Preserve their existing app,
-   source-of-truth, confidence, and relationship fields.
-3. Update `Templates/Task Note Template.md` with a final `## Graph Links`
-   section. Remove the literal `last_verified: "YYYY-MM-DD"` property from the
-   App, Process, Runbook, and Evidence template frontmatter; add
-   `last_verified` only after checking the copied note's mutable claims.
-4. Update `Templates/_README.md` to list all eight shipped templates and explain
-   that copied notes must replace `title`, `type`, `date`, `status`, tags, and
-   graph relationships.
-5. Add this global filter to Active Work, Decisions, Incidents, and Runbooks:
+The 0.4.0 audit represents this historical migration as reviewable items:
+missing folder indexes, required seed metadata, template-safe Base filters,
+canonical date-only values, and path/ambiguity diagnostics. Safe additions can
+be selected with `--all-safe`; collisions or customized files remain unchanged
+unless their exact item IDs are accepted. Use a mapping when an existing
+renamed or unmanaged note should satisfy a required typed path.
 
-   ```yaml
-   filters:
-     not:
-       - 'file.inFolder("Templates")'
+Fresh installs already contain these changes. Existing `AGENTS.md` content
+remains upgrade-untouched and is handled as a separate audited item.
+
+### Existing vault migration for 0.3.0
+
+Version 0.3.0 makes all eight structured-note templates machine-readable and
+adds typed creation for task, evidence, app, process, runbook, decision,
+incident, and release notes.
+
+The 0.4.0 audit classifies each template and managed guide section without
+blindly replacing a customized file. It can install pristine scaffold contracts
+and managed document regions as safe items; local conflicts require explicit
+item acceptance and remain recoverable through the generated backup. Do not
+extract fenced scaffold metadata into destination notes; `notes:new` validates
+and removes the marked block automatically.
+
+After apply, validate the real vault and exercise the typed creation paths in a
+scratch clone or worktree.
+
+### Existing vault migration for 0.4.0
+
+Version 0.4.0 adds an explicit audit/apply/rollback workflow. It adopts older
+or customized vaults without treating a matching pathname as permission to
+overwrite user content.
+
+1. Audit first. Audit is read-only and reports safe changes, conflicts, and
+   stable item IDs:
+
+   ```bash
+   node migrate-notes-graph.cjs audit \
+     --repo /path/to/target/repo \
+     --to 0.4.0
    ```
 
-   In Notes Review, preserve its existing global `and` filters and add:
+   Add `--json` for machine-readable output. For an unmanaged vault with no kit
+   config, identify it explicitly with `--app "App Name" --vault "Existing
+   Notes"`. Non-Git targets also require `--allow-non-git`.
+
+2. For existing notes that should join the typed graph, pass a mapping file
+   with `--map migration.yml`:
 
    ```yaml
-   - not:
-       - 'file.inFolder("Templates")'
+   schema_version: 1
+   entries:
+     - path: Apps/Existing App.md
+       title: Existing App
+       type: app
+       status: current
+       date: "2026-07-28"
+       tags:
+         - notes/app
    ```
 
-6. Replace any timestamp-shaped schema metadata such as
-   `2026-06-03T00:00:00.000Z` with `YYYY-MM-DD`.
-7. Run `npm run notes:validate`. Wrong-folder links no longer resolve through an
-   unrelated note with the same basename, and ambiguous folderless links must
-   be replaced with explicit vault-relative paths.
+   Entry paths are relative to the configured vault root. A mapping adopts the
+   exact note in place: it does not move or rename the file, replace its body,
+   discard optional frontmatter fields, or authorize changes to a different
+   path.
 
-Fresh installs already contain these index notes and schema fields.
-Upgrade also leaves an existing `AGENTS.md` block untouched. Legacy real
-headings remain supported; add the marker lines from `AGENTS-snippet.md`
-manually only if you want the block to carry the new managed boundaries.
+   Re-run audit with the mapping:
+
+   ```bash
+   node migrate-notes-graph.cjs audit \
+     --repo /path/to/target/repo \
+     --to 0.4.0 \
+     --map migration.yml
+   ```
+
+3. Preview the proposed apply without creating a backup:
+
+   ```bash
+   node migrate-notes-graph.cjs apply \
+     --repo /path/to/target/repo \
+     --to 0.4.0 \
+     --map migration.yml \
+     --all-safe \
+     --accept <reviewed-item-id> \
+     --dry-run
+   ```
+
+   `--accept` is repeatable. Use only item IDs reviewed in the matching audit.
+   Omit an item to leave it unchanged. Repeat the same `--app`, `--vault`, and
+   `--map` inputs used for audit. Omit `--map` from both commands when no
+   adoption mapping is needed.
+
+4. Run the same command without `--dry-run` to apply. A Git target receives a
+   durable local backup under
+   `.notes-graph-kit/vault-migration-backups/<backup-id>`, which the migrator
+   adds to `.git/info/exclude`; it is not a Git commit. For a non-Git target,
+   add `--allow-non-git --backup-dir /absolute/backup/directory`; apply refuses
+   a non-Git migration without an explicit backup directory.
+
+5. Validate and review the resulting diff:
+
+   ```bash
+   npm run notes:validate -- --verbose
+   git diff --check
+   git diff -- "Project Notes" AGENTS.md notes-graph.config.json
+   ```
+
+   If the vault has a different configured name, substitute that path. Exercise
+   typed note creation in a scratch clone or worktree, not by creating
+   disposable notes and routes in the working vault.
+
+6. Roll back by backup ID if the accepted result is wrong:
+
+   ```bash
+   node migrate-notes-graph.cjs rollback \
+     --repo /path/to/target/repo \
+     --backup <backup-id>
+   ```
+
+   Include `--backup-dir` when the backup is outside the default directory.
+   A non-Git rollback also requires `--allow-non-git`. Rollback refuses to
+   overwrite files changed after migration; review and preserve those edits
+   instead of forcing a restore.
+
+Backups record original existence, before/after SHA-256 hashes, POSIX modes,
+migration IDs, and the prior migration-state object. Rollback restores file
+bytes and POSIX modes and removes migration-created files and empty
+directories. It does not restore timestamps or extended attributes.
+
+`vaultMigrationState` is independent from `kitVersion`. A missing state object
+is never treated as proof either way: audit inspects the actual managed
+components, and a migration ID is recorded only when that contract is
+semantically compliant. Migration IDs form a cumulative chain: an unresolved
+earlier contract prevents that migration and later migrations from being
+attested.
+
+JSON reports distinguish action from state. `applied` is `true` only after a
+real apply or rollback commits writes; audit and dry-run always report
+`applied: false`. `currentApplied` lists the state found before planning, while
+`prospectiveApplied` lists the state the selected writes would produce.
+Ordinary Markdown outside managed paths appears under `Preserved legacy`, even
+though its bytes are never rewritten.
+
+The 0.4.0 skeleton marks the kit-managed body regions in `_Codex/Start Here.md`,
+`Notes System.md`, and `Templates/_README.md`. Migration can update those
+regions deterministically. Keep repo-specific prose outside the managed marker
+pairs; migration must not replace unmarked content. Review any local edits
+inside a managed region before applying: content inside a complete marker pair
+is kit-owned and refreshes automatically. Ambiguous unmarked sections require
+their exact audited item ID before migration changes them.
 
 ## Customize the graph
 

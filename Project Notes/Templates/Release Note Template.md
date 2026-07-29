@@ -13,7 +13,7 @@ tags:
 
 <!-- notes-graph-kit:scaffold:start -->
 ```yaml
-title: My Project Version
+title: "My Project Version"
 schema_version: 1
 type: release
 status: draft

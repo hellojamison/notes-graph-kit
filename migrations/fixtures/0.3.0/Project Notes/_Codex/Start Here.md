@@ -25,7 +25,6 @@ related_evidence:
 
 # Start Here
 
-<!-- notes-graph-kit:managed:start-here:start -->
 This is the agent entrypoint for the project notes graph.
 
 ## Retrieval Order
@@ -42,7 +41,6 @@ This is the agent entrypoint for the project notes graph.
 2. Create its note with `npm run notes:new -- --title "Title" --type <type> ...`.
 3. Close the note with `npm run notes:closeout -- --note "<note path>" --working "..." --verified "..." --not-verified "..."`; add `--certify` only when the note itself is verified.
 4. Run `npm run notes:validate`.
-5. After upgrading the kit, audit the still-untouched vault from the kit checkout with `node migrate-notes-graph.cjs audit --repo /path/to/repo --to 0.4.0` before accepting any migration.
 
 Supported creation types are task, evidence, app, process, runbook, decision, incident, and release. Task and evidence notes require a process route. The CLI selects the matching template; do not copy fenced template scaffold metadata into a note manually.
 
@@ -51,4 +49,3 @@ Supported creation types are task, evidence, app, process, runbook, decision, in
 Also run `npm run notes:validate` after changing structured notes, templates, Bases, scripts, or graph links.
 
 See [[Notes System|Notes System]] for note organization rules.
-<!-- notes-graph-kit:managed:start-here:end -->

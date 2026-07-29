@@ -15,7 +15,6 @@ related_apps:
 
 # Notes System
 
-<!-- notes-graph-kit:managed:notes-system:start -->
 project notes are an operational memory system, not a diary. The notes should make future work faster by recording what changed, why it changed, what proved it, and what remains unverified.
 
 ## Core Rules
@@ -53,40 +52,9 @@ Recommended properties:
 - `superseded_by`: wikilink or path when a note is replaced.
 - `related_apps`, `related_processes`, `related_runbooks`, `related_decisions`, `related_incidents`, and `related_evidence`: wikilinks to connected notes, grouped by target type.
 
-`notes:new` emits the required schema plus the recommended app, verification, generator, and graph relationship metadata. Treat that generated shape as the canonical starting point for task, evidence, app, process, runbook, decision, incident, and release notes.
+`notes:new` emits the required schema plus the recommended app, verification, generator, and graph relationship metadata. Treat that generated shape as the canonical starting point for task and evidence notes.
 
 Use this contract for new notes. Older notes do not need a bulk migration unless they become active again.
-
-## Template Contract
-
-The eight files under `Templates/` are CLI-managed source templates. Each template note has `type: template` in its own frontmatter and exactly one scaffold between `notes-graph-kit:scaffold` marker comments. The marked fenced YAML is a machine-readable mapping, not content for a finished note.
-
-Use `notes:new --type task|evidence|app|process|runbook|decision|incident|release`; do not copy scaffold metadata manually. The CLI validates the scaffold, generates note frontmatter, removes the entire marked block from the body, and writes the note to the type-specific folder:
-
-- `task` and `evidence`: `Evidence/`, status `active`, date-prefixed filename, and required `--process`.
-- `app`: `Apps/`, status `current`.
-- `process`: `Processes/`, status `draft`; creating one also adds a non-conflicting route to `notes-graph.config.json`.
-- `runbook`: `Runbooks/`, status `draft`.
-- `decision`: `Decisions/`, status `draft`.
-- `incident`: `Incidents/`, status `active`.
-- `release`: `Releases/`, status `draft`.
-
-`--process` is optional for app, process, runbook, decision, incident, and release notes.
-Draft process, runbook, decision, and release notes are exempt from operational completeness and inbound-link warnings. Before changing a draft to an active/current/verified status, add the relationships required by the validator.
-
-## Existing Vault Migration
-
-Normal kit upgrade refreshes managed scripts and `kitVersion` but does not edit vault content. From the authoritative kit checkout, audit before applying:
-
-```bash
-node migrate-notes-graph.cjs audit --repo /path/to/repo --to 0.4.0
-```
-
-Audit is read-only. A mapping can adopt an exact existing unmanaged note in place by declaring its vault-relative path, title, type, status, date, and tags; adoption does not move the file or replace its body.
-
-Apply only audited safe changes and individually reviewed item IDs. A real apply creates a durable backup; dry-run does not. Use `rollback --backup <backup-id>` when needed. Rollback refuses files changed after migration so later user work is never silently overwritten.
-
-This note, [[_Codex/Start Here|Start Here]], and [[Templates/_README|Templates]] mark their kit-owned body regions. Keep repo-specific sections outside the managed marker pairs so later migrations can preserve them deterministically.
 
 ## Status Rules
 
@@ -95,7 +63,6 @@ This note, [[_Codex/Start Here|Start Here]], and [[Templates/_README|Templates]]
 - `current`: canonical seed note or maintained entrypoint for the active notes graph.
 - `blocked`: work cannot proceed without an external input or decision.
 - `verified`: evidence has been checked and recorded.
-- `done`: work is closed without certifying the whole note as verified.
 - `stale`: useful history, but reverify before use.
 - `superseded`: replaced by a newer note or decision.
 
@@ -109,7 +76,7 @@ Any `verified` or `known-good` note that contains mutable facts should include `
 - [[Runbooks/_README|Runbooks]]: repeatable commands and operational procedures.
 - [[Known-Good/_README|Known-Good]]: current verified baseline facts, supported versions, and known-good commands.
 - [[Dashboards/_README|Dashboards]]: Bases and generated indexes for open loops, stale notes, and operational review.
-- [[Templates/_README|Templates]]: CLI-managed source templates.
+- [[Templates/_README|Templates]]: copyable note templates.
 - `Evidence/`: dated task and evidence work logs created by `notes:new`.
 
 ## Validation
@@ -126,7 +93,7 @@ Recurring compatibility warnings are summarized by category. Run `npm run notes:
 
 ## Task Note Shape
 
-`notes:new --type task` generates this shape unless a shorter legacy bullet note is enough:
+Use this structure for new task notes unless a shorter bullet note is enough:
 
 ```md
 ---
@@ -194,4 +161,3 @@ That is better than:
 ```md
 - Fixed demos page.
 ```
-<!-- notes-graph-kit:managed:notes-system:end -->

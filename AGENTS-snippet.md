@@ -25,6 +25,7 @@ Prefer the repo-local notes helper:
 - Let `notes:new` unwrap the matching marked template scaffold. Do not copy fenced scaffold metadata into a note manually.
 - Use `npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD <task title>.md" --working "..." --verified "..." --not-verified "..."` to close as `done`; add `--certify` only when the evidence supports `status: verified`.
 - Run `npm run notes:validate` after graph metadata, templates, Bases, validator, helper script, or structured note changes.
+- After a kit upgrade, keep the vault untouched until `node migrate-notes-graph.cjs audit --repo /path/to/repo --to 0.4.0`, run from the authoritative kit checkout, has classified every proposed migration. Apply only reviewed safe/item IDs with the backup-backed `apply` command; use `rollback --backup <id>` rather than overwriting later edits.
 
 Optional agent skills:
 - `obsidian-markdown` for wikilinks, frontmatter, callouts, and Obsidian-flavored Markdown.
