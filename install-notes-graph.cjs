@@ -27,6 +27,8 @@ const MANAGED_SCRIPTS = [
   'scripts/build-project-notes-context.cjs',
   'scripts/evaluate-project-notes-search.cjs',
   'scripts/project-notes-stats.cjs',
+  'scripts/find-project-notes-duplicates.cjs',
+  'scripts/recommend-project-notes-opt-ins.cjs',
   'scripts/validate-project-notes-graph.cjs',
   'scripts/lib/project-notes-graph.cjs',
   'scripts/lib/validate-project-notes-graph.cjs'
@@ -385,6 +387,8 @@ function notesNpmScripts(scriptsDir = 'scripts') {
     'notes:context': `node ${scriptsDir}/build-project-notes-context.cjs`,
     'notes:search:eval': `node ${scriptsDir}/evaluate-project-notes-search.cjs`,
     'notes:stats': `node ${scriptsDir}/project-notes-stats.cjs`,
+    'notes:duplicates': `node ${scriptsDir}/find-project-notes-duplicates.cjs`,
+    'notes:recommend': `node ${scriptsDir}/recommend-project-notes-opt-ins.cjs`,
     'notes:validate': `node ${scriptsDir}/validate-project-notes-graph.cjs`
   };
 }
@@ -932,7 +936,8 @@ function install(args) {
     'Next steps:',
     '  npm install',
     `  npm run notes:route -- "notes graph"`,
-    '  npm run notes:validate'
+    '  npm run notes:validate',
+    '  npm run notes:recommend  # review agent opt-ins; ask before writes or CI edits'
   ];
   if (agentsResult.action === 'skip') {
     lines.push('', 'AGENTS.md already had a Project Notes Graph section; snippet not changed.');
@@ -998,6 +1003,7 @@ function upgrade(args) {
     '',
     ...vaultMigrationGuidance(kitVersion, repoRoot)
   ];
+  lines.push('', 'Agent opt-in review:', '  npm run notes:recommend  # ask before recommended writes or CI edits');
   if (packageMerge.preservedScripts.length > 0) {
     lines.push('', 'package.json has custom notes:* scripts; verify they call the refreshed kit or update them manually.');
   }

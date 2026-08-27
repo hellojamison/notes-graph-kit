@@ -178,3 +178,29 @@ test('stats baseline growth limits are opt-in and unsafe paths fail closed', () 
     fs.rmSync(outside, { recursive: true, force: true });
   }
 });
+
+test('stats changed-since reports tracked existing and deleted notes without narrowing global health', () => {
+  const repo = fixture(false);
+  try {
+    for (const args of [['init'], ['config', 'user.email', 'test@example.com'], ['config', 'user.name', 'Test'], ['add', '.'], ['commit', '-m', 'baseline']]) {
+      const git = spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
+      assert.equal(git.status, 0, git.stderr);
+    }
+    fs.appendFileSync(path.join(repo, 'Project Notes/Tasks/Linked.md'), '\nTracked change.\n');
+    fs.rmSync(path.join(repo, 'Project Notes/Evidence/Draft.md'));
+    fs.writeFileSync(path.join(repo, 'Project Notes/Tasks/Untracked.md'), '# Untracked\n');
+    const result = run(repo, ['--changed-since', 'HEAD', '--json']);
+    assert.equal(result.status, 0, result.stderr);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.changedSince.changed, 2);
+    assert.deepEqual(report.changedSince.paths, ['Tasks/Linked.md']);
+    assert.deepEqual(report.changedSince.deletedPaths, ['Evidence/Draft.md']);
+    assert.equal(report.changedSince.trackedOnly, true);
+    assert.equal(report.graph.brokenLinks, 0, 'global graph health should still be calculated');
+    const invalid = run(repo, ['--changed-since', 'missing-ref']);
+    assert.equal(invalid.status, 2);
+    assert.match(invalid.stderr, /must resolve to a Git commit/);
+  } finally {
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+});

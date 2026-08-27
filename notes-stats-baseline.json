@@ -2,10 +2,10 @@
   "schema_version": 1,
   "metrics": {
     "scale": {
-      "notes": 46,
-      "sections": 145,
-      "words": 12997,
-      "bytes": 113028
+      "notes": 49,
+      "sections": 154,
+      "words": 13910,
+      "bytes": 121736
     },
     "graph": {
       "broken_links": 0,

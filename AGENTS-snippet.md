@@ -20,12 +20,15 @@ For substantive tasks:
 - Preserve old flat notes unless promoting them materially improves retrieval.
 
 Prefer the repo-local notes helper:
+- After install or upgrade, run `npm run notes:recommend`. Present options marked `requires_user_approval: true` to the user before writing a contract/baseline or editing CI; do not silently enable them. Read-only recommendations may be run without approval.
 - Use `npm run notes:route -- "<task description>"` to choose the app/process/runbook path.
 - Use `npm run notes:search -- "<query>"` to retrieve ranked note sections; add `--type`, `--status`, or `--since` filters when needed.
 - Use `npm run notes:context -- "<query>"` to assemble ranked sections plus one-hop linked decisions, evidence, processes, and runbooks within a disclosed source-word budget.
 - Use `npm run notes:search:eval` after ranking changes when the repo has a reviewed `notes-search-eval.yml`; treat failures as regressions to review, not baselines to rewrite automatically.
 - Use `npm run notes:stats` for a read-only snapshot of vault size, link health, orphan notes, evidence verification, stale current guides, and retrieval metrics. Orphans exclude templates, daily notes, indexes, and app hubs.
 - If the repo has a reviewed `notes-stats-baseline.json`, use `npm run notes:stats -- --baseline notes-stats-baseline.json` as a regression gate. Never replace a baseline merely to silence a failure.
+- Use `npm run notes:stats -- --changed-since <git-ref>` to add a tracked-note change inventory while retaining full-vault health checks.
+- Use `npm run notes:duplicates` only to identify review candidates. It is informational; never merge or delete notes solely from its similarity score.
 - Use `npm run notes:new -- --title "<title>" --type <type> --summary "<goal>"` with `task`, `evidence`, `app`, `process`, `runbook`, `decision`, `incident`, or `release`. Task and evidence notes require `--process <process-alias>`; it is optional for the other types.
 - Let `notes:new` unwrap the matching marked template scaffold. Do not copy fenced scaffold metadata into a note manually.
 - Use `npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD <task title>.md" --working "..." --verified "..." --not-verified "..."` to close as `done`; add `--certify` only when the evidence supports `status: verified`.

@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { performance } = require('node:perf_hooks');
+const { execFileSync } = require('node:child_process');
 const {
   getRepoRoot,
   getVaultRoot,
@@ -27,7 +28,7 @@ function help() {
   return `Report project-notes scale, graph health, freshness, and retrieval quality
 
 Usage:
-  node scripts/project-notes-stats.cjs [--top 10] [--stale-days 90] [--eval-file notes-search-eval.yml] [--baseline PATH] [--json]
+  node scripts/project-notes-stats.cjs [--top 10] [--stale-days 90] [--eval-file notes-search-eval.yml] [--baseline PATH] [--changed-since REF] [--json]
   node scripts/project-notes-stats.cjs --write-baseline PATH [--replace-baseline]
 
 Options:
@@ -35,6 +36,7 @@ Options:
   --stale-days DAYS  Age at which current processes/runbooks are stale (1-3650; default: 90)
   --eval-file PATH   Evaluation contract inside the repo
   --baseline PATH    Compare stable metrics with a versioned baseline inside the repo
+  --changed-since REF  Add tracked Markdown changes since a Git commit/ref
   --write-baseline PATH  Create a baseline; refuses an existing file by default
   --replace-baseline Replace an existing baseline (only with --write-baseline)
   --json             Emit machine-readable JSON
@@ -43,7 +45,7 @@ Options:
 
 function parseArgs(argv) {
   const result = {};
-  const values = new Set(['top', 'stale-days', 'eval-file', 'baseline', 'write-baseline']);
+  const values = new Set(['top', 'stale-days', 'eval-file', 'baseline', 'write-baseline', 'changed-since']);
   const booleans = new Set(['json', 'help', 'replace-baseline']);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -62,6 +64,49 @@ function parseArgs(argv) {
     result[key] = value;
   }
   return result;
+}
+
+function changedSinceStats(repoRoot, vaultRoot, graph, ref, runner = execFileSync) {
+  const vaultRelative = path.relative(repoRoot, vaultRoot);
+  if (vaultRelative === '..' || vaultRelative.startsWith(`..${path.sep}`) || path.isAbsolute(vaultRelative)) {
+    throw new Error('Changed-note statistics require the vault to be inside the Git repository');
+  }
+  try {
+    runner('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch {
+    throw new Error(`--changed-since must resolve to a Git commit: ${ref}`);
+  }
+  let output;
+  try {
+    output = runner('git', ['diff', '--name-only', '-z', ref, '--', vaultRelative], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+  } catch (error) {
+    throw new Error(`Could not inspect notes changed since ${ref}: ${error.stderr?.trim() || error.message}`);
+  }
+  const prefix = `${vaultRelative.split(path.sep).join('/')}/`;
+  const paths = output.split('\0').filter(Boolean).map((entry) => entry.split(path.sep).join('/'))
+    .filter((entry) => entry.startsWith(prefix) && entry.toLowerCase().endsWith('.md'))
+    .map((entry) => entry.slice(prefix.length)).sort();
+  const existing = paths.filter((rel) => graph.noteByRel.has(rel));
+  const deleted = paths.filter((rel) => !graph.noteByRel.has(rel));
+  const notes = existing.map((rel) => graph.noteByRel.get(rel));
+  return {
+    ref,
+    trackedOnly: true,
+    changed: paths.length,
+    existing: existing.length,
+    deleted: deleted.length,
+    paths: existing,
+    deletedPaths: deleted,
+    scale: {
+      sections: notes.reduce((sum, note) => sum + splitSections(note).length, 0),
+      words: notes.reduce((sum, note) => sum + tokenize(note.body).length, 0),
+      bytes: notes.reduce((sum, note) => sum + Buffer.byteLength(note.text, 'utf8'), 0)
+    }
+  };
 }
 
 function safeRepoFile(repoRoot, input, options = {}) {
@@ -335,6 +380,9 @@ function render(report) {
     lines.push('', `Baseline: ${report.baselineComparison.passed ? 'PASS' : 'FAIL'}`);
     for (const regression of report.baselineComparison.regressions) lines.push(`  REGRESSION ${regression}`);
   }
+  if (report.changedSince) {
+    lines.push('', `Changed since ${report.changedSince.ref}: ${report.changedSince.changed} tracked Markdown notes (${report.changedSince.existing} existing, ${report.changedSince.deleted} deleted)`);
+  }
   return `${lines.join('\n')}\n`;
 }
 
@@ -347,7 +395,8 @@ function run(argv = process.argv.slice(2), options = {}) {
   const staleDays = boundedInteger(args['stale-days'], DEFAULT_STALE_DAYS, 'stale-days', 3650);
   const env = options.env || process.env;
   const repoRoot = getRepoRoot(env);
-  const graph = loadVaultGraph({ env, vaultRoot: options.vaultRoot || getVaultRoot({ env }) });
+  const vaultRoot = options.vaultRoot || getVaultRoot({ env });
+  const graph = loadVaultGraph({ env, vaultRoot });
   const report = collectStats(graph, { top, staleDays, now: options.now });
   report.evaluation = evaluationStats(
     repoRoot,
@@ -365,6 +414,7 @@ function run(argv = process.argv.slice(2), options = {}) {
     writeBaseline(file, baselineFor(report), Boolean(args['replace-baseline']));
     report.baselineWritten = path.relative(repoRoot, file).split(path.sep).join('/');
   }
+  if (args['changed-since']) report.changedSince = changedSinceStats(repoRoot, vaultRoot, graph, args['changed-since'], options.runner);
   return {
     output: args.json ? `${JSON.stringify(report, null, 2)}\n` : render(report),
     report,
@@ -383,4 +433,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { parseArgs, safeRepoFile, collectStats, evaluationStats, baselineFor, loadBaseline, compareBaseline, writeBaseline, render, run };
+module.exports = { parseArgs, safeRepoFile, changedSinceStats, collectStats, evaluationStats, baselineFor, loadBaseline, compareBaseline, writeBaseline, render, run };

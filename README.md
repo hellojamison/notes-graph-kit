@@ -12,6 +12,8 @@ pointers.
 - `scripts/project-notes.cjs` — route/create/closeout helper for task notes.
 - `scripts/search-project-notes.cjs` — deterministic section-level BM25 search.
 - `scripts/build-project-notes-context.cjs` — bounded context packets from search plus one-hop operational links.
+- `scripts/find-project-notes-duplicates.cjs` — informational deterministic near-duplicate candidates.
+- `scripts/recommend-project-notes-opt-ins.cjs` — read-only agent recommendations for optional setup.
 - `scripts/evaluate-project-notes-search.cjs` — relevance evaluation against a repo-owned YAML contract.
 - `scripts/validate-project-notes-graph.cjs` — structured note/link validator.
 - `scripts/lib/project-notes-graph.cjs` — shared graph utilities.
@@ -60,7 +62,7 @@ Options:
 
 The installer:
 
-1. Copies the eight managed helper/library files verbatim into the target's
+1. Copies the ten managed helper/library files verbatim into the target's
    existing `scripts/` or `Scripts/` directory spelling (refuses to
    overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with the app name, vault dir, a
@@ -69,7 +71,7 @@ The installer:
    kit repo's dated local task notes. Existing vault files are skipped unless
    both `--force` and `--force-vault` are supplied.
 4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:context`,
-   `notes:search:eval`, `notes:stats`, and
+   `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, and
    `notes:validate` into `package.json` (existing customized commands are
    preserved with a warning) and adds the `js-yaml` dependency.
 5. Writes or appends a marked `## Project Notes Graph` block to `AGENTS.md`
@@ -83,6 +85,31 @@ termination.
 
 See `AGENTS.md` in this repo for the full agent-oriented install reference.
 
+### Agent-guided opt-ins
+
+After install or upgrade, agents should run:
+
+```bash
+npm run notes:recommend
+npm run notes:recommend -- --json
+```
+
+This command is read-only. It inspects note count, the presence and safety of
+repo-owned search-evaluation and stats-baseline files, and whether GitHub
+Actions appears to run their gates. Its versioned JSON contract labels every
+item with `recommendation`, `action_kind`, `requires_user_approval`, rationale,
+and a next step.
+
+Agents must ask before recommendations that create reviewed files or edit CI.
+They may run read-only commands such as validation, an existing evaluation or
+baseline comparison, and duplicate candidate reporting without approval. The
+command deliberately does not create a search contract, infer expected results
+from current rankings, create/replace a baseline, edit CI, or merge/delete
+duplicate candidates. Recommendations become stronger at 20 Markdown notes;
+smaller repos still receive the options, labeled optional. Missing prerequisites
+are labeled `not-ready`, and unsafe symlink/non-file contract paths are labeled
+`attention-required`.
+
 Then in the target repo:
 
 ```bash
@@ -90,6 +117,7 @@ npm install
 npm run notes:route -- "notes graph"
 npm run notes:search -- "rollback evidence" --type evidence --status verified
 npm run notes:validate
+npm run notes:recommend
 git diff --check
 ```
 
@@ -453,6 +481,39 @@ Baselines contain only stable metrics—timestamps, largest-file lists, paths,
 and evaluation timings are excluded. Invalid schemas, unknown fields, missing
 files, symlinks, and paths outside the exact repository fail closed with exit
 2.
+
+Add `--changed-since <git-ref>` to any stats run for a scoped inventory of
+tracked Markdown notes changed between that commit and the current index/worktree:
+
+```bash
+npm run notes:stats -- --changed-since origin/main --json
+```
+
+The report separates existing and deleted paths and summarizes sections,
+words, and bytes for changed notes that still exist. Untracked files are
+explicitly excluded because Git has no baseline version for them. Global graph,
+freshness, evidence, and retrieval metrics are still calculated for the whole
+vault so a changed or deleted note cannot hide its downstream impact. Invalid
+or non-commit refs fail with exit 2. This option is informational and does not
+alter baseline comparison policy.
+
+### Near-duplicate candidates
+
+`notes:duplicates` reports review candidates using Jaccard similarity over
+deterministic five-word shingles:
+
+```bash
+npm run notes:duplicates
+npm run notes:duplicates -- --threshold 0.90 --min-words 150 --json
+```
+
+Templates and daily notes are excluded by default; use `--include-daily` only
+when duplicate daily logs are relevant. The default threshold is 0.85, minimum
+length is 100 words, and output is limited to 50 pairs. At most 5,000 eligible
+notes are accepted in one scan to prevent accidental quadratic workloads.
+Results are informational and always exit 0 when the scan is valid: similarity
+does not prove that either note is obsolete, so this command never rewrites,
+merges, deletes, or automatically fails CI. Invalid options fail with exit 2.
 
 `notes:closeout` refuses a note that already has a real `## Closeout` heading
 before changing the note or daily log. Date fields are serialized as
