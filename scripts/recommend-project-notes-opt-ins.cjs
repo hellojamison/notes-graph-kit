@@ -90,9 +90,11 @@ function inspect(repoRoot) {
   const noteCount = walkMarkdown(vaultRoot).length;
   const substantial = noteCount >= SCALE_RECOMMENDATION_NOTES;
   const evaluationState = regularFileState(path.join(repoRoot, 'notes-search-eval.yml'));
+  const contextEvaluationState = regularFileState(path.join(repoRoot, 'notes-context-eval.yml'));
   const baselineState = regularFileState(path.join(repoRoot, 'notes-stats-baseline.json'));
   const workflows = workflowText(repoRoot);
   const evaluationCi = /npm\s+run\s+notes:search:eval\b/.test(workflows);
+  const contextEvaluationCi = /npm\s+run\s+notes:context:eval\b/.test(workflows);
   const baselineCi = /npm\s+run\s+notes:stats\s+--\s+--baseline\b/.test(workflows);
   const recommendations = [];
 
@@ -124,6 +126,19 @@ function inspect(repoRoot) {
         : baselineState === 'configured' ? 'npm run notes:stats -- --baseline notes-stats-baseline.json' : null
     }));
 
+  recommendations.push(recommendation('context-evaluation-contract', contextEvaluationState,
+    contextEvaluationState === 'missing' ? (substantial ? 'recommended' : 'optional') : contextEvaluationState === 'configured' ? 'enabled' : 'attention-required', {
+      requiresUserApproval: contextEvaluationState === 'missing',
+      actionKind: contextEvaluationState === 'missing' ? 'writes-reviewed-file' : 'read-only',
+      rationale: contextEvaluationState === 'missing'
+        ? `${noteCount} Markdown notes are present; reviewed context expectations protect source selection, ordering, exclusions, attribution, and budget behavior.`
+        : contextEvaluationState === 'configured' ? 'A repo-owned context-quality contract is present.' : 'The expected context contract path is not a regular file.',
+      nextStep: contextEvaluationState === 'missing'
+        ? 'Ask whether the user wants to author and review representative context cases; never generate expectations from current output automatically.'
+        : contextEvaluationState === 'configured' ? 'Run the existing contract and report any misses.' : 'Ask the user to resolve the unsafe path before continuing.',
+      command: contextEvaluationState === 'configured' ? 'npm run notes:context:eval' : null
+    }));
+
   recommendations.push(recommendation('search-evaluation-ci', evaluationCi ? 'configured' : 'missing',
     evaluationState === 'configured' && !evaluationCi ? 'recommended' : evaluationCi ? 'enabled' : 'not-ready', {
       requiresUserApproval: evaluationState === 'configured' && !evaluationCi,
@@ -139,6 +154,15 @@ function inspect(repoRoot) {
       actionKind: baselineState === 'configured' && !baselineCi ? 'edits-ci' : 'read-only',
       rationale: baselineCi ? 'CI already compares the reviewed stats baseline.' : baselineState === 'configured' ? 'The baseline exists but CI does not appear to compare it.' : 'CI should not reference a baseline that does not exist.',
       nextStep: baselineState === 'configured' && !baselineCi ? 'Ask before editing CI to run the baseline comparison.' : baselineCi ? 'Keep the gate and never replace the baseline merely to silence it.' : 'Create and review a baseline before offering this CI opt-in.',
+      command: null
+    }));
+
+  recommendations.push(recommendation('context-evaluation-ci', contextEvaluationCi ? 'configured' : 'missing',
+    contextEvaluationState === 'configured' && !contextEvaluationCi ? 'recommended' : contextEvaluationCi ? 'enabled' : 'not-ready', {
+      requiresUserApproval: contextEvaluationState === 'configured' && !contextEvaluationCi,
+      actionKind: contextEvaluationState === 'configured' && !contextEvaluationCi ? 'edits-ci' : 'read-only',
+      rationale: contextEvaluationCi ? 'CI already runs the reviewed context contract.' : contextEvaluationState === 'configured' ? 'The context contract exists but CI does not appear to run it.' : 'CI should not gate context quality until a reviewed contract exists.',
+      nextStep: contextEvaluationState === 'configured' && !contextEvaluationCi ? 'Ask before editing CI to run npm run notes:context:eval.' : contextEvaluationCi ? 'Keep the gate and review failures.' : 'Create and review a context contract before offering this CI opt-in.',
       command: null
     }));
 

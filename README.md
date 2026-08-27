@@ -12,6 +12,7 @@ pointers.
 - `scripts/project-notes.cjs` — route/create/closeout helper for task notes.
 - `scripts/search-project-notes.cjs` — deterministic section-level BM25 search.
 - `scripts/build-project-notes-context.cjs` — bounded context packets from search plus one-hop operational links.
+- `scripts/evaluate-project-notes-context.cjs` — context-quality evaluation against a repo-owned YAML contract.
 - `scripts/find-project-notes-duplicates.cjs` — informational deterministic near-duplicate candidates.
 - `scripts/recommend-project-notes-opt-ins.cjs` — read-only agent recommendations for optional setup.
 - `scripts/evaluate-project-notes-search.cjs` — relevance evaluation against a repo-owned YAML contract.
@@ -62,7 +63,7 @@ Options:
 
 The installer:
 
-1. Copies the ten managed helper/library files verbatim into the target's
+1. Copies the eleven managed helper/library files verbatim into the target's
    existing `scripts/` or `Scripts/` directory spelling (refuses to
    overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with the app name, vault dir, a
@@ -71,7 +72,7 @@ The installer:
    kit repo's dated local task notes. Existing vault files are skipped unless
    both `--force` and `--force-vault` are supplied.
 4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:context`,
-   `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, and
+   `notes:context:eval`, `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, and
    `notes:validate` into `package.json` (existing customized commands are
    preserved with a warning) and adds the `js-yaml` dependency.
 5. Writes or appends a marked `## Project Notes Graph` block to `AGENTS.md`
@@ -406,6 +407,35 @@ the lexical seed search; reviewed operational notes linked from those seeds may
 still be included. Output is read-only, stable for unchanged inputs, and uses
 no generated summaries, embeddings, cache, or vault writes.
 
+`notes:context:eval` reads a repo-owned `notes-context-eval.yml` and checks
+reviewed required, ordered, and forbidden sources. It also always verifies the
+source-word budget, per-item word accounting, and source attribution. A quality
+miss exits 1; malformed or unsafe input exits 2. The installer copies the
+evaluator but never creates or overwrites the contract.
+
+```yaml
+schema_version: 1
+cases:
+  - id: rollback-context
+    query: rollback migration evidence
+    results: 3
+    max_words: 1000
+    required:
+      - path: Evidence/Rollback Verification.md
+        heading: Verification
+        kind: match
+      - path: Runbooks/Recovery.md
+        kind: related
+    ordered:
+      - path: Evidence/Rollback Verification.md
+      - path: Runbooks/Recovery.md
+    forbidden:
+      - path: Templates/Task Note Template.md
+```
+
+Select expectations by review, not from current output. Omit `ordered` unless
+relative ordering is part of the intended contract.
+
 `notes:search:eval` reads a repo-owned `notes-search-eval.yml` and measures
 top-1 hits, top-3 hits, mean reciprocal rank (MRR), and whether each query has
 an expected path/optional heading within `top_k`. A miss exits with status 1;
@@ -554,7 +584,7 @@ It scaffolds temp targets, runs install → route → new → search → closeou
 and exercises Git-root, upgrade, force, ambiguity, transaction rollback, and
 no-clobber guards.
 
-GitHub Actions CI also runs `npm ci`, `npm test`, `npm run notes:search:eval`,
+GitHub Actions CI also runs `npm ci`, `npm test`, `npm run notes:search:eval`, `npm run notes:context:eval`,
 `npm run notes:validate`, `git diff --check`, and `npm audit --omit=dev` on
 pushes and pull requests.
 

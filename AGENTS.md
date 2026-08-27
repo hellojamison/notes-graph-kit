@@ -11,6 +11,7 @@ The kit scaffolds an Obsidian vault skeleton, copies config-driven CLI helpers (
 - `scripts/project-notes.cjs` — route/create/closeout helper for task notes.
 - `scripts/search-project-notes.cjs` — deterministic section-level BM25 search.
 - `scripts/build-project-notes-context.cjs` — bounded, source-attributed context packets with one-hop graph expansion.
+- `scripts/evaluate-project-notes-context.cjs` — checked-in context-quality contract evaluator.
 - `scripts/evaluate-project-notes-search.cjs` — checked-in relevance-contract evaluator.
 - `scripts/project-notes-stats.cjs` — read-only scale, graph-health, freshness, and retrieval report.
 - `scripts/find-project-notes-duplicates.cjs` — informational deterministic near-duplicate candidate report.
@@ -30,7 +31,7 @@ Helper scripts are fully config-driven (`notes-graph.config.json` plus `PROJECT_
 Kit development (this repo):
 
 - Test: `npm test` — scaffolds temp repos, runs install → route → new → search/evaluate → closeout → validate, and exercises upgrade/guard paths. Run after changing the installer, helpers, validator, or vault skeleton.
-- Notes helpers (dogfood): `npm run notes:route -- "<task>"`, `npm run notes:new -- --title "<title>" --type <type> ...`, `npm run notes:closeout`, `npm run notes:search -- "<query>"`, `npm run notes:context -- "<query>"`, `npm run notes:search:eval`, `npm run notes:stats`, `npm run notes:duplicates`, `npm run notes:recommend`, `npm run notes:validate`.
+- Notes helpers (dogfood): `npm run notes:route -- "<task>"`, `npm run notes:new -- --title "<title>" --type <type> ...`, `npm run notes:closeout`, `npm run notes:search -- "<query>"`, `npm run notes:context -- "<query>"`, `npm run notes:context:eval`, `npm run notes:search:eval`, `npm run notes:stats`, `npm run notes:duplicates`, `npm run notes:recommend`, `npm run notes:validate`.
 - Search is read-only, section-level BM25 over canonical Markdown with a bounded, disclosed authority multiplier for typed/statused operational records. Authority never creates a lexical match. It excludes templates and fenced code by default; filter with repeatable `--type`/`--status`, `--since YYYY-MM-DD`, `--limit 1..100`, or emit `--json`.
 - Stats baselines are opt-in repo-owned contracts. Install/upgrade never creates or changes them; baseline comparison exits 1 only for reviewed health/retrieval regressions or configured growth limits, and malformed input exits 2.
 
@@ -54,10 +55,10 @@ Options: `--repo` (exact Git worktree root; defaults to cwd), `--app` (required;
 
 The installer:
 
-1. Copies ten managed helper/library files into the target's existing `scripts/` or `Scripts/` directory spelling (refuses to overwrite existing helper scripts unless `--force` is used).
+1. Copies eleven managed helper/library files into the target's existing `scripts/` or `Scripts/` directory spelling (refuses to overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with app name, vault dir, routes, `kitVersion`, and independent `vaultMigrationState`.
 3. Copies the vault skeleton with the app name substituted, excluding this kit repo's dated local task notes (existing vault files are not overwritten unless both `--force` and `--force-vault` are used).
-4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:context`, `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, `notes:validate` into `package.json` and adds `js-yaml`; existing customized `notes:*` commands are preserved with a warning.
+4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:context`, `notes:context:eval`, `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, `notes:validate` into `package.json` and adds `js-yaml`; existing customized `notes:*` commands are preserved with a warning.
 5. Writes or appends a managed-marker-wrapped `## Project Notes Graph` block to `AGENTS.md` (creates the file if missing; skips a marker pair or exact legacy heading outside fenced code).
 
 Writes are staged and committed as one rollback-capable transaction, including `package.json` and `AGENTS.md`. This protects ordinary synchronous failures, not power loss or forced process termination.
@@ -97,7 +98,7 @@ Migration commands:
 - After install/upgrade in a real repo, run `npm run notes:validate` in that repo.
 - State what was smoke-tested vs. manually verified when closing kit work notes.
 
-GitHub Actions CI runs `npm ci`, `npm test`, `npm run notes:search:eval`, the reviewed stats-baseline comparison, `npm run notes:validate`, `git diff --check`, and `npm audit --omit=dev` on pushes and pull requests.
+GitHub Actions CI runs `npm ci`, `npm test`, `npm run notes:search:eval`, `npm run notes:context:eval`, the reviewed stats-baseline comparison, `npm run notes:validate`, `git diff --check`, and `npm audit --omit=dev` on pushes and pull requests.
 
 ## Hard rules and gotchas
 

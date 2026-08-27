@@ -24,6 +24,7 @@ Prefer the repo-local notes helper:
 - Use `npm run notes:route -- "<task description>"` to choose the app/process/runbook path.
 - Use `npm run notes:search -- "<query>"` to retrieve ranked note sections; add `--type`, `--status`, or `--since` filters when needed.
 - Use `npm run notes:context -- "<query>"` to assemble ranked sections plus one-hop linked decisions, evidence, processes, and runbooks within a disclosed source-word budget.
+- Use `npm run notes:context:eval` after context assembly changes when the repo has a reviewed `notes-context-eval.yml`; treat failures as regressions to review, not expectations to rewrite automatically.
 - Use `npm run notes:search:eval` after ranking changes when the repo has a reviewed `notes-search-eval.yml`; treat failures as regressions to review, not baselines to rewrite automatically.
 - Use `npm run notes:stats` for a read-only snapshot of vault size, link health, orphan notes, evidence verification, stale current guides, and retrieval metrics. Orphans exclude templates, daily notes, indexes, and app hubs.
 - If the repo has a reviewed `notes-stats-baseline.json`, use `npm run notes:stats -- --baseline notes-stats-baseline.json` as a regression gate. Never replace a baseline merely to silence a failure.

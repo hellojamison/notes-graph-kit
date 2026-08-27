@@ -34,10 +34,12 @@ test('recommendations tell agents which opt-ins require approval without writing
     assert.equal(report.agent_policy.never_enable_opt_ins_silently, true);
     const evaluation = report.recommendations.find(({ id }) => id === 'search-evaluation-contract');
     const baseline = report.recommendations.find(({ id }) => id === 'stats-baseline');
+    const contextEvaluation = report.recommendations.find(({ id }) => id === 'context-evaluation-contract');
     const duplicates = report.recommendations.find(({ id }) => id === 'duplicate-review');
     assert.equal(evaluation.recommendation, 'recommended');
     assert.equal(evaluation.requires_user_approval, true);
     assert.equal(baseline.requires_user_approval, true);
+    assert.equal(contextEvaluation.requires_user_approval, true);
     assert.equal(duplicates.requires_user_approval, false);
     assert.deepEqual(fs.readdirSync(repo, { recursive: true }).sort(), before);
   } finally { fs.rmSync(repo, { recursive: true, force: true }); }
@@ -48,18 +50,24 @@ test('configured contracts produce read-only commands and evidence-based CI prom
   try {
     fs.writeFileSync(path.join(repo, 'notes-search-eval.yml'), 'schema_version: 1\nqueries: []\n');
     fs.writeFileSync(path.join(repo, 'notes-stats-baseline.json'), '{}\n');
+    fs.writeFileSync(path.join(repo, 'notes-context-eval.yml'), 'schema_version: 1\ncases: []\n');
     fs.mkdirSync(path.join(repo, '.github/workflows'), { recursive: true });
     fs.writeFileSync(path.join(repo, '.github/workflows/ci.yml'), 'steps:\n  - run: npm run notes:search:eval\n');
     const report = JSON.parse(run(repo, ['--json']).stdout);
     const evaluation = report.recommendations.find(({ id }) => id === 'search-evaluation-contract');
     const evaluationCi = report.recommendations.find(({ id }) => id === 'search-evaluation-ci');
     const baselineCi = report.recommendations.find(({ id }) => id === 'stats-baseline-ci');
+    const contextEvaluation = report.recommendations.find(({ id }) => id === 'context-evaluation-contract');
+    const contextEvaluationCi = report.recommendations.find(({ id }) => id === 'context-evaluation-ci');
     assert.equal(evaluation.command, 'npm run notes:search:eval');
     assert.equal(evaluation.requires_user_approval, false);
     assert.equal(evaluationCi.recommendation, 'enabled');
     assert.equal(baselineCi.recommendation, 'recommended');
     assert.equal(baselineCi.requires_user_approval, true);
     assert.equal(baselineCi.action_kind, 'edits-ci');
+    assert.equal(contextEvaluation.command, 'npm run notes:context:eval');
+    assert.equal(contextEvaluationCi.recommendation, 'recommended');
+    assert.equal(contextEvaluationCi.requires_user_approval, true);
   } finally { fs.rmSync(repo, { recursive: true, force: true }); }
 });
 

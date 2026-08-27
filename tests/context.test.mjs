@@ -100,8 +100,11 @@ test('installed repos receive the context command and managed script', () => {
     ], { encoding: 'utf8' });
     assert.equal(install.status, 0, install.stderr);
     assert.ok(fs.existsSync(path.join(repo, 'scripts/build-project-notes-context.cjs')));
+    assert.ok(fs.existsSync(path.join(repo, 'scripts/evaluate-project-notes-context.cjs')));
     const pkg = JSON.parse(fs.readFileSync(path.join(repo, 'package.json'), 'utf8'));
     assert.equal(pkg.scripts['notes:context'], 'node scripts/build-project-notes-context.cjs');
+    assert.equal(pkg.scripts['notes:context:eval'], 'node scripts/evaluate-project-notes-context.cjs');
+    assert.equal(fs.existsSync(path.join(repo, 'notes-context-eval.yml')), false);
   } finally {
     fs.rmSync(repo, { recursive: true, force: true });
   }

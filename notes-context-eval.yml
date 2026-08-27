@@ -1,0 +1,30 @@
+schema_version: 1
+cases:
+  - id: context-budget-and-linked-guides
+    query: context packet source word budget
+    results: 2
+    max_words: 500
+    required:
+      - path: Evidence/2026-08-27 Deterministic Context Packs.md
+        heading: Goal
+        kind: match
+      - path: Decisions/Notes Graph Adoption Policy.md
+        kind: related
+    ordered:
+      - path: Evidence/2026-08-27 Deterministic Context Packs.md
+        heading: Goal
+      - path: Decisions/Notes Graph Adoption Policy.md
+      - path: Runbooks/Codex Notes Workflow.md
+    forbidden:
+      - path: Templates/Task Note Template.md
+
+  - id: migration-rollback-context
+    query: migration rollback failure
+    results: 2
+    max_words: 500
+    required:
+      - path: Evidence/2026-07-28 Existing Vault Migration Toolkit.md
+        heading: Validation
+        kind: match
+      - path: Runbooks/Codex Notes Workflow.md
+        kind: related
