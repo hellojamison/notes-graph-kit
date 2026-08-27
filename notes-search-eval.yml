@@ -1,0 +1,26 @@
+schema_version: 1
+top_k: 3
+queries:
+  - id: migration-rollback-failure
+    query: migration rollback failure
+    expected:
+      - path: Evidence/2026-07-28 Existing Vault Migration Toolkit.md
+        heading: Validation
+
+  - id: typed-release-workflow
+    query: create typed release note
+    expected:
+      - path: _Codex/Start Here.md
+        heading: Workflow
+
+  - id: ambiguous-wikilink-validation
+    query: ambiguous wikilink validation
+    expected:
+      - path: Evidence/2026-07-07 App Name YAML Wikilink Safety.md
+        heading: Goal
+
+  - id: authority-ranking-policy
+    query: search authority ranking
+    expected:
+      - path: Evidence/2026-08-27 Evidence-Aware Search Ranking.md
+        heading: Goal

@@ -11,6 +11,8 @@ pointers.
   customized vault.
 - `scripts/project-notes.cjs` — route/create/closeout helper for task notes.
 - `scripts/search-project-notes.cjs` — deterministic section-level BM25 search.
+- `scripts/build-project-notes-context.cjs` — bounded context packets from search plus one-hop operational links.
+- `scripts/evaluate-project-notes-search.cjs` — relevance evaluation against a repo-owned YAML contract.
 - `scripts/validate-project-notes-graph.cjs` — structured note/link validator.
 - `scripts/lib/project-notes-graph.cjs` — shared graph utilities.
 - `notes-graph.config.json` — app name, vault folder, app note, and route aliases.
@@ -58,7 +60,7 @@ Options:
 
 The installer:
 
-1. Copies the five managed helper/library files verbatim into the target's
+1. Copies the eight managed helper/library files verbatim into the target's
    existing `scripts/` or `Scripts/` directory spelling (refuses to
    overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with the app name, vault dir, a
@@ -66,7 +68,8 @@ The installer:
 3. Copies the vault skeleton with the app name substituted, excluding this
    kit repo's dated local task notes. Existing vault files are skipped unless
    both `--force` and `--force-vault` are supplied.
-4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:search`, and
+4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:context`,
+   `notes:search:eval`, `notes:stats`, and
    `notes:validate` into `package.json` (existing customized commands are
    preserved with a warning) and adds the `js-yaml` dependency.
 5. Writes or appends a marked `## Project Notes Graph` block to `AGENTS.md`
@@ -352,8 +355,104 @@ short excerpt. Repeated `--type` and `--status` filters are ORed within their
 field and combined with `--since YYYY-MM-DD`; `--limit` accepts 1–100 results.
 Template notes are excluded unless `--include-templates` is supplied. Fenced
 code blocks are not indexed. Use `--json` when another tool or agent will
-consume the results. Version 0.5.0 performs search directly from canonical
+consume the results. Search reads canonical
 Markdown and does not create a cache, embedding model, or generated index.
+
+`notes:context` turns ranked search results into a deterministic context packet:
+
+```bash
+npm run notes:context -- "release signing failure"
+npm run notes:context -- "rollback evidence" --max-words 3000 --results 5 --json
+```
+
+The packet starts with ranked matching sections, then adds directly linked
+decisions, evidence/audits/known-good records, processes, and runbooks. Graph
+expansion is exactly one hop from the matched notes; templates and unrelated
+notes are excluded. Every item retains its vault path, heading line, type,
+status, date, and either search rank/score or the path that linked it.
+`--max-words` is a hard 100–20,000 word budget for extracted source content;
+the small attribution/header overhead is reported separately by the rendered
+format and is not part of that source-content count. `--results` accepts 1–20
+seed sections. Repeatable `--type` and `--status` plus `--since` filter only
+the lexical seed search; reviewed operational notes linked from those seeds may
+still be included. Output is read-only, stable for unchanged inputs, and uses
+no generated summaries, embeddings, cache, or vault writes.
+
+`notes:search:eval` reads a repo-owned `notes-search-eval.yml` and measures
+top-1 hits, top-3 hits, mean reciprocal rank (MRR), and whether each query has
+an expected path/optional heading within `top_k`. A miss exits with status 1;
+malformed contracts exit with status 2. Use `--json` for automation and
+`--top-k 1..100` only for an intentional temporary override. The installer
+copies the evaluator but never creates or overwrites the contract because
+relevance judgments belong to each target repo.
+
+Minimal contract:
+
+```yaml
+schema_version: 1
+top_k: 3
+queries:
+  - id: rollback-verification
+    query: rollback migration evidence
+    filters:
+      type: [evidence]
+      status: [verified]
+    expected:
+      - path: Evidence/2026-08-27 Rollback Verification.md
+        heading: Verification
+```
+
+Expected entries form a relevance set: a query passes when any expected entry
+ranks within `top_k`. Do not regenerate expectations from current output; each
+path and heading should represent a reviewed result that ought to remain
+retrievable.
+
+`notes:stats` gives a read-only snapshot of vault scale and maintenance risk:
+
+```bash
+npm run notes:stats
+npm run notes:stats -- --json --top 20 --stale-days 120
+```
+
+It reports non-template note, section, word, and byte totals; counts by type and
+status; largest notes and sections; broken and ambiguous links; orphan notes;
+verified versus unverified evidence; and stale `current` process/runbook notes.
+An orphan is a non-template, non-daily operational note other than an index or
+app hub with no inbound link from another included note. Guide age uses
+`last_verified`, then `date`, and defaults to 90 days. When
+`notes-search-eval.yml` exists, stats also runs it once and reports top-1,
+top-3, MRR, total elapsed time, and average time per query. Timing is
+informational and varies by machine. A missing default contract is reported as
+`not-configured`; an explicitly requested missing or unsafe `--eval-file`
+fails closed.
+
+### Stats regression baselines
+
+Baselines are opt-in and repo-owned. An install or upgrade never creates,
+changes, or deletes one. Create the first reviewed baseline explicitly:
+
+```bash
+npm run notes:stats -- --write-baseline notes-stats-baseline.json
+git add notes-stats-baseline.json
+```
+
+Creation refuses an existing file. After reviewing current results, replacement
+requires the separate `--replace-baseline` acknowledgement. Compare in CI with:
+
+```bash
+npm run notes:stats -- --baseline notes-stats-baseline.json
+```
+
+Comparison exits 1 when broken links, ambiguous links, orphans, or stale
+current guides increase, or when a configured search evaluation disappears or
+its passed/top-1/top-3/MRR metrics decline. Note, section, word, and byte
+changes are reported but do not fail by default because healthy project growth
+is expected. A reviewed baseline may opt into `limits.max_note_growth` or
+`limits.max_word_growth_percent`; generated baselines leave `limits` empty.
+Baselines contain only stable metrics—timestamps, largest-file lists, paths,
+and evaluation timings are excluded. Invalid schemas, unknown fields, missing
+files, symlinks, and paths outside the exact repository fail closed with exit
+2.
 
 `notes:closeout` refuses a note that already has a real `## Closeout` heading
 before changing the note or daily log. Date fields are serialized as
@@ -394,8 +493,9 @@ It scaffolds temp targets, runs install → route → new → search → closeou
 and exercises Git-root, upgrade, force, ambiguity, transaction rollback, and
 no-clobber guards.
 
-GitHub Actions CI also runs `npm ci`, `npm test`, `npm run notes:validate`,
-`git diff --check`, and `npm audit --omit=dev` on pushes and pull requests.
+GitHub Actions CI also runs `npm ci`, `npm test`, `npm run notes:search:eval`,
+`npm run notes:validate`, `git diff --check`, and `npm audit --omit=dev` on
+pushes and pull requests.
 
 ## License
 

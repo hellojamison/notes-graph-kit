@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "metrics": {
+    "scale": {
+      "notes": 46,
+      "sections": 145,
+      "words": 12997,
+      "bytes": 113028
+    },
+    "graph": {
+      "broken_links": 0,
+      "ambiguous_links": 0,
+      "orphans": 0
+    },
+    "freshness": {
+      "stale_current_guides": 0
+    },
+    "evaluation": {
+      "status": "passing",
+      "queries": 4,
+      "passed": 4,
+      "top1_hits": 4,
+      "top3_hits": 4,
+      "mean_reciprocal_rank": 1
+    }
+  },
+  "limits": {}
+}

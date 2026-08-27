@@ -17,6 +17,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run notes:search:eval
+      - run: npm run notes:stats -- --baseline notes-stats-baseline.json
       - run: npm run notes:validate
       - run: git diff --check
       - run: npm audit --omit=dev

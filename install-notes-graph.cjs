@@ -24,6 +24,9 @@ const WIKILINK_DELIMITER_RE = /[\[\]|]/;
 const MANAGED_SCRIPTS = [
   'scripts/project-notes.cjs',
   'scripts/search-project-notes.cjs',
+  'scripts/build-project-notes-context.cjs',
+  'scripts/evaluate-project-notes-search.cjs',
+  'scripts/project-notes-stats.cjs',
   'scripts/validate-project-notes-graph.cjs',
   'scripts/lib/project-notes-graph.cjs',
   'scripts/lib/validate-project-notes-graph.cjs'
@@ -379,6 +382,9 @@ function notesNpmScripts(scriptsDir = 'scripts') {
     'notes:new': `node ${scriptsDir}/project-notes.cjs new`,
     'notes:closeout': `node ${scriptsDir}/project-notes.cjs closeout`,
     'notes:search': `node ${scriptsDir}/search-project-notes.cjs`,
+    'notes:context': `node ${scriptsDir}/build-project-notes-context.cjs`,
+    'notes:search:eval': `node ${scriptsDir}/evaluate-project-notes-search.cjs`,
+    'notes:stats': `node ${scriptsDir}/project-notes-stats.cjs`,
     'notes:validate': `node ${scriptsDir}/validate-project-notes-graph.cjs`
   };
 }
