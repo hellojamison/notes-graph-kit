@@ -23,6 +23,7 @@ const WIKILINK_DELIMITER_RE = /[\[\]|]/;
 
 const MANAGED_SCRIPTS = [
   'scripts/project-notes.cjs',
+  'scripts/search-project-notes.cjs',
   'scripts/validate-project-notes-graph.cjs',
   'scripts/lib/project-notes-graph.cjs',
   'scripts/lib/validate-project-notes-graph.cjs'
@@ -189,12 +190,21 @@ function applicableVaultMigrations(targetVersion) {
     .map((migration) => ({ ...migration }));
 }
 
+function latestVaultMigrationVersion(targetVersion = kitVersion) {
+  const applicable = applicableVaultMigrations(targetVersion);
+  if (applicable.length === 0) {
+    throw new Error(`No vault migration is applicable to kit version ${targetVersion}`);
+  }
+  return applicable[applicable.length - 1].version;
+}
+
 function vaultMigrationGuidance(targetVersion, repoRoot = '<target-repo>') {
+  const migrationTarget = latestVaultMigrationVersion(targetVersion);
   return [
     'Vault content was not touched.',
     'kitVersion tracks managed scripts, not whether vault migrations were completed.',
     'Audit the vault against every applicable migration:',
-    `  node ${path.join(kitRoot, 'migrate-notes-graph.cjs')} audit --repo ${JSON.stringify(repoRoot)} --to ${targetVersion}`
+    `  node ${path.join(kitRoot, 'migrate-notes-graph.cjs')} audit --repo ${JSON.stringify(repoRoot)} --to ${migrationTarget}`
   ];
 }
 
@@ -368,6 +378,7 @@ function notesNpmScripts(scriptsDir = 'scripts') {
     'notes:route': `node ${scriptsDir}/project-notes.cjs route`,
     'notes:new': `node ${scriptsDir}/project-notes.cjs new`,
     'notes:closeout': `node ${scriptsDir}/project-notes.cjs closeout`,
+    'notes:search': `node ${scriptsDir}/search-project-notes.cjs`,
     'notes:validate': `node ${scriptsDir}/validate-project-notes-graph.cjs`
   };
 }
@@ -1038,6 +1049,7 @@ module.exports = {
   compareSemver,
   parseSemver,
   applicableVaultMigrations,
+  latestVaultMigrationVersion,
   vaultMigrationGuidance,
   validateRepoRoot,
   buildAgentsBlock,

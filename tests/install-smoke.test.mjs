@@ -1765,6 +1765,7 @@ test('vault migration catalog is cumulative and upgrade guidance points to the a
     installer.applicableVaultMigrations('0.3.1').map(({ version }) => version),
     ['0.2.16', '0.3.0']
   );
+  assert.equal(installer.latestVaultMigrationVersion('0.5.0'), '0.4.0');
   assert.throws(
     () => installer.applicableVaultMigrations('not-semver'),
     /Target migration version must be valid semantic versioning/
@@ -1795,7 +1796,7 @@ test('upgrade output surfaces all applicable migrations for direct and previousl
         '--upgrade',
         '--dry-run'
       ]);
-      assert.match(output, new RegExp(`\\[dry-run\\] Upgraded notes graph kit ${escapeRegExp(installedVersion)} -> 0\\.4\\.0`));
+      assert.match(output, new RegExp(`\\[dry-run\\] Upgraded notes graph kit ${escapeRegExp(installedVersion)} -> 0\\.5\\.0`));
       assert.match(
         output,
         new RegExp(`migrate-notes-graph\\.cjs audit --repo ${escapeRegExp(JSON.stringify(fs.realpathSync(repoRoot)))} --to 0\\.4\\.0`)
@@ -1868,8 +1869,8 @@ test('upgrade permits missing legacy kitVersion but rejects malformed values', (
     delete config.kitVersion;
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
     const output = run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']);
-    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.4\.0/);
-    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.4.0');
+    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.5\.0/);
+    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.5.0');
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }

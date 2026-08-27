@@ -10,6 +10,7 @@ pointers.
 - `migrate-notes-graph.cjs` — audited, backup-backed migration of an existing
   customized vault.
 - `scripts/project-notes.cjs` — route/create/closeout helper for task notes.
+- `scripts/search-project-notes.cjs` — deterministic section-level BM25 search.
 - `scripts/validate-project-notes-graph.cjs` — structured note/link validator.
 - `scripts/lib/project-notes-graph.cjs` — shared graph utilities.
 - `notes-graph.config.json` — app name, vault folder, app note, and route aliases.
@@ -57,7 +58,7 @@ Options:
 
 The installer:
 
-1. Copies the four managed helper/library files verbatim into the target's
+1. Copies the five managed helper/library files verbatim into the target's
    existing `scripts/` or `Scripts/` directory spelling (refuses to
    overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with the app name, vault dir, a
@@ -65,7 +66,7 @@ The installer:
 3. Copies the vault skeleton with the app name substituted, excluding this
    kit repo's dated local task notes. Existing vault files are skipped unless
    both `--force` and `--force-vault` are supplied.
-4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, and
+4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:search`, and
    `notes:validate` into `package.json` (existing customized commands are
    preserved with a warning) and adds the `js-yaml` dependency.
 5. Writes or appends a marked `## Project Notes Graph` block to `AGENTS.md`
@@ -84,6 +85,7 @@ Then in the target repo:
 ```bash
 npm install
 npm run notes:route -- "notes graph"
+npm run notes:search -- "rollback evidence" --type evidence --status verified
 npm run notes:validate
 git diff --check
 ```
@@ -317,6 +319,8 @@ vault-relative path.
 npm run notes:route -- "describe the task"
 npm run notes:new -- --title "Task title" --process notes-graph-maintenance --summary "Goal"
 npm run notes:new -- --title "Release title" --type release --summary "Release scope"
+npm run notes:search -- "rollback evidence" --type evidence --status verified --since 2026-01-01
+npm run notes:search -- "rollback evidence" --json
 npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Task title.md" --working "..." --verified "..." --not-verified "..."
 npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Task title.md" --certify --working "..." --verified "..." --not-verified "..."
 npm run notes:validate
@@ -336,6 +340,20 @@ promoting them to an active, current, or verified status.
 Every shipped template is a `type: template` source note with one marked YAML
 scaffold. `notes:new` validates that scaffold, generates canonical frontmatter,
 and removes it from the finished body. Do not copy scaffold metadata manually.
+
+`notes:search` ranks matching Markdown sections with deterministic BM25 and a
+bounded authority multiplier. Verified evidence, current decisions, and
+current runbooks/processes receive modest boosts; daily notes receive a modest
+penalty. Authority never creates a match: a section must first have a positive
+lexical score. Text and JSON results expose the BM25 score, multiplier, reasons,
+and combined score so ranking remains reviewable. The command
+prints the note path, heading line, frontmatter type/status/date, score, and a
+short excerpt. Repeated `--type` and `--status` filters are ORed within their
+field and combined with `--since YYYY-MM-DD`; `--limit` accepts 1–100 results.
+Template notes are excluded unless `--include-templates` is supplied. Fenced
+code blocks are not indexed. Use `--json` when another tool or agent will
+consume the results. Version 0.5.0 performs search directly from canonical
+Markdown and does not create a cache, embedding model, or generated index.
 
 `notes:closeout` refuses a note that already has a real `## Closeout` heading
 before changing the note or daily log. Date fields are serialized as
@@ -372,7 +390,7 @@ truth.
 See `AGENTS.md` for the agent-oriented repo map, install commands, and gotchas.
 
 Run `npm test` after changing the installer, helper scripts, or vault skeleton.
-It scaffolds temp targets, runs install → route → new → closeout → validate,
+It scaffolds temp targets, runs install → route → new → search → closeout → validate,
 and exercises Git-root, upgrade, force, ambiguity, transaction rollback, and
 no-clobber guards.
 

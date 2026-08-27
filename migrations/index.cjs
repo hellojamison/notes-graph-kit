@@ -89,7 +89,7 @@ function readConfig(repoRoot) {
 }
 
 function supportedTargetVersion(value) {
-  const target = value || installer.kitVersion;
+  const target = value || installer.latestVaultMigrationVersion();
   if (!installer.parseSemver(target)) {
     throw new MigrationInputError(`--to must be valid semantic versioning; found ${JSON.stringify(target)}`);
   }
@@ -1033,7 +1033,7 @@ function rollbackMigration(options) {
     repoRoot,
     git: isGitWorktree(repoRoot),
     installedConfig: null,
-    targetVersion: supportedTargetVersion(options.to || installer.kitVersion)
+    targetVersion: supportedTargetVersion(options.to)
   };
   const { backupPath, manifest } = readManifest(context, options);
   context.vaultRoot = manifest.vaultRoot;

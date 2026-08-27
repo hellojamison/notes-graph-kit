@@ -2,13 +2,14 @@
 
 Portable installer and helper scripts for the project notes graph workflow used across multiple project repos. This repo is the **single authoritative source** for the kit — retired copies inside individual app repos are pointers only; change the kit here, then install or upgrade target repos.
 
-The kit scaffolds an Obsidian vault skeleton, copies config-driven CLI helpers (`notes:route`, `notes:new`, `notes:closeout`, `notes:validate`), merges npm scripts, stamps `kitVersion`, and writes the `## Project Notes Graph` block into each target repo's `AGENTS.md`.
+The kit scaffolds an Obsidian vault skeleton, copies config-driven CLI helpers (`notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:validate`), merges npm scripts, stamps `kitVersion`, and writes the `## Project Notes Graph` block into each target repo's `AGENTS.md`.
 
 ## Repo map
 
 - `install-notes-graph.cjs` — installer/upgrader; preferred way to propagate the kit.
 - `migrate-notes-graph.cjs` — audit/apply/rollback workflow for existing customized vaults.
 - `scripts/project-notes.cjs` — route/create/closeout helper for task notes.
+- `scripts/search-project-notes.cjs` — deterministic section-level BM25 search.
 - `scripts/validate-project-notes-graph.cjs` — structured note/link validator.
 - `scripts/lib/project-notes-graph.cjs` — shared graph utilities (statuses, wikilink rules, route resolution).
 - `notes-graph.config.json` — kit-local config (app name, vault folder, routes); target repos get their own copy on install.
@@ -24,7 +25,8 @@ Helper scripts are fully config-driven (`notes-graph.config.json` plus `PROJECT_
 Kit development (this repo):
 
 - Test: `npm test` — scaffolds a temp repo, runs install → route → new → closeout → validate, and exercises upgrade/guard paths. Run after changing the installer, helpers, validator, or vault skeleton.
-- Notes helpers (dogfood): `npm run notes:route -- "<task>"`, `npm run notes:new -- --title "<title>" --type <type> ...`, `npm run notes:closeout`, `npm run notes:validate`.
+- Notes helpers (dogfood): `npm run notes:route -- "<task>"`, `npm run notes:new -- --title "<title>" --type <type> ...`, `npm run notes:closeout`, `npm run notes:search -- "<query>"`, `npm run notes:validate`.
+- Search is read-only, section-level BM25 over canonical Markdown with a bounded, disclosed authority multiplier for typed/statused operational records. Authority never creates a lexical match. It excludes templates and fenced code by default; filter with repeatable `--type`/`--status`, `--since YYYY-MM-DD`, `--limit 1..100`, or emit `--json`.
 
 Install into a target repo:
 
@@ -46,10 +48,10 @@ Options: `--repo` (exact Git worktree root; defaults to cwd), `--app` (required;
 
 The installer:
 
-1. Copies four managed helper/library files into the target's existing `scripts/` or `Scripts/` directory spelling (refuses to overwrite existing helper scripts unless `--force` is used).
+1. Copies five managed helper/library files into the target's existing `scripts/` or `Scripts/` directory spelling (refuses to overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with app name, vault dir, routes, `kitVersion`, and independent `vaultMigrationState`.
 3. Copies the vault skeleton with the app name substituted, excluding this kit repo's dated local task notes (existing vault files are not overwritten unless both `--force` and `--force-vault` are used).
-4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:validate` into `package.json` and adds `js-yaml`; existing customized `notes:*` commands are preserved with a warning.
+4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:validate` into `package.json` and adds `js-yaml`; existing customized `notes:*` commands are preserved with a warning.
 5. Writes or appends a managed-marker-wrapped `## Project Notes Graph` block to `AGENTS.md` (creates the file if missing; skips a marker pair or exact legacy heading outside fenced code).
 
 Writes are staged and committed as one rollback-capable transaction, including `package.json` and `AGENTS.md`. This protects ordinary synchronous failures, not power loss or forced process termination.
@@ -59,6 +61,7 @@ Then in the target repo:
 ```bash
 npm install
 npm run notes:route -- "notes graph"
+npm run notes:search -- "rollback evidence" --type evidence --status verified
 npm run notes:validate
 ```
 
