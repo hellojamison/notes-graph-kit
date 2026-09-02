@@ -10,8 +10,8 @@ const { splitSections, matchesFilters, searchNotes } = require('./search-project
 
 const DEFAULT_RESULTS = 5;
 const DEFAULT_MAX_WORDS = 3000;
-const RELATED_TYPES = new Set(['decision', 'evidence', 'audit', 'known-good', 'process', 'runbook']);
-const RELATED_TYPE_ORDER = ['decision', 'evidence', 'audit', 'known-good', 'process', 'runbook'];
+const RELATED_TYPES = new Set(['status', 'decision', 'evidence', 'audit', 'known-good', 'process', 'runbook']);
+const RELATED_TYPE_ORDER = ['status', 'decision', 'evidence', 'audit', 'known-good', 'process', 'runbook'];
 
 function help() {
   return `Build a deterministic, source-attributed project-notes context packet

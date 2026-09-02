@@ -30,8 +30,10 @@ const MANAGED_SCRIPTS = [
   'scripts/project-notes-stats.cjs',
   'scripts/find-project-notes-duplicates.cjs',
   'scripts/recommend-project-notes-opt-ins.cjs',
+  'scripts/build-project-notes-artifact-index.cjs',
   'scripts/validate-project-notes-graph.cjs',
   'scripts/lib/project-notes-graph.cjs',
+  'scripts/lib/project-notes-receipts.cjs',
   'scripts/lib/validate-project-notes-graph.cjs'
 ];
 
@@ -47,6 +49,14 @@ const VAULT_MIGRATIONS = [
   {
     version: '0.4.0',
     id: 'vault-0.4.0-managed-sections'
+  },
+  {
+    version: '0.13.0',
+    id: 'vault-0.13.0-status-notes'
+  },
+  {
+    version: '0.14.0',
+    id: 'vault-0.14.0-current-evidence'
   }
 ];
 
@@ -354,9 +364,15 @@ function walk(dirPath) {
   return entries;
 }
 
-function isInstallSkeletonRel(rel) {
+function isInstallSkeletonRel(rel, filePath = null) {
   const basename = path.posix.basename(rel);
   if (DATED_NOTE_RE.test(basename) && (rel === basename || rel.startsWith('Evidence/'))) {
+    return false;
+  }
+  if (rel.startsWith('Status/') && basename !== '_README.md') {
+    return false;
+  }
+  if (filePath && /(^|\n)created_by: project-notes-cli\s*(?:\n|$)/.test(fs.readFileSync(filePath, 'utf8'))) {
     return false;
   }
   return true;
@@ -391,6 +407,7 @@ function notesNpmScripts(scriptsDir = 'scripts') {
     'notes:stats': `node ${scriptsDir}/project-notes-stats.cjs`,
     'notes:duplicates': `node ${scriptsDir}/find-project-notes-duplicates.cjs`,
     'notes:recommend': `node ${scriptsDir}/recommend-project-notes-opt-ins.cjs`,
+    'notes:artifacts': `node ${scriptsDir}/build-project-notes-artifact-index.cjs`,
     'notes:validate': `node ${scriptsDir}/validate-project-notes-graph.cjs`
   };
 }
@@ -423,7 +440,7 @@ function buildVaultWrites(appName, vaultDir, appFileBase) {
   const writes = [];
   for (const filePath of walk(skeletonRoot)) {
     const rel = path.relative(skeletonRoot, filePath).split(path.sep).join('/');
-    if (!isInstallSkeletonRel(rel)) {
+    if (!isInstallSkeletonRel(rel, filePath)) {
       continue;
     }
     const targetRel = rel === `Apps/${PLACEHOLDER_APP}.md`

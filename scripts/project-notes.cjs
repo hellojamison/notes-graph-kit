@@ -19,8 +19,16 @@ const {
   normalizeInput,
   validateRouteDefinitions,
   markdownLinesOutsideFences,
+  extractWikilinkTargets,
+  resolveTargetDetailed,
   isTemplate
 } = require('./lib/project-notes-graph.cjs');
+const {
+  extractOpenItemsBlock,
+  openItemEndMarker,
+  openItemStartMarker,
+  receiptIdPattern
+} = require('./lib/project-notes-receipts.cjs');
 
 const scaffoldStartMarker = '<!-- notes-graph-kit:scaffold:start -->';
 const scaffoldEndMarker = '<!-- notes-graph-kit:scaffold:end -->';
@@ -37,7 +45,7 @@ const noteTypeDefinitions = {
   evidence: {
     template: 'Evidence Template.md',
     folder: 'Evidence',
-    status: 'active',
+    status: 'open',
     datePrefix: true,
     summarySection: 'Scope',
     requiresProcess: true
@@ -89,6 +97,14 @@ const noteTypeDefinitions = {
     datePrefix: false,
     summarySection: 'Build',
     requiresProcess: false
+  },
+  status: {
+    template: 'Status Note Template.md',
+    folder: 'Status',
+    status: 'current',
+    datePrefix: false,
+    summarySection: 'Current Phase',
+    requiresProcess: true
   }
 };
 
@@ -97,8 +113,8 @@ function printHelp() {
 
 Usage:
   node scripts/project-notes.cjs route "matisse dark mode buttons" [--json]
-  node scripts/project-notes.cjs new --title "Note title" [--process theme-qa] [--summary "..."] [--type task|evidence|app|process|runbook|decision|incident|release] [--runbook "..."]
-  node scripts/project-notes.cjs closeout --note "Project Notes/Evidence/2026-07-03 Task title.md" --working "..." --verified "..." --not-verified "..." [--certify]
+  node scripts/project-notes.cjs new --title "Note title" [--process theme-qa] [--summary "..."] [--topic "..."] [--type task|evidence|app|process|runbook|decision|incident|release|status] [--runbook "..."]
+  node scripts/project-notes.cjs closeout --note "Project Notes/Evidence/2026-07-03 Task title.md" --working "..." --verified "..." --not-verified "..." [--verdict "..." --decision "Decisions/Current Verdict.md"] [--certify] [--status "Status/Theme QA Status.md" --phase "..." --certified "..." --settled "..." --open-item "id: summary" --close-item id[,id]]
 `;
 }
 
@@ -110,12 +126,15 @@ const commandOptions = {
   },
   new: {
     booleanFlags: new Set(['help']),
-    valueFlags: new Set(['title', 'process', 'summary', 'type', 'runbook']),
+    valueFlags: new Set(['title', 'process', 'summary', 'topic', 'type', 'runbook']),
     allowPositionals: false
   },
   closeout: {
     booleanFlags: new Set(['help', 'certify']),
-    valueFlags: new Set(['note', 'working', 'verified', 'not-verified']),
+    valueFlags: new Set([
+      'note', 'working', 'verified', 'not-verified', 'verdict', 'decision',
+      'status', 'phase', 'certified', 'open', 'open-item', 'close-item', 'settled'
+    ]),
     allowPositionals: false
   }
 };
@@ -347,6 +366,38 @@ function textWithAppendedLine(filePath, initialHeading, line) {
   return `${text}${line}\n`;
 }
 
+function dailyLineMinutes(line) {
+  const match = line.match(/^- (\d{2}):(\d{2})(?: [A-Z]{2,5})?: /);
+  if (!match) {
+    return null;
+  }
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return hours <= 23 && minutes <= 59 ? (hours * 60) + minutes : null;
+}
+
+function textWithChronologicalDailyLine(filePath, initialHeading, line) {
+  let text = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : `${initialHeading}\n\n`;
+  if (!text.endsWith('\n')) {
+    text += '\n';
+  }
+  const lines = text.split('\n');
+  const newMinutes = dailyLineMinutes(line);
+  if (newMinutes == null) {
+    throw new Error(`Invalid generated daily entry timestamp: ${line}`);
+  }
+  let insertion = lines.length - 1;
+  for (let index = 0; index < lines.length; index += 1) {
+    const existingMinutes = dailyLineMinutes(lines[index]);
+    if (existingMinutes != null && existingMinutes > newMinutes) {
+      insertion = index;
+      break;
+    }
+  }
+  lines.splice(insertion, 0, line);
+  return lines.join('\n');
+}
+
 function atomicWriteFiles(writes) {
   const uniquePaths = new Set();
   const staged = [];
@@ -430,6 +481,7 @@ function dailyInitialText(date, appLink) {
   const frontmatter = {
     title: date,
     schema_version: 1,
+    daily_format: 2,
     type: 'daily',
     status: 'active',
     date,
@@ -446,6 +498,7 @@ function routeToJson(route) {
   };
   return {
     process: noteSummary(route.processRel),
+    statuses: route.statusRels.map(noteSummary),
     runbooks: route.runbookRels.map(noteSummary),
     decisions: route.decisionRels.map(noteSummary),
     evidence: route.evidenceRels.map(noteSummary)
@@ -456,6 +509,7 @@ function formatRoute(route, options = {}) {
   const config = getConfig(options.env || process.env);
   const appName = config.appName || 'My Project';
   const processTitle = getNoteTitle(route.processNote, route.processRel);
+  const statusTitles = route.statusRels.map((rel) => getNoteTitle(route.graph.noteByRel.get(rel), rel));
   const runbookTitles = route.runbookRels.map((rel) => getNoteTitle(route.graph.noteByRel.get(rel), rel));
   const decisionTitles = route.decisionRels.map((rel) => getNoteTitle(route.graph.noteByRel.get(rel), rel));
   const evidenceTitles = route.evidenceRels.map((rel) => getNoteTitle(route.graph.noteByRel.get(rel), rel));
@@ -463,6 +517,7 @@ function formatRoute(route, options = {}) {
     'Start Here',
     appName,
     processTitle,
+    ...statusTitles,
     ...runbookTitles,
     ...decisionTitles,
     ...evidenceTitles.slice(0, 1)
@@ -472,6 +527,12 @@ function formatRoute(route, options = {}) {
     '',
     `Process: ${linkForRel(route.processRel, processTitle)}`
   ];
+  if (route.statusRels.length > 0) {
+    lines.push('Status:');
+    for (const rel of route.statusRels) {
+      lines.push(`- ${linkForRel(rel, getNoteTitle(route.graph.noteByRel.get(rel), rel))}`);
+    }
+  }
   if (route.runbookRels.length > 0) {
     lines.push('Runbooks:');
     for (const rel of route.runbookRels) {
@@ -514,6 +575,22 @@ function optionalArg(args, name) {
     return null;
   }
   return requireArg(args, name);
+}
+
+function processTargets(frontmatter, graph) {
+  return (Array.isArray(frontmatter?.related_processes) ? frontmatter.related_processes : [])
+    .flatMap((value) => typeof value === 'string' ? extractWikilinkTargets(value) : [])
+    .map((target) => resolveTargetDetailed(target, graph.index))
+    .map((resolution) => resolution.status === 'resolved' ? resolution.rel : null)
+    .filter(Boolean);
+}
+
+function statusAlreadyClaimsProcess(graph, processRel) {
+  return graph.notes.find((note) =>
+    !isTemplate(note.rel)
+    && note.frontmatter?.type === 'status'
+    && processTargets(note.frontmatter, graph).includes(processRel)
+  );
 }
 
 function configPathForEnv(env) {
@@ -635,9 +712,15 @@ function createNewNote(args, options = {}) {
   if (runbookInput && route.runbookRels.length === 0) {
     throw new Error(`No runbook matched "${runbookInput}"`);
   }
+  if (type === 'status') {
+    const existingStatus = statusAlreadyClaimsProcess(graph, route.processRel);
+    if (existingStatus) {
+      throw new Error(`Process already has a Status note: ${existingStatus.rel}`);
+    }
+  }
 
   const now = options.now || new Date();
-  const { date, time, timeZoneName } = currentDateParts(now);
+  const { date } = currentDateParts(now);
   const notePath = notePathForType(vaultRoot, date, title, definition);
   const noteRel = path.relative(vaultRoot, notePath).split(path.sep).join('/');
   const processTitle = route ? getNoteTitle(route.processNote, route.processRel) : null;
@@ -651,35 +734,31 @@ function createNewNote(args, options = {}) {
     schema_version: 1,
     type,
     status: definition.status,
+    ...(type === 'evidence' ? {
+      evidence_format: 2,
+      topic: optionalArg(args, 'topic') || title,
+      verification: 'unverified'
+    } : {}),
     date,
     app: appName,
-    source_of_truth: false,
+    source_of_truth: type === 'status',
+    ...(type === 'status' ? { last_verified: date } : {}),
     confidence: 'medium',
     created_by: 'project-notes-cli',
     related_apps: [appLink],
     related_processes: processLink ? [processLink] : [],
     related_runbooks: runbookLinks,
-    related_decisions: decisionLinks
+    related_decisions: decisionLinks,
+    ...(type === 'evidence' ? { verdict_decision: null, follow_up: null } : {})
   };
+  const statusLinks = route ? frontmatterLinksForRels(route, route.statusRels) : [];
   const graphLinks = [
-    `- App: ${appLink}`,
-    `- Process: ${processLink || 'None selected'}`,
-    `- Runbook: ${runbookLinks.join(', ') || 'None selected'}`
+    `- Status: ${statusLinks.join(', ') || 'None selected'}`,
+    `- Decisions: ${decisionLinks.join(', ') || 'None selected'}`
   ].join('\n');
   const noteText = `---\n${dumpFrontmatter(frontmatter)}\n---\n\n${replaceOrAppendH2Section(body, 'Graph Links', graphLinks)}\n`;
 
-  const dailyPath = path.join(vaultRoot, `${date}.md`);
-  const runbookText = runbookLinks.length > 0 ? ` and ${runbookLinks.join(', ')}` : '';
-  const processText = processLink ? ` linked to ${appLink}, ${processLink}${runbookText}` : ` linked to ${appLink}`;
-  const dailyText = textWithAppendedLine(
-    dailyPath,
-    dailyInitialText(date, appLink),
-    `- ${time} ${timeZoneName}: Created notes graph ${type} ${linkForRel(noteRel, title)}${processText}. Working: note scaffold prepared. Not verified: implementation outcome is not recorded yet.`
-  );
-  const writes = [
-    { filePath: notePath, content: noteText },
-    { filePath: dailyPath, content: dailyText }
-  ];
+  const writes = [{ filePath: notePath, content: noteText }];
 
   let nextConfig = null;
   if (type === 'process') {
@@ -694,7 +773,7 @@ function createNewNote(args, options = {}) {
   return {
     notePath,
     noteRel,
-    dailyPath,
+    dailyPath: null,
     route: route ? routeToJson(route) : null,
     config: nextConfig
   };
@@ -723,6 +802,178 @@ function isPathWithin(rootPath, candidatePath) {
     || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
 }
 
+function replaceOrAppendH2SectionWithHistory(body, sectionName, entry) {
+  const escapedName = sectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const headingPattern = new RegExp(`^ {0,3}##[ \\t]+${escapedName}[ \\t]*$`);
+  const outsideLines = markdownLinesOutsideFences(body);
+  const heading = outsideLines.find((item) => headingPattern.test(item.line));
+  if (!heading) {
+    return `${body.trimEnd()}\n\n## ${sectionName}\n\n${entry}`;
+  }
+  const lineEnd = endOfLine(body, heading.start);
+  return `${body.slice(0, lineEnd)}\n${entry}\n\n${body.slice(lineEnd).trimStart()}`.trimEnd();
+}
+
+function statusUpdateArgs(args) {
+  const requiredFields = ['status', 'phase', 'certified', 'settled'];
+  const optionalFields = ['open', 'open-item', 'close-item'];
+  const present = [...requiredFields, ...optionalFields]
+    .filter((field) => Object.prototype.hasOwnProperty.call(args, field));
+  if (present.length === 0) {
+    return null;
+  }
+  const missing = requiredFields.filter((field) => !Object.prototype.hasOwnProperty.call(args, field));
+  if (missing.length > 0) {
+    throw new Error(`Status update requires ${requiredFields.map((field) => `--${field}`).join(', ')}`);
+  }
+  if (args.open != null && (args['open-item'] != null || args['close-item'] != null)) {
+    throw new Error('Use either legacy --open or structured --open-item/--close-item, not both');
+  }
+  return {
+    ...Object.fromEntries(requiredFields.map((field) => [field, requireArg(args, field)])),
+    open: optionalArg(args, 'open'),
+    openItem: optionalArg(args, 'open-item'),
+    closeItem: optionalArg(args, 'close-item')
+  };
+}
+
+function parseOpenItem(value) {
+  if (!value) {
+    return null;
+  }
+  const separator = value.indexOf(':');
+  if (separator === -1) {
+    throw new Error('--open-item must use "id: summary"');
+  }
+  const id = value.slice(0, separator).trim();
+  const summary = value.slice(separator + 1).trim();
+  if (!receiptIdPattern.test(id) || !summary) {
+    throw new Error('--open-item id must be lowercase kebab-case and include a summary');
+  }
+  return { id, summary };
+}
+
+function parseCloseItems(value) {
+  if (!value) {
+    return [];
+  }
+  const ids = value.split(',').map((item) => item.trim()).filter(Boolean);
+  if (ids.length === 0 || ids.some((id) => !receiptIdPattern.test(id))) {
+    throw new Error('--close-item must be one or more lowercase kebab-case IDs separated by commas');
+  }
+  return [...new Set(ids)];
+}
+
+function renderOpenItemsBlock(items) {
+  const yamlText = dumpFrontmatter({ items }).trimEnd();
+  return `${openItemStartMarker}\n\`\`\`yaml\n${yamlText}\n\`\`\`\n${openItemEndMarker}`;
+}
+
+function replaceOpenItemsBlock(body, items) {
+  const start = body.indexOf(openItemStartMarker);
+  const end = body.indexOf(openItemEndMarker, start + openItemStartMarker.length);
+  if (start === -1 || end === -1) {
+    return replaceOrAppendH2Section(body, 'Open Items', renderOpenItemsBlock(items));
+  }
+  const afterEnd = end + openItemEndMarker.length;
+  return `${body.slice(0, start)}${renderOpenItemsBlock(items)}${body.slice(afterEnd)}`;
+}
+
+function resolveDecisionInput(input, vaultRoot, graph) {
+  const decisionPath = resolveNotePath(input, vaultRoot);
+  if (!fs.existsSync(decisionPath)) {
+    throw new Error(`Missing Decision note: ${input}`);
+  }
+  const realVaultRoot = realPath(vaultRoot);
+  const realDecisionPath = realPath(decisionPath);
+  if (!isPathWithin(realVaultRoot, realDecisionPath)) {
+    throw new Error(`Decision note is outside vault: ${input}`);
+  }
+  const decisionRel = path.relative(realVaultRoot, realDecisionPath).split(path.sep).join('/');
+  const decision = graph.noteByRel.get(decisionRel);
+  if (!decision?.frontmatter || decision.frontmatter.type !== 'decision') {
+    throw new Error(`Not a Decision note: ${input}`);
+  }
+  return linkForRel(decisionRel, getNoteTitle(decision, decisionRel));
+}
+
+function updateStructuredOpenItems(statusBody, statusRel, statusUpdate, noteRel, title, date) {
+  const parsed = extractOpenItemsBlock(statusBody);
+  if (parsed.errors.length > 0 || !parsed.items) {
+    throw new Error(`Invalid structured Open Items in ${statusRel}: ${parsed.errors.join('; ') || 'missing open-items block'}`);
+  }
+  const items = parsed.items.map((item) => ({ ...item }));
+  const ids = new Set();
+  for (const item of items) {
+    if (!item || typeof item !== 'object' || Array.isArray(item) || !receiptIdPattern.test(item.id) || typeof item.summary !== 'string' || !item.summary.trim()) {
+      throw new Error(`Invalid structured Open Item in ${statusRel}`);
+    }
+    if (ids.has(item.id)) {
+      throw new Error(`Duplicate Open Item ID in ${statusRel}: ${item.id}`);
+    }
+    ids.add(item.id);
+  }
+  const opened = parseOpenItem(statusUpdate.openItem);
+  if (opened) {
+    if (ids.has(opened.id)) {
+      throw new Error(`Open Item already exists in ${statusRel}: ${opened.id}`);
+    }
+    items.push({
+      id: opened.id,
+      summary: opened.summary,
+      state: 'open',
+      opened_by: linkForRel(noteRel, title)
+    });
+    ids.add(opened.id);
+  }
+  const closingIds = parseCloseItems(statusUpdate.closeItem);
+  for (const id of closingIds) {
+    if (!ids.has(id)) {
+      throw new Error(`Open Item does not exist in ${statusRel}: ${id}`);
+    }
+  }
+  const updatedItems = items.map((item) => closingIds.includes(item.id)
+    ? { ...item, state: 'closed', closed_by: linkForRel(noteRel, title) }
+    : item
+  );
+  let body = replaceOpenItemsBlock(statusBody, updatedItems);
+  for (const id of closingIds) {
+    body = replaceOrAppendH2SectionWithHistory(
+      body,
+      'Recently Closed Open Items',
+      `- ${date}: \`${id}\` — closed by ${linkForRel(noteRel, title)}`
+    );
+  }
+  return body;
+}
+
+function resolveStatusUpdate(statusInput, vaultRoot, graph, closedFrontmatter) {
+  const statusPath = resolveNotePath(statusInput, vaultRoot);
+  if (!fs.existsSync(statusPath)) {
+    throw new Error(`Missing Status note: ${statusInput}`);
+  }
+  const realVaultRoot = realPath(vaultRoot);
+  const realStatusPath = realPath(statusPath);
+  if (!isPathWithin(realVaultRoot, realStatusPath)) {
+    throw new Error(`Status note is outside vault: ${statusInput}`);
+  }
+  const statusRel = path.relative(realVaultRoot, realStatusPath).split(path.sep).join('/');
+  const original = fs.readFileSync(realStatusPath, 'utf8');
+  const { frontmatter, body } = splitFrontmatter(original);
+  if (!frontmatter || frontmatter.type !== 'status') {
+    throw new Error(`Not a Status note: ${statusInput}`);
+  }
+  const statusProcesses = processTargets(frontmatter, graph);
+  if (statusProcesses.length !== 1) {
+    throw new Error(`Status note must link exactly one process: ${statusInput}`);
+  }
+  const closedProcesses = processTargets(closedFrontmatter, graph);
+  if (closedProcesses.length > 0 && !closedProcesses.includes(statusProcesses[0])) {
+    throw new Error(`Status note process does not match closed note: ${statusInput}`);
+  }
+  return { realStatusPath, statusRel, frontmatter, body };
+}
+
 function closeoutNote(args, options = {}) {
   const env = options.env || process.env;
   const vaultRoot = getVaultRoot({ env, vaultRoot: options.vaultRoot });
@@ -734,6 +985,7 @@ function closeoutNote(args, options = {}) {
   const working = requireArg(args, 'working');
   const verified = requireArg(args, 'verified');
   const notVerified = requireArg(args, 'not-verified');
+  const statusUpdate = statusUpdateArgs(args);
   const notePath = resolveNotePath(noteInput, vaultRoot);
   if (!fs.existsSync(notePath)) {
     throw new Error(`Missing note: ${noteInput}`);
@@ -752,13 +1004,28 @@ function closeoutNote(args, options = {}) {
   if (hasH2OutsideFences(body, /^ {0,3}##[ \t]+Closeout(?:[ \t]+.*)?[ \t]*$/)) {
     throw new Error(`Note already contains a closeout: ${noteInput}`);
   }
+  const evidenceFormat = frontmatter.type === 'evidence'
+    && (frontmatter.evidence_format === 2 || frontmatter.evidence_format === '2');
+  const verdict = evidenceFormat ? requireArg(args, 'verdict') : optionalArg(args, 'verdict');
+  const needsGraph = Boolean(statusUpdate || args.decision || evidenceFormat);
+  const graph = needsGraph ? loadVaultGraph({ env, vaultRoot }) : null;
+  if (evidenceFormat && !args.decision) {
+    throw new Error('Structured evidence closeout requires --decision pointing to the current Decision note');
+  }
+  const verdictDecision = args.decision
+    ? resolveDecisionInput(requireArg(args, 'decision'), vaultRoot, graph)
+    : null;
   const now = options.now || new Date();
   const { date, time, timeZoneName } = currentDateParts(now);
-  const status = args.certify ? 'verified' : 'done';
+  const status = evidenceFormat ? 'done' : args.certify ? 'verified' : 'done';
   const nextFrontmatter = {
     ...frontmatter,
     status,
-    last_verified: date
+    last_verified: date,
+    ...(evidenceFormat ? {
+      verification: args.certify ? 'verified' : 'unverified',
+      verdict_decision: verdictDecision
+    } : {})
   };
   const title = frontmatter.title || path.basename(realNotePath, '.md');
   const closeout = [
@@ -770,20 +1037,66 @@ function closeoutNote(args, options = {}) {
     `- Verified: ${verified}`,
     `- Not verified: ${notVerified}`
   ].join('\n');
-  const nextText = `---\n${dumpFrontmatter(nextFrontmatter)}\n---\n${body.trimEnd()}${closeout}\n`;
+  const nextBody = evidenceFormat
+    ? replaceOrAppendH2Section(body, 'Current Verdict', `${verdict}\n\nDecision: ${verdictDecision}`)
+    : body;
+  const nextText = `---\n${dumpFrontmatter(nextFrontmatter)}\n---\n${nextBody.trimEnd()}${closeout}\n`;
+
+  const statusNote = statusUpdate
+    ? resolveStatusUpdate(statusUpdate.status, vaultRoot, graph, frontmatter)
+    : null;
+  const nextStatusText = statusNote
+    ? (() => {
+        const phaseCloseout = `- ${date}: ${linkForRel(noteRel, title)} — ${statusUpdate.phase}`;
+        const structuredStatus = statusNote.frontmatter.status_format === 2
+          || statusNote.frontmatter.status_format === '2';
+        if (structuredStatus && !verdictDecision) {
+          throw new Error('Structured Status updates require --decision pointing to the settled Decision note');
+        }
+        if (structuredStatus && statusUpdate.open) {
+          throw new Error('Structured Status notes use --open-item and --close-item, not --open');
+        }
+        if (!structuredStatus && !statusUpdate.open) {
+          throw new Error('Legacy Status updates require --open');
+        }
+        let statusBody = replaceOrAppendH2Section(statusNote.body, 'Current Phase', statusUpdate.phase);
+        statusBody = replaceOrAppendH2Section(statusBody, 'Certified', `- ${statusUpdate.certified}`);
+        statusBody = structuredStatus
+          ? updateStructuredOpenItems(statusBody, statusNote.statusRel, statusUpdate, noteRel, title, date)
+          : replaceOrAppendH2Section(statusBody, 'Open', `- ${statusUpdate.open}`);
+        statusBody = replaceOrAppendH2Section(
+          statusBody,
+          'Settled Verdicts',
+          structuredStatus ? `- ${verdictDecision}: ${statusUpdate.settled}` : `- ${statusUpdate.settled}`
+        );
+        statusBody = replaceOrAppendH2SectionWithHistory(statusBody, 'Recent Phase Closeouts', phaseCloseout);
+        const statusFrontmatter = {
+          ...statusNote.frontmatter,
+          status: 'current',
+          source_of_truth: true,
+          last_verified: date,
+          last_updated: date
+        };
+        return `---\n${dumpFrontmatter(statusFrontmatter)}\n---\n${statusBody.trimEnd()}\n`;
+      })()
+    : null;
 
   const dailyPath = path.join(vaultRoot, `${date}.md`);
-  const dailyText = textWithAppendedLine(
+  const dailyText = textWithChronologicalDailyLine(
     dailyPath,
     dailyInitialText(date, appLink),
-    `- ${time} ${timeZoneName}: Closed notes graph task ${linkForRel(noteRel, title)}. Status: ${status}. Working: ${working} Verified: ${verified} Not verified: ${notVerified}`
+    `- ${time} ${timeZoneName}: ${verdict || working} — ${linkForRel(noteRel, title)}`
   );
-  atomicWriteFiles([
+  const writes = [
     { filePath: realNotePath, content: nextText },
     { filePath: dailyPath, content: dailyText }
-  ]);
+  ];
+  if (statusNote) {
+    writes.push({ filePath: statusNote.realStatusPath, content: nextStatusText });
+  }
+  atomicWriteFiles(writes);
 
-  return { notePath: realNotePath, noteRel, dailyPath, status };
+  return { notePath: realNotePath, noteRel, dailyPath, status, statusRel: statusNote?.statusRel || null };
 }
 
 function main(argv = process.argv.slice(2), options = {}) {
@@ -804,11 +1117,12 @@ function main(argv = process.argv.slice(2), options = {}) {
   if (command === 'new') {
     const result = createNewNote(args, options);
     const configOutput = result.config ? 'Updated notes-graph.config.json\n' : '';
-    return `Created ${result.noteRel}\nUpdated ${noteKeyForRel(path.basename(result.dailyPath))}.md\n${configOutput}`;
+    return `Created ${result.noteRel}\n${configOutput}`;
   }
   if (command === 'closeout') {
     const result = closeoutNote(args, options);
-    return `Closed ${result.noteRel}\nUpdated ${noteKeyForRel(path.basename(result.dailyPath))}.md\n`;
+    const statusOutput = result.statusRel ? `Updated ${result.statusRel}\n` : '';
+    return `Closed ${result.noteRel}\n${statusOutput}Updated ${noteKeyForRel(path.basename(result.dailyPath))}.md\n`;
   }
 }
 

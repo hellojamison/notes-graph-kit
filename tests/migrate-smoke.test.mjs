@@ -121,7 +121,9 @@ test('unmanaged audit is read-only and apply is idempotent and rollback-capable'
     assert.deepEqual(auditReport.prospectiveApplied, [
       'vault-0.2.16-schema-indexes',
       'vault-0.3.0-typed-templates',
-      'vault-0.4.0-managed-sections'
+      'vault-0.4.0-managed-sections',
+      'vault-0.13.0-status-notes',
+      'vault-0.14.0-current-evidence'
     ]);
     assert.ok(auditReport.items.some((item) =>
       item.rel === 'Existing Notes/Legacy.md'
@@ -159,7 +161,9 @@ test('unmanaged audit is read-only and apply is idempotent and rollback-capable'
       applied: [
         'vault-0.2.16-schema-indexes',
         'vault-0.3.0-typed-templates',
-        'vault-0.4.0-managed-sections'
+        'vault-0.4.0-managed-sections',
+        'vault-0.13.0-status-notes',
+        'vault-0.14.0-current-evidence'
       ]
     });
     const backupRoot = path.join(
@@ -194,7 +198,9 @@ test('unmanaged audit is read-only and apply is idempotent and rollback-capable'
     assert.deepEqual(rollbackReport.currentApplied, [
       'vault-0.2.16-schema-indexes',
       'vault-0.3.0-typed-templates',
-      'vault-0.4.0-managed-sections'
+      'vault-0.4.0-managed-sections',
+      'vault-0.13.0-status-notes',
+      'vault-0.14.0-current-evidence'
     ]);
     assert.deepEqual(rollbackReport.prospectiveApplied, []);
     assert.deepEqual(fs.readFileSync(legacyPath), legacyBytes);

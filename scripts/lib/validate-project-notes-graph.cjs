@@ -1,5 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
+const { execFileSync } = require('node:child_process');
 const yaml = require('js-yaml');
 const {
   allowedTypes,
@@ -8,6 +10,7 @@ const {
   relationshipTypeExpectations,
   defaultRouteDefinitions,
   getConfig,
+  getRepoRoot,
   getVaultRoot,
   loadVaultGraph,
   loadFrontmatter,
@@ -21,8 +24,18 @@ const {
   asArray,
   isTemplate,
   isDaily,
-  isStructured
+  isStructured,
+  markdownLinesOutsideFences
 } = require('./project-notes-graph.cjs');
+const {
+  asArray: receiptAsArray,
+  extractOpenItemsBlock,
+  extractReceiptBlocks,
+  isSafeArtifactRel,
+  receiptIdPattern,
+  stripMarkedReceiptBlocks,
+  validateReceipt
+} = require('./project-notes-receipts.cjs');
 
 const allowedBaseViewTypes = new Set(['table', 'cards', 'list', 'map']);
 
@@ -299,6 +312,111 @@ function validateBaseFiles(graph, vaultRoot, readFileSync) {
   return errors;
 }
 
+function frontmatterFormat(value) {
+  return value === 2 || value === '2';
+}
+
+function currentVerdictError(body) {
+  const headings = markdownLinesOutsideFences(body)
+    .filter(({ line }) => /^ {0,3}##[ \t]+[^\n]+$/.test(line));
+  if (headings.length === 0 || !/^ {0,3}##[ \t]+Current Verdict[ \t]*$/.test(headings[0].line)) {
+    return 'Current Verdict must be the first H2 section';
+  }
+  const start = headings[0].start + headings[0].line.length;
+  const end = headings[1]?.start ?? body.length;
+  if (!body.slice(start, end).trim()) {
+    return 'Current Verdict must not be empty';
+  }
+  return null;
+}
+
+function evidenceWordCount(body) {
+  return stripMarkedReceiptBlocks(body)
+    .replace(/```[\s\S]*?```/g, '')
+    .match(/\b[\p{L}\p{N}][\p{L}\p{N}'-]*\b/gu)?.length || 0;
+}
+
+function dailyTimestampMinutes(line) {
+  const match = line.match(/^- (\d{2}):(\d{2})(?: [A-Z]{2,5})?: /);
+  if (!match) {
+    return null;
+  }
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return hours <= 23 && minutes <= 59 ? (hours * 60) + minutes : null;
+}
+
+function validateDailyChronology(rel, body) {
+  const errors = [];
+  let previous = -1;
+  for (const line of body.split(/\r?\n/)) {
+    const current = dailyTimestampMinutes(line);
+    if (current == null) {
+      continue;
+    }
+    if (current < previous) {
+      errors.push(`${rel}: timestamped daily entries must be chronological`);
+      break;
+    }
+    previous = current;
+  }
+  return errors;
+}
+
+function realPathOrNull(filePath) {
+  try {
+    return fs.realpathSync.native ? fs.realpathSync.native(filePath) : fs.realpathSync(filePath);
+  } catch {
+    return null;
+  }
+}
+
+function isWithin(rootPath, candidatePath) {
+  const relative = path.relative(rootPath, candidatePath);
+  return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+}
+
+function validateArtifactReference(rel, artifact, repoRoot, errors) {
+  if (!isSafeArtifactRel(artifact.path)) {
+    errors.push(`${rel}: receipt artifact path must be a safe artifacts/... path: ${artifact.path || '(missing)'}`);
+    return;
+  }
+  const rootRealPath = realPathOrNull(repoRoot);
+  const artifactPath = path.resolve(repoRoot, artifact.path);
+  const artifactRealPath = realPathOrNull(artifactPath);
+  if (!artifactRealPath || !rootRealPath || !isWithin(rootRealPath, artifactRealPath)) {
+    errors.push(`${rel}: receipt artifact path does not resolve inside the repo: ${artifact.path}`);
+    return;
+  }
+  const stat = fs.statSync(artifactRealPath);
+  if (artifact.sha256 != null) {
+    if (!stat.isFile()) {
+      errors.push(`${rel}: receipt artifact sha256 requires a regular file: ${artifact.path}`);
+    } else {
+      const actual = crypto.createHash('sha256').update(fs.readFileSync(artifactRealPath)).digest('hex');
+      if (actual.toLowerCase() !== artifact.sha256.toLowerCase()) {
+        errors.push(`${rel}: receipt artifact sha256 does not match: ${artifact.path}`);
+      }
+    }
+  }
+  if (artifact.git_sha != null) {
+    try {
+      execFileSync('git', ['-C', repoRoot, 'cat-file', '-e', `${artifact.git_sha}^{commit}`], {
+        stdio: 'ignore'
+      });
+    } catch {
+      errors.push(`${rel}: receipt artifact git_sha does not resolve to a commit: ${artifact.git_sha}`);
+    }
+  }
+}
+
+function linkedDecisionTargets(values, noteIndex) {
+  return receiptAsArray(values)
+    .filter((value) => typeof value === 'string')
+    .flatMap((value) => extractWikilinkTargets(value))
+    .map((target) => ({ target, resolution: resolveTargetDetailed(target, noteIndex) }));
+}
+
 function validateProjectNotesGraph(options = {}) {
   const env = options.env || process.env;
   const suppliedGraph = options.graph || null;
@@ -312,6 +430,10 @@ function validateProjectNotesGraph(options = {}) {
   const existsSync = options.existsSync || fs.existsSync;
   const readFileSync = options.readFileSync || fs.readFileSync;
   const now = options.now || new Date();
+  const repoRoot = path.resolve(options.repoRoot || getRepoRoot(env));
+  const receiptOpenReferences = [];
+  const receiptCloseReferences = [];
+  const statusItems = new Map();
 
   let graph = suppliedGraph;
   if (!graph && options.files != null) {
@@ -329,6 +451,7 @@ function validateProjectNotesGraph(options = {}) {
   graph ||= loadVaultGraph({ vaultRoot, env });
   const { notes, index, frontmatterByRel } = graph;
   const inboundByRel = new Map();
+  const statusClaims = new Map();
   const config = options.config !== undefined
     ? options.config
     : options.files != null
@@ -417,6 +540,9 @@ function validateProjectNotesGraph(options = {}) {
     if (schemaManaged) {
       errors.push(...validateSchemaManagedFrontmatter(rel, frontmatter));
     }
+    if (frontmatter.type === 'daily' && frontmatterFormat(frontmatter.daily_format)) {
+      errors.push(...validateDailyChronology(rel, body));
+    }
     const draft = frontmatter.status === 'draft';
 
     if (frontmatter.type && !allowedTypes.has(frontmatter.type)) {
@@ -469,6 +595,119 @@ function validateProjectNotesGraph(options = {}) {
 
     if (!template && frontmatter.type && asArray(frontmatter.related_apps).length === 0) {
       warnings.push(`${rel}: typed note has no related_apps`);
+    }
+
+    if (!template && frontmatter.type === 'status') {
+      const processLinks = asArray(frontmatter.related_processes)
+        .filter((value) => typeof value === 'string')
+        .flatMap((value) => extractWikilinkTargets(value));
+      if (processLinks.length !== 1) {
+        errors.push(`${rel}: Status note must have exactly one related_processes wikilink`);
+      } else {
+        const resolution = resolveTargetDetailed(processLinks[0], index);
+        if (resolution.status === 'resolved') {
+          const claims = statusClaims.get(resolution.rel) || [];
+          claims.push(rel);
+          statusClaims.set(resolution.rel, claims);
+        }
+      }
+      if (frontmatterFormat(frontmatter.status_format)) {
+        const parsedOpenItems = extractOpenItemsBlock(body);
+        for (const error of parsedOpenItems.errors) {
+          errors.push(`${rel}: ${error}`);
+        }
+        if (!parsedOpenItems.items) {
+          errors.push(`${rel}: status_format 2 requires a structured Open Items block`);
+        } else {
+          for (const item of parsedOpenItems.items) {
+            if (!item || typeof item !== 'object' || Array.isArray(item)) {
+              errors.push(`${rel}: Open Items entries must be mappings`);
+              continue;
+            }
+            if (!receiptIdPattern.test(item.id)) {
+              errors.push(`${rel}: Open Item id must be lowercase kebab-case`);
+              continue;
+            }
+            if (!isNonEmptyString(item.summary)) {
+              errors.push(`${rel}: Open Item ${item.id} is missing a summary`);
+            }
+            if (!isNonEmptyString(item.opened_by)) {
+              errors.push(`${rel}: Open Item ${item.id} is missing opened_by evidence`);
+            }
+            if (!['open', 'closed'].includes(item.state)) {
+              errors.push(`${rel}: Open Item ${item.id} state must be open or closed`);
+            }
+            if (item.state === 'closed' && !isNonEmptyString(item.closed_by)) {
+              errors.push(`${rel}: closed Open Item ${item.id} is missing closed_by evidence`);
+            }
+            if (statusItems.has(item.id)) {
+              errors.push(`${rel}: Open Item id ${item.id} also appears in ${statusItems.get(item.id).rel}`);
+            } else {
+              statusItems.set(item.id, { rel, state: item.state });
+            }
+          }
+        }
+      }
+    }
+
+    if (!template && frontmatter.type === 'evidence' && frontmatterFormat(frontmatter.evidence_format)) {
+      if (!['open', 'done'].includes(frontmatter.status)) {
+        errors.push(`${rel}: evidence_format 2 status must be open or done`);
+      }
+      if (!isNonEmptyString(frontmatter.topic)) {
+        errors.push(`${rel}: evidence_format 2 requires one non-empty topic`);
+      }
+      if (!['unverified', 'verified'].includes(frontmatter.verification)) {
+        errors.push(`${rel}: evidence_format 2 verification must be unverified or verified`);
+      }
+      const verdictError = currentVerdictError(body);
+      if (verdictError) {
+        errors.push(`${rel}: ${verdictError}`);
+      }
+      if (frontmatter.status === 'done' && asArray(frontmatter.verdict_decision).length === 0) {
+        errors.push(`${rel}: done evidence requires verdict_decision`);
+      }
+      const words = evidenceWordCount(body);
+      if (words > 1200) {
+        errors.push(`${rel}: evidence exceeds the 1200-word cap (${words}); create a follow-up evidence note and cross-link it`);
+      }
+      const receiptResult = extractReceiptBlocks(body);
+      for (const error of receiptResult.errors) {
+        errors.push(`${rel}: ${error}`);
+      }
+      const receiptIds = new Set();
+      receiptResult.receipts.forEach((receipt, index) => {
+        for (const error of validateReceipt(receipt, receiptIds)) {
+          errors.push(`${rel}: receipt ${index + 1} ${error}`);
+        }
+        if (options.files == null) {
+          for (const artifact of receiptAsArray(receipt.artifacts)) {
+            if (artifact && typeof artifact === 'object' && !Array.isArray(artifact)) {
+              validateArtifactReference(rel, artifact, repoRoot, errors);
+            }
+          }
+        }
+        for (const { target, resolution } of linkedDecisionTargets(receipt.decisions, graph.index)) {
+          if (resolution.status !== 'resolved') {
+            errors.push(wikilinkResolutionError(rel, target, resolution, `receipt ${index + 1} decisions`));
+          } else if (frontmatterByRel.get(resolution.rel)?.type !== 'decision') {
+            errors.push(`${rel}: receipt ${index + 1} decisions target [[${target}]] must be type decision`);
+          }
+        }
+        for (const itemId of receiptAsArray(receipt.open_items)) {
+          if (typeof itemId === 'string') {
+            receiptOpenReferences.push({ rel, id: itemId, receipt: index + 1 });
+          }
+        }
+        for (const itemId of receiptAsArray(receipt.closes_open_items)) {
+          if (typeof itemId === 'string') {
+            receiptCloseReferences.push({ rel, id: itemId, receipt: index + 1 });
+          }
+        }
+      });
+      if (/\b\d+\s+(?:focused\s+)?tests?\s+passed\b/i.test(stripMarkedReceiptBlocks(body))) {
+        errors.push(`${rel}: bare test count found; record it in a receipt with tests.passed and tests.filter`);
+      }
     }
 
     if (
@@ -541,6 +780,68 @@ function validateProjectNotesGraph(options = {}) {
             }
           }
         }
+      }
+    }
+  }
+
+  for (const [processRel, statusRels] of statusClaims) {
+    if (statusRels.length > 1) {
+      errors.push(`${processRel}: has multiple Status notes: ${stableSort(statusRels).join(', ')}`);
+    }
+  }
+
+  for (const reference of receiptOpenReferences) {
+    if (!statusItems.has(reference.id)) {
+      errors.push(`${reference.rel}: receipt ${reference.receipt} references unknown Open Item: ${reference.id}`);
+    }
+  }
+  for (const reference of receiptCloseReferences) {
+    const item = statusItems.get(reference.id);
+    if (!item) {
+      errors.push(`${reference.rel}: receipt ${reference.receipt} closes unknown Open Item: ${reference.id}`);
+    } else if (item.state !== 'closed') {
+      errors.push(`${reference.rel}: receipt ${reference.receipt} closes Open Item still marked open: ${reference.id}`);
+    }
+  }
+
+  for (const note of notes) {
+    if (isTemplate(note.rel) || note.frontmatter?.type !== 'decision') {
+      continue;
+    }
+    const linksFor = (field) => asArray(note.frontmatter[field])
+      .filter((value) => typeof value === 'string')
+      .flatMap((value) => extractWikilinkTargets(value))
+      .map((target) => resolveTargetDetailed(target, index))
+      .filter((resolution) => resolution.status === 'resolved')
+      .map((resolution) => resolution.rel);
+    const supersedes = linksFor('supersedes');
+    const supersededBy = linksFor('superseded_by');
+    if (supersededBy.length > 0 && note.frontmatter.status !== 'superseded') {
+      errors.push(`${note.rel}: Decision with superseded_by must have status superseded`);
+    }
+    if (note.frontmatter.status === 'superseded' && supersededBy.length === 0) {
+      errors.push(`${note.rel}: superseded Decision requires superseded_by`);
+    }
+    for (const targetRel of supersedes) {
+      const targetLinks = asArray(frontmatterByRel.get(targetRel)?.superseded_by)
+        .filter((value) => typeof value === 'string')
+        .flatMap((value) => extractWikilinkTargets(value))
+        .map((target) => resolveTargetDetailed(target, index))
+        .filter((resolution) => resolution.status === 'resolved')
+        .map((resolution) => resolution.rel);
+      if (!targetLinks.includes(note.rel)) {
+        errors.push(`${note.rel}: supersedes ${targetRel} but it does not link back with superseded_by`);
+      }
+    }
+    for (const targetRel of supersededBy) {
+      const targetLinks = asArray(frontmatterByRel.get(targetRel)?.supersedes)
+        .filter((value) => typeof value === 'string')
+        .flatMap((value) => extractWikilinkTargets(value))
+        .map((target) => resolveTargetDetailed(target, index))
+        .filter((resolution) => resolution.status === 'resolved')
+        .map((resolution) => resolution.rel);
+      if (!targetLinks.includes(note.rel)) {
+        errors.push(`${note.rel}: superseded_by ${targetRel} but it does not link back with supersedes`);
       }
     }
   }

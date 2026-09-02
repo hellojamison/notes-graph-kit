@@ -63,7 +63,7 @@ Options:
 
 The installer:
 
-1. Copies the eleven managed helper/library files verbatim into the target's
+1. Copies thirteen managed helper/library files verbatim into the target's
    existing `scripts/` or `Scripts/` directory spelling (refuses to
    overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with the app name, vault dir, a
@@ -350,21 +350,30 @@ vault-relative path.
 ```bash
 npm run notes:route -- "describe the task"
 npm run notes:new -- --title "Task title" --process notes-graph-maintenance --summary "Goal"
+npm run notes:new -- --title "Evidence title" --type evidence --topic "One investigation topic" --process notes-graph-maintenance --summary "Scope"
+npm run notes:new -- --title "Decision title" --type decision --summary "Verdict context"
 npm run notes:new -- --title "Release title" --type release --summary "Release scope"
 npm run notes:search -- "rollback evidence" --type evidence --status verified --since 2026-01-01
 npm run notes:search -- "rollback evidence" --json
-npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Task title.md" --working "..." --verified "..." --not-verified "..."
-npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Task title.md" --certify --working "..." --verified "..." --not-verified "..."
+npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Evidence title.md" --working "..." --verified "..." --not-verified "..." --verdict "Current conclusion" --decision "Project Notes/Decisions/Decision title.md"
+npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Evidence title.md" --certify --working "..." --verified "..." --not-verified "..." --verdict "Current conclusion" --decision "Project Notes/Decisions/Decision title.md"
+npm run notes:new -- --title "Notes Graph Maintenance Status" --type status --process notes-graph-maintenance --summary "Current phase"
+npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Evidence title.md" --working "..." --verified "..." --not-verified "..." --verdict "Current conclusion" --decision "Project Notes/Decisions/Decision title.md" --status "Project Notes/Status/Notes Graph Maintenance Status.md" --phase "Phase 0.14" --certified "..." --open-item "dense-lane-timing: Measure dense-lane timing" --settled "Receipt format adopted"
+npm run notes:artifacts -- --write
 npm run notes:validate
 ```
 
 `notes:new` writes dated work-log notes under `Project Notes/Evidence/`. It
 creates `type: task` by default. `--type` accepts `task`, `evidence`, `app`,
-`process`, `runbook`, `decision`, `incident`, or `release`. Task and evidence
-notes require `--process` and use date-prefixed filenames under `Evidence/`;
-the other types use their matching structured folder and accept `--process`
-optionally. New process notes also add a route using a slug of the title and
-refuse route-ID or alias collisions instead of choosing a suffix.
+`process`, `runbook`, `decision`, `incident`, `release`, or `status`. Task and
+evidence notes require `--process` and use date-prefixed filenames under
+`Evidence/`; status notes also require a process and use `Status/`. The other
+types use their matching structured folder and accept `--process` optionally.
+A process can have exactly one Status note. Creating a note does not add a
+daily-log entry; closing a note writes one chronological daily outcome line
+with its evidence link. New process notes also add a route
+using a slug of the title and refuse route-ID or alias collisions instead of
+choosing a suffix.
 Draft process, runbook, decision, and release notes are exempt from operational
 completeness and inbound-link warnings. Add the required relationships before
 promoting them to an active, current, or verified status.
@@ -549,8 +558,28 @@ merges, deletes, or automatically fails CI. Invalid options fail with exit 2.
 before changing the note or daily log. Date fields are serialized as
 `YYYY-MM-DD`. If a command value itself begins with `--`, use the equals form,
 for example `--not-verified="--force path not tested"`.
-Normal closeout sets `status: done`; `--certify` sets `status: verified`.
-The daily closeout line records the selected status explicitly.
+Structured evidence uses `status: open|done`; `--certify` records
+`verification: verified` without changing its lifecycle state. Its closeout
+requires a rewritten `## Current Verdict` and a `--decision` link. The daily
+closeout line is only `time: outcome — evidence link`, so the evidence note is
+the sole detailed record.
+
+For a phase boundary, provide `--status`, `--phase`, `--certified`, and
+`--settled`, plus `--open-item "id: summary"` or `--close-item id[,id]` as
+needed. The command atomically closes the evidence note, updates the living
+Status note, and links the settled Decision. Open items are durable objects
+with `open|closed` state rather than repeated prose. A Status note must be a
+`type: status` note linked to exactly one process; if the closed note names a
+process, it must be the same one.
+
+Evidence format 2 has one `topic`, a 1,200-word cap, and a Current Verdict as
+its first section. Split drifting work into a new evidence note and connect the
+old note with `follow_up`. Record commands, test totals plus their exact
+filters, artifacts, hashes, Git SHAs, decisions, and open-item IDs in marked
+YAML receipt blocks. `notes:validate` verifies that artifact files and stated
+hashes/commits resolve; it intentionally does not infer claims from prose.
+`notes:artifacts -- --write` generates `artifacts/INDEX.md` from those
+receipts.
 
 Typical agent workflow:
 

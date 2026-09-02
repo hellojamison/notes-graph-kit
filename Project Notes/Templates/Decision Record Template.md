@@ -26,6 +26,9 @@ app: "My Project"
 source_of_truth: false
 confidence: medium
 freshness: reverify-before-use
+decision_state: proposed
+supersedes:
+superseded_by:
 related_apps:
   - "[[Apps/My Project|My Project]]"
 related_processes:
@@ -33,6 +36,10 @@ related_runbooks:
 related_decisions:
 ```
 <!-- notes-graph-kit:scaffold:end -->
+
+## Current Decision
+
+Proposed — link this record from the evidence note's `verdict_decision` when it becomes the current verdict.
 
 ## Status
 

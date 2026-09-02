@@ -40,11 +40,11 @@ This is the agent entrypoint for the project notes graph.
 
 1. Route the work with `npm run notes:route -- "<task description>"`.
 2. Create its note with `npm run notes:new -- --title "Title" --type <type> ...`.
-3. Close the note with `npm run notes:closeout -- --note "<note path>" --working "..." --verified "..." --not-verified "..."`; add `--certify` only when the note itself is verified.
+3. Close structured evidence with `npm run notes:closeout -- --note "<note path>" --working "..." --verified "..." --not-verified "..." --verdict "..." --decision "Project Notes/Decisions/Current Decision.md"`; add `--certify` only when the evidence itself is verified. When a phase closes, also supply its process Status note plus `--phase`, `--certified`, `--settled`, and optional `--open-item "id: summary"` or `--close-item id` so the current-state summary stays aligned.
 4. Run `npm run notes:validate`.
-5. After upgrading the kit, audit the still-untouched vault from the kit checkout with `node migrate-notes-graph.cjs audit --repo /path/to/repo --to 0.4.0` before accepting any migration.
+5. After upgrading the kit, audit the still-untouched vault from the kit checkout with `node migrate-notes-graph.cjs audit --repo /path/to/repo --to 0.14.0` before accepting any migration.
 
-Supported creation types are task, evidence, app, process, runbook, decision, incident, and release. Task and evidence notes require a process route. The CLI selects the matching template; do not copy fenced template scaffold metadata into a note manually.
+Supported creation types are task, evidence, app, process, runbook, decision, incident, release, and status. Task, evidence, and status notes require a process route. The CLI selects the matching template; do not copy fenced template scaffold metadata into a note manually.
 
 ## Validation
 

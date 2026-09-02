@@ -91,7 +91,7 @@ function apply(planner) {
       '<!-- notes-graph-kit:managed:templates-index:end -->'
     );
     const ambiguous = merged.evidence?.some((entry) => entry.startsWith('append '));
-    if (ambiguous && planner.targetVersion === '0.4.0') {
+    if (ambiguous && planner.targetVersion !== '0.3.0') {
       planner.deferMigrationUntil(MIGRATION, 'vault-0.4.0-managed-sections');
       planner.preserved({
         id: itemId('documentation', readmeRel),
@@ -165,7 +165,7 @@ function apply(planner) {
       });
       continue;
     }
-    if (planner.targetVersion === '0.4.0') {
+    if (planner.targetVersion !== '0.3.0') {
       planner.deferMigrationUntil(MIGRATION, 'vault-0.4.0-managed-sections');
       planner.preserved({
         id: itemId('documentation', rel),

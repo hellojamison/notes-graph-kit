@@ -309,7 +309,7 @@ function collectStats(graph, options = {}) {
   const staleBefore = new Date(now.getTime() - staleDays * 86400000).toISOString().slice(0, 10);
   const staleGuides = notes.filter((note) => {
     const fm = note.frontmatter || {};
-    if (!['process', 'runbook'].includes(fm.type) || fm.status !== 'current') return false;
+    if (!['status', 'process', 'runbook'].includes(fm.type) || fm.status !== 'current') return false;
     const checked = dateString(fm.last_verified) || dateString(fm.date);
     return !checked || checked < staleBefore;
   }).map((note) => note.rel).sort();

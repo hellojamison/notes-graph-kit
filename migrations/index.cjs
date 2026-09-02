@@ -42,6 +42,15 @@ function stableCompare(left, right) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
+function compareMigrationIds(left, right) {
+  const leftIndex = MIGRATIONS.findIndex(({ id }) => id === left);
+  const rightIndex = MIGRATIONS.findIndex(({ id }) => id === right);
+  if (leftIndex !== -1 && rightIndex !== -1) {
+    return leftIndex - rightIndex;
+  }
+  return stableCompare(left, right);
+}
+
 function stableItems(items) {
   return [...items].sort((left, right) =>
     stableCompare(left.rel, right.rel) || stableCompare(left.id, right.id)
@@ -585,14 +594,7 @@ function migrationStateFromItems(context, planner) {
   }
   return {
     schemaVersion: 1,
-    applied: [...applied].sort((left, right) => {
-      const leftIndex = MIGRATIONS.findIndex(({ id }) => id === left);
-      const rightIndex = MIGRATIONS.findIndex(({ id }) => id === right);
-      if (leftIndex !== -1 && rightIndex !== -1) {
-        return leftIndex - rightIndex;
-      }
-      return stableCompare(left, right);
-    })
+    applied: [...applied].sort(compareMigrationIds)
   };
 }
 
@@ -663,7 +665,7 @@ function finalizeReport(context, planner, mode) {
   const state = JSON.parse(planner.readRepo('notes-graph.config.json') || '{}').vaultMigrationState;
   const currentApplied = context.installedConfig?.vaultMigrationState?.schemaVersion === 1
     && Array.isArray(context.installedConfig.vaultMigrationState.applied)
-    ? [...context.installedConfig.vaultMigrationState.applied].sort(stableCompare)
+    ? [...context.installedConfig.vaultMigrationState.applied].sort(compareMigrationIds)
     : [];
   return {
     repoRoot: context.repoRoot,
@@ -1159,11 +1161,11 @@ function rollbackMigration(options) {
     applied: !options.dryRun,
     currentApplied: context.installedConfig?.vaultMigrationState?.schemaVersion === 1
       && Array.isArray(context.installedConfig.vaultMigrationState.applied)
-      ? [...context.installedConfig.vaultMigrationState.applied].sort(stableCompare)
+      ? [...context.installedConfig.vaultMigrationState.applied].sort(compareMigrationIds)
       : [],
     prospectiveApplied: manifest.configState?.schemaVersion === 1
       && Array.isArray(manifest.configState.applied)
-      ? [...manifest.configState.applied].sort(stableCompare)
+      ? [...manifest.configState.applied].sort(compareMigrationIds)
       : [],
     backupId: options.backup
   };

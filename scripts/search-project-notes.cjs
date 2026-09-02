@@ -194,6 +194,9 @@ function authorityFor(frontmatter = {}) {
       multiplier += 0.07;
       reasons.push(`${status} status`);
     }
+  } else if (type === 'status' && status === 'current') {
+    multiplier += 0.12;
+    reasons.push('current status');
   } else if (type === 'release') {
     multiplier += 0.04;
     reasons.push('release note');

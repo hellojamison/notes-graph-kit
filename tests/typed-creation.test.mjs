@@ -103,13 +103,14 @@ test('all templates are template notes with one parseable product scaffold', () 
   const graph = requireFromTest(path.join(kitRoot, 'scripts/lib/project-notes-graph.cjs'));
   const expected = new Map([
     ['Task Note Template.md', ['task', 'active']],
-    ['Evidence Template.md', ['evidence', 'active']],
+    ['Evidence Template.md', ['evidence', 'open']],
     ['App Template.md', ['app', 'current']],
     ['Process Template.md', ['process', 'draft']],
     ['Runbook Template.md', ['runbook', 'draft']],
     ['Decision Record Template.md', ['decision', 'draft']],
     ['Incident Note Template.md', ['incident', 'active']],
-    ['Release Note Template.md', ['release', 'draft']]
+    ['Release Note Template.md', ['release', 'draft']],
+    ['Status Note Template.md', ['status', 'current']]
   ]);
 
   for (const [fileName, [productType, status]] of expected) {
@@ -164,7 +165,7 @@ test('notes:new instantiates all supported product types and routes new processe
         title: 'Generated Evidence',
         process: 'notes-graph-maintenance',
         prefix: 'Evidence/',
-        status: 'active'
+        status: 'open'
       },
       {
         type: 'app',
@@ -199,6 +200,13 @@ test('notes:new instantiates all supported product types and routes new processe
         process: 'generated-process',
         expectedRel: 'Releases/Generated Release.md',
         status: 'draft'
+      },
+      {
+        type: 'status',
+        title: 'Generated Status',
+        process: 'generated-process',
+        expectedRel: 'Status/Generated Status.md',
+        status: 'current'
       }
     ];
 
@@ -226,12 +234,12 @@ test('notes:new instantiates all supported product types and routes new processe
       assert.equal(generated.frontmatter.status, item.status);
       assert.match(generated.frontmatter.date, /^\d{4}-\d{2}-\d{2}$/);
       assert.ok(Array.isArray(generated.frontmatter.tags));
-      assert.equal(generated.frontmatter.source_of_truth, false);
       assert.equal(generated.frontmatter.confidence, 'medium');
       assert.equal(
         Object.prototype.hasOwnProperty.call(generated.frontmatter, 'last_verified'),
-        false
+        item.type === 'status'
       );
+      assert.equal(generated.frontmatter.source_of_truth, item.type === 'status');
       assert.equal(generated.frontmatter.related_apps.length, 1);
       assert.equal(generated.frontmatter.related_processes.length, item.process ? 1 : 0);
       assert.match(generated.text, new RegExp(`# ${item.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
@@ -409,9 +417,7 @@ test('draft graph notes are warning-exempt until promoted', () => {
       '--title', 'Draft Process'
     ]);
     const rel = createdRel(output);
-    const dailyRel = output.match(/^Updated (.+)$/m)?.[1];
-    assert.ok(dailyRel, output);
-    fs.rmSync(path.join(repoRoot, 'Project Notes', dailyRel));
+    assert.doesNotMatch(output, /^Updated \d{4}-\d{2}-\d{2}\.md$/m);
     assert.match(
       run(repoRoot, ['scripts/validate-project-notes-graph.cjs']),
       /validation passed with 0 warning\(s\)/
@@ -614,7 +620,7 @@ test('closeout certification is explicit and invalid syntax is non-mutating', ()
     assert.ok(dailyRel, closeOutput);
     assert.match(
       fs.readFileSync(path.join(repoRoot, 'Project Notes', dailyRel), 'utf8'),
-      /Status: verified\./
+      /Closeout works\. — \[\[Evidence\//
     );
 
     const invalidRel = makeTask('Invalid Certification');
@@ -643,6 +649,99 @@ test('closeout certification is explicit and invalid syntax is non-mutating', ()
       'status == "verified"',
       'type == "known-good"'
     ]);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('a phase closeout atomically updates its process Status note', () => {
+  const repoRoot = installRepo('status-closeout');
+  try {
+    const statusRel = createdRel(run(repoRoot, [
+      'scripts/project-notes.cjs', 'new',
+      '--type', 'status',
+      '--title', 'Notes Graph Maintenance Status',
+      '--process', 'notes-graph-maintenance',
+      '--summary', 'Phase 0.13 implementation.'
+    ]));
+    assert.equal(statusRel, 'Status/Notes Graph Maintenance Status.md');
+    const routeOutput = run(repoRoot, [
+      'scripts/project-notes.cjs', 'route', 'notes-graph-maintenance'
+    ]);
+    assert.match(routeOutput, /Status:\n- \[\[Status\/Notes Graph Maintenance Status\|Notes Graph Maintenance Status\]\]/);
+
+    const taskRel = createdRel(run(repoRoot, [
+      'scripts/project-notes.cjs', 'new',
+      '--type', 'task',
+      '--title', 'Status Phase Closeout',
+      '--process', 'notes-graph-maintenance'
+    ]));
+    const decisionRel = createdRel(run(repoRoot, [
+      'scripts/project-notes.cjs', 'new',
+      '--type', 'decision',
+      '--title', 'Status Ownership Decision',
+      '--process', 'notes-graph-maintenance'
+    ]));
+    const output = run(repoRoot, [
+      'scripts/project-notes.cjs', 'closeout',
+      '--note', path.join('Project Notes', taskRel),
+      '--working', 'Status updates with the closeout.',
+      '--verified', 'Focused lifecycle assertions passed.',
+      '--not-verified', 'Obsidian rendering.',
+      '--status', path.join('Project Notes', statusRel),
+      '--phase', 'Phase 0.14 ready',
+      '--certified', 'The current-state note is updated atomically.',
+      '--open-item', 'consumer-rollout: Consumer rollout remains open.',
+      '--settled', 'One Status note belongs to one process.',
+      '--decision', path.join('Project Notes', decisionRel)
+    ]);
+    assert.match(output, new RegExp(`Updated ${statusRel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    const statusText = fs.readFileSync(path.join(repoRoot, 'Project Notes', statusRel), 'utf8');
+    const statusFrontmatter = parseFrontmatter(path.join(repoRoot, 'Project Notes', statusRel)).frontmatter;
+    assert.equal(statusFrontmatter.type, 'status');
+    assert.equal(statusFrontmatter.status, 'current');
+    assert.equal(statusFrontmatter.source_of_truth, true);
+    assert.match(statusText, /## Current Phase\n\nPhase 0\.14 ready/);
+    assert.match(statusText, /## Certified\n\n- The current-state note is updated atomically\./);
+    assert.match(statusText, /## Open Items[\s\S]*id: consumer-rollout[\s\S]*summary: Consumer rollout remains open\./);
+    assert.match(statusText, /## Settled Verdicts\n\n- \[\[Decisions\/Status Ownership Decision\|Status Ownership Decision\]\]: One Status note belongs to one process\./);
+    assert.match(statusText, new RegExp(`\\[\\[${taskRel.replace(/\.md$/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\|Status Phase Closeout\\]\\]`));
+
+    const beforeDuplicate = snapshotTree(repoRoot);
+    assert.match(
+      runFailure(repoRoot, [
+        'scripts/project-notes.cjs', 'new',
+        '--type', 'status',
+        '--title', 'Duplicate Status',
+        '--process', 'notes-graph-maintenance'
+      ]),
+      /already has a Status note/
+    );
+    assert.deepEqual(snapshotTree(repoRoot), beforeDuplicate);
+
+    const secondTask = createdRel(run(repoRoot, [
+      'scripts/project-notes.cjs', 'new',
+      '--type', 'task',
+      '--title', 'Partial Status Arguments',
+      '--process', 'notes-graph-maintenance'
+    ]));
+    const beforePartial = snapshotTree(repoRoot);
+    assert.match(
+      runFailure(repoRoot, [
+        'scripts/project-notes.cjs', 'closeout',
+        '--note', path.join('Project Notes', secondTask),
+        '--working', 'Should not write.',
+        '--verified', 'Nothing.',
+        '--not-verified', 'Everything.',
+        '--status', path.join('Project Notes', statusRel)
+      ]),
+      /Status update requires/
+    );
+    assert.deepEqual(snapshotTree(repoRoot), beforePartial);
+    assert.match(
+      run(repoRoot, ['scripts/validate-project-notes-graph.cjs']),
+      /validation passed with 0 warning\(s\)/
+    );
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }

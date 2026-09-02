@@ -23,7 +23,8 @@ const allowedTypes = new Set([
   'release',
   'audit',
   'known-good',
-  'template'
+  'template',
+  'status'
 ]);
 
 const allowedStatuses = new Set([
@@ -32,6 +33,7 @@ const allowedStatuses = new Set([
   'in-progress',
   'blocked',
   'verified',
+  'open',
   'stale',
   'superseded',
   'partial',
@@ -52,6 +54,10 @@ const relationshipTypeExpectations = {
   related_processes: new Set(['process']),
   related_runbooks: new Set(['runbook']),
   related_decisions: new Set(['decision']),
+  supersedes: new Set(['decision']),
+  superseded_by: new Set(['decision']),
+  verdict_decision: new Set(['decision']),
+  follow_up: new Set(['evidence']),
   related_incidents: new Set(['incident']),
   related_evidence: new Set(['evidence', 'audit', 'incident', 'release'])
 };
@@ -67,7 +73,8 @@ const structuredFolders = new Set([
   'Evidence',
   'Releases',
   'Templates',
-  'Known-Good'
+  'Known-Good',
+  'Status'
 ]);
 
 const defaultRouteDefinitions = [
@@ -705,6 +712,12 @@ function buildRoute(input, options = {}) {
     graph,
     relationshipTypeExpectations.related_decisions
   );
+  const statusRels = graph.notes
+    .filter((note) => note.frontmatter?.type === 'status')
+    .filter((note) => resolveRelationshipLinks(note.frontmatter.related_processes, graph, 'process')
+      .includes(processRel))
+    .map((note) => note.rel)
+    .sort();
   const evidenceRels = resolveRelationshipLinks(
     frontmatter.related_evidence,
     graph,
@@ -716,6 +729,7 @@ function buildRoute(input, options = {}) {
     processRel,
     processNote,
     runbookRels,
+    statusRels,
     decisionRels,
     evidenceRels,
     error: null

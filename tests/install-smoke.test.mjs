@@ -106,7 +106,8 @@ test('template frontmatter identifies every source file as a template', () => {
     'Project Notes/Templates/Task Note Template.md': 'template',
     'Project Notes/Templates/Decision Record Template.md': 'template',
     'Project Notes/Templates/Incident Note Template.md': 'template',
-    'Project Notes/Templates/Release Note Template.md': 'template'
+    'Project Notes/Templates/Release Note Template.md': 'template',
+    'Project Notes/Templates/Status Note Template.md': 'template'
   };
 
   for (const [rel, expectedType] of Object.entries(expectedTypes)) {
@@ -121,6 +122,24 @@ test('template frontmatter identifies every source file as a template', () => {
     fs.readFileSync(path.join(kitRoot, 'Project Notes/Templates/Task Note Template.md'), 'utf8'),
     /^## Graph Links$/m
   );
+});
+
+test('fresh installs include the Status guide but never a kit-local living Status note', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-status-skeleton-'));
+  try {
+    run(kitRoot, [
+      'install-notes-graph.cjs',
+      '--repo', repoRoot,
+      '--app', 'Smoke App'
+    ]);
+    assert.equal(fs.existsSync(path.join(repoRoot, 'Project Notes/Status/_README.md')), true);
+    assert.equal(
+      fs.existsSync(path.join(repoRoot, 'Project Notes/Status/Notes Graph Maintenance Status.md')),
+      false
+    );
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
 });
 
 test('note index resolves explicit paths and rejects wrong or ambiguous basenames deterministically', () => {
@@ -732,15 +751,14 @@ test('new sanitizes task filenames so generated wikilink targets are parseable',
       '--summary', 'Verify generated links remain parseable.'
     ]);
     const createdRel = newOutput.match(/^Created (.+)$/m)?.[1];
-    const dailyRel = newOutput.match(/^Updated (.+)$/m)?.[1];
     assert.ok(createdRel, `expected created note path in output: ${newOutput}`);
-    assert.ok(dailyRel, `expected daily note path in output: ${newOutput}`);
+    assert.doesNotMatch(newOutput, /^Updated /m);
     assert.match(createdRel, /^Evidence\/\d{4}-\d{2}-\d{2} Fix parser 1 case\.md$/);
 
     const createdTarget = createdRel.replace(/\.md$/i, '');
     assert.doesNotMatch(createdTarget, /[\[\]#^]/);
-    const dailyText = fs.readFileSync(path.join(repoRoot, 'Project Notes', dailyRel), 'utf8');
-    assert.ok(dailyText.includes(`[[${createdTarget}|Fix parser #1 case]]`));
+    const dailyName = `${path.basename(createdRel).slice(0, 10)}.md`;
+    assert.equal(fs.existsSync(path.join(repoRoot, 'Project Notes', dailyName)), false);
 
     const validateOutput = run(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
     assert.match(validateOutput, /validation passed/);
@@ -825,7 +843,7 @@ test('new appends Graph Links when a customized task template omits the section'
     const rel = output.match(/^Created (.+)$/m)?.[1];
     const note = fs.readFileSync(path.join(repoRoot, 'Project Notes', rel), 'utf8');
     assert.equal((note.match(/^## Graph Links$/gm) || []).length, 1);
-    assert.match(note, /- Process: \[\[Processes\/Notes Graph Maintenance/);
+    assert.match(note, /- Status: None selected/);
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
@@ -1343,10 +1361,19 @@ test('validator reports malformed wikilinks in daily notes', () => {
       'scripts/project-notes.cjs', 'new',
       '--title', 'Normal task',
       '--process', 'notes-graph-maintenance',
-      '--summary', 'Create a daily note for validation.'
+      '--summary', 'Create an evidence note for validation.'
     ]);
-    const dailyRel = newOutput.match(/^Updated (.+)$/m)?.[1];
-    assert.ok(dailyRel, `expected daily note path in output: ${newOutput}`);
+    const noteRel = newOutput.match(/^Created (.+)$/m)?.[1];
+    assert.ok(noteRel, `expected evidence note path in output: ${newOutput}`);
+    const closeOutput = run(repoRoot, [
+      'scripts/project-notes.cjs', 'closeout',
+      '--note', path.join('Project Notes', noteRel),
+      '--working', 'Creates one daily outcome line.',
+      '--verified', 'The closeout command ran.',
+      '--not-verified', 'Obsidian rendering.'
+    ]);
+    const dailyRel = closeOutput.match(/^Updated (.+)$/m)?.[1];
+    assert.ok(dailyRel, `expected daily note path in output: ${closeOutput}`);
     fs.appendFileSync(
       path.join(repoRoot, 'Project Notes', dailyRel),
       '- Bad generated link [[Evidence/Broken [target]|Alias]]\n'
@@ -1796,10 +1823,10 @@ test('upgrade output surfaces all applicable migrations for direct and previousl
         '--upgrade',
         '--dry-run'
       ]);
-      assert.match(output, new RegExp(`\\[dry-run\\] Upgraded notes graph kit ${escapeRegExp(installedVersion)} -> 0\\.12\\.0`));
+      assert.match(output, new RegExp(`\\[dry-run\\] Upgraded notes graph kit ${escapeRegExp(installedVersion)} -> 0\\.14\\.0`));
       assert.match(
         output,
-        new RegExp(`migrate-notes-graph\\.cjs audit --repo ${escapeRegExp(JSON.stringify(fs.realpathSync(repoRoot)))} --to 0\\.4\\.0`)
+        new RegExp(`migrate-notes-graph\\.cjs audit --repo ${escapeRegExp(JSON.stringify(fs.realpathSync(repoRoot)))} --to 0\\.14\\.0`)
       );
       assert.equal(
         JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion,
@@ -1869,8 +1896,8 @@ test('upgrade permits missing legacy kitVersion but rejects malformed values', (
     delete config.kitVersion;
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
     const output = run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']);
-    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.12\.0/);
-    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.12.0');
+    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.14\.0/);
+    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.14.0');
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
@@ -2309,7 +2336,9 @@ test('fresh installs stamp all applicable vault migration IDs', () => {
       applied: [
         'vault-0.2.16-schema-indexes',
         'vault-0.3.0-typed-templates',
-        'vault-0.4.0-managed-sections'
+        'vault-0.4.0-managed-sections',
+        'vault-0.13.0-status-notes',
+        'vault-0.14.0-current-evidence'
       ]
     });
   } finally {
