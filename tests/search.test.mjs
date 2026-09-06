@@ -216,7 +216,7 @@ test('structured retrieval excludes invalid records and reports their source loc
       'status: verified', 'date: "2026-09-06"', 'tags: [notes/evidence]'
     ].join('\n'), [
       '# Structured Diagnostics', '',
-      '<!-- notes-graph-kit:receipt:start -->', '```yaml',
+      '<!-- notes-graph-kit:receipt:start -->', '', '```yaml',
       'id: invalid-receipt', 'outcome: invented', 'summary: invalid receipt keyword',
       '```', '<!-- notes-graph-kit:receipt:end -->', '',
       '<!-- notes-graph-kit:receipt:start -->', '```yaml',
@@ -240,7 +240,7 @@ test('structured retrieval excludes invalid records and reports their source loc
     assert.ok(report.results.some((item) => item.heading === 'Open Item valid-item' && item.line > 1));
     assert.ok(!report.results.some((item) => /invalid-receipt|invalid-item|missing-summary/.test(item.heading)));
     assert.deepEqual(report.diagnostics.map(({ path, line, id, record }) => [path, line, id, record]), [
-      ['Evidence/Structured Diagnostics.md', 14, 'invalid-receipt', 'receipt'],
+      ['Evidence/Structured Diagnostics.md', 15, 'invalid-receipt', 'receipt'],
       ['Status/Structured Diagnostics.md', 15, 'invalid-item', 'open-item'],
       ['Status/Structured Diagnostics.md', 19, 'missing-summary', 'open-item']
     ]);

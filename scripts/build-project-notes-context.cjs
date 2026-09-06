@@ -131,7 +131,8 @@ function buildContext(query, graph, options = {}) {
     since: filters.since,
     'include-templates': false
   }));
-  const ranked = searchNotes(query, searchable, { limit: resultLimit });
+  const diagnostics = [];
+  const ranked = searchNotes(query, searchable, { limit: resultLimit, diagnostics });
   const primary = ranked.map((result) => ({
     kind: 'match',
     note: graph.noteByRel.get(result.path),
@@ -175,7 +176,8 @@ function buildContext(query, graph, options = {}) {
     budget: { maxSourceWords: maxWords, usedSourceWords: usedWords, remainingSourceWords: maxWords - usedWords },
     seedResults: ranked.length,
     sources: included.length,
-    items: included
+    items: included,
+    diagnostics
   };
 }
 
@@ -197,6 +199,13 @@ function render(report) {
     lines.push(`Source: ${item.path}:${item.line} · ${item.type || 'untyped'} · ${item.status || 'no-status'}${item.date ? ` · ${item.date}` : ''} · ${relation}`);
     lines.push('');
     lines.push(`${item.content}${item.truncated ? ' … [truncated by word budget]' : ''}`, '');
+  }
+  if (report.diagnostics?.length) {
+    lines.push('## Structured record diagnostics', '');
+    for (const item of report.diagnostics) {
+      lines.push(`- ${item.path}:${item.line}${item.id ? ` (${item.id})` : ''}: ${item.reason}`);
+    }
+    lines.push('');
   }
   return `${lines.join('\n').trimEnd()}\n`;
 }

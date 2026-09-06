@@ -209,6 +209,23 @@ for (const appRel of ['Products/Main.md', 'Apps/Nested/Main.md']) {
   });
 }
 
+test('instruction migration refuses to append inside an unclosed code fence', () => {
+  const repo = fixture('claude');
+  try {
+    const file = path.join(repo, 'CLAUDE.md');
+    const original = '# Local policy\n\n```md\nExample that never closes\n';
+    fs.writeFileSync(file, original);
+    const audit = migrate(repo, 'audit');
+    const item = audit.report.items.find(({ rel }) => rel === 'CLAUDE.md');
+    assert.equal(item.state, 'conflict');
+    assert.match(item.reason, /unclosed fenced code block/);
+    assert.equal(migrate(repo, 'apply', '--all-safe').status, 1);
+    assert.equal(fs.readFileSync(file, 'utf8'), original);
+  } finally {
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+});
+
 test('legacy config defaults to Codex without creating other agent files and rollback restores config', () => {
   const repo = fixture();
   try {

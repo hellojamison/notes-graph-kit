@@ -79,6 +79,31 @@ test('context filters seed results but allows their reviewed one-hop relationshi
   }
 });
 
+test('context preserves structured-record diagnostics in JSON and text output', () => {
+  const repo = fixture();
+  try {
+    const evidence = path.join(repo, 'Project Notes/Evidence/Invalid Structured.md');
+    fs.writeFileSync(evidence, note(
+      'title: Invalid Structured\ntype: evidence\nstatus: verified\ndate: "2026-09-06"',
+      ['# Invalid Structured', '', '<!-- notes-graph-kit:receipt:start -->', '```yaml',
+        'id: invalid-context-record', 'outcome: impossible', 'summary: context diagnostic keyword',
+        '```', '<!-- notes-graph-kit:receipt:end -->'].join('\n')
+    ));
+    const json = run(repo, ['context diagnostic keyword', '--json']);
+    assert.equal(json.status, 0, json.stderr);
+    const report = JSON.parse(json.stdout);
+    assert.deepEqual(report.diagnostics.map(({ path, id, record }) => [path, id, record]), [
+      ['Evidence/Invalid Structured.md', 'invalid-context-record', 'receipt']
+    ]);
+    const text = run(repo, ['context diagnostic keyword']);
+    assert.equal(text.status, 0, text.stderr);
+    assert.match(text.stdout, /Structured record diagnostics/);
+    assert.match(text.stdout, /Invalid Structured\.md:.*invalid-context-record/);
+  } finally {
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+});
+
 test('context rejects missing queries and invalid bounds without writing', () => {
   const repo = fixture();
   try {

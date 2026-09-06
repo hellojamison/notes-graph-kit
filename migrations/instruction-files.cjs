@@ -89,6 +89,20 @@ function planInstructionFile(planner, agentsRel, migration, category) {
         optInRequired: false
       });
     } else if (block.status === 'missing') {
+      if (scan.unclosedFence) {
+        planner.conflict({
+          id: itemId(category, agentsRel),
+          migration,
+          category,
+          rel: agentsRel,
+          reason: `${agentsRel} has an unclosed fenced code block; cannot safely append managed instructions`,
+          evidence: ['no notes-graph-kit managed marker pair', 'unclosed fenced code block'],
+          action: 'manual',
+          destructive: false,
+          optInRequired: false
+        });
+        return;
+      }
       if (scan.hasLegacyHeading) {
         const legacy = legacyAgentsSections(agents);
         if (legacy.unclosedFence || legacy.sections.length !== 1) {

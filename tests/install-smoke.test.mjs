@@ -2324,6 +2324,36 @@ test('write transaction refuses a target edited after staging and before replace
   }
 });
 
+test('upgrade retains the pre-resolution snapshot when npm resolution is slow', () => {
+  const installer = requireFromTest(path.join(kitRoot, 'install-notes-graph.cjs'));
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-resolution-race-'));
+  try {
+    run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--app', 'Smoke App']);
+    const lockPath = path.join(repoRoot, 'package-lock.json');
+    const lock = JSON.parse(fs.readFileSync(path.join(kitRoot, 'package-lock.json'), 'utf8'));
+    lock.name = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')).name;
+    lock.packages[''].dependencies = { 'js-yaml': '^4.1.0' };
+    delete lock.packages['node_modules/argparse'];
+    delete lock.dependencies?.argparse;
+    fs.writeFileSync(lockPath, `${JSON.stringify(lock, null, 2)}\n`);
+    const scriptPath = path.join(repoRoot, 'scripts/project-notes.cjs');
+    assert.throws(
+      () => installer.upgrade({
+        repo: repoRoot,
+        upgrade: true,
+        'allow-non-git': true,
+        'resolve-lock': true,
+        'accept-managed-change': [],
+        _beforeLockResolution() { fs.writeFileSync(scriptPath, 'concurrent edit during npm resolution\n'); }
+      }),
+      /scripts\/project-notes\.cjs changed after transaction staging/
+    );
+    assert.equal(fs.readFileSync(scriptPath, 'utf8'), 'concurrent edit during npm resolution\n');
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
 test('write transaction preflights parent collisions without partial writes', () => {
   const installer = requireFromTest(path.join(kitRoot, 'install-notes-graph.cjs'));
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-preflight-'));

@@ -82,8 +82,9 @@ function statusAndEvidence(graph, config) {
   return { processes: { configured_active: active.length, covered: active.filter((x) => x.state === 'covered').length, missing_status: active.filter((x) => x.state === 'missing-status').map((x) => x.process), duplicate_status: active.filter((x) => x.state === 'duplicate-status').map((x) => x.process), entries: active }, evidence_v2: { notes: v2, valid_receipts: validReceipts, invalid_receipts: invalidReceipts }, status_update_dates: statusDates.sort((a, b) => a.path.localeCompare(b.path)), malformed_open_item_blocks: malformedOpenItems };
 }
 function adoptionReport(repoRoot, graph, options = {}) {
-  const configPath = path.join(repoRoot, 'notes-graph.config.json');
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const env = options.env || process.env;
+  const configPath = path.resolve(env.PROJECT_NOTES_CONFIG || path.join(repoRoot, 'notes-graph.config.json'));
+  const config = options.config || JSON.parse(fs.readFileSync(configPath, 'utf8'));
   const status = graph ? statusAndEvidence(graph, config) : { processes: { configured_active: Array.isArray(config.routes) ? config.routes.length : 0, covered: 0, missing_status: [], duplicate_status: [], entries: [] }, evidence_v2: { notes: 0, valid_receipts: 0, invalid_receipts: 0 }, status_update_dates: [], malformed_open_item_blocks: 0 };
   const contracts = { search: { state: contractState(repoRoot, 'notes-search-eval.yml') }, context: { state: contractState(repoRoot, 'notes-context-eval.yml') } };
   if (options.evaluation) contracts.search.result = options.evaluation;

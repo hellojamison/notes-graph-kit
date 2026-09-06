@@ -838,7 +838,7 @@ function executeWriteTransaction(repoRoot, writes, options = {}) {
   }
 
   const transactionRoot = fs.mkdtempSync(path.join(repoRoot, '.notes-graph-kit-transaction-'));
-  const preimages = new Map(writes.map((write) => {
+  const preimages = options.preimages || new Map(writes.map((write) => {
     const target = targetPathForWrite(repoRoot, write.rel);
     return [write.rel, pathExists(target) ? hashText(fs.readFileSync(target, 'utf8')) : null];
   }));
@@ -955,6 +955,13 @@ function executeWriteTransaction(repoRoot, writes, options = {}) {
   return { cleanupWarning };
 }
 
+function captureWritePreimages(repoRoot, writes) {
+  return new Map(writes.map((write) => {
+    const target = targetPathForWrite(repoRoot, write.rel);
+    return [write.rel, pathExists(target) ? hashText(fs.readFileSync(target, 'utf8')) : null];
+  }));
+}
+
 function applyAgentsBlock(repoRoot, appName, vaultDir, appFileBase, { dryRun = false } = {}) {
   const result = buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase);
   if (result.write) {
@@ -1006,16 +1013,22 @@ function install(args) {
   if (packageMerge.write) {
     writes.push(packageMerge.write);
   }
-  const packageLockWrite = mergePackageLock(repoRoot, packageMerge.write?.content, { resolveLock: Boolean(args['resolve-lock']) });
-  if (packageLockWrite) {
-    writes.push(packageLockWrite);
-  }
   const instructionResults = [instructionFile].map((file) =>
     buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase, file));
   writes.push(...instructionResults.flatMap((result) => result.write ? [result.write] : []));
+  // Take this snapshot before a potentially slow npm lock resolution.  It is
+  // the expected state for every possible replacement, not a post-resolution
+  // baseline that could silently absorb a concurrent edit.
+  const preimages = captureWritePreimages(repoRoot, [
+    ...writes,
+    { rel: 'package-lock.json', kind: 'package' }
+  ]);
+  args._beforeLockResolution?.();
+  const packageLockWrite = mergePackageLock(repoRoot, packageMerge.write?.content, { resolveLock: Boolean(args['resolve-lock']) });
+  if (packageLockWrite) writes.push(packageLockWrite);
 
   const results = planWrites(repoRoot, writes, { force, forceVault });
-  const transaction = executeWriteTransaction(repoRoot, results.planned, { dryRun });
+  const transaction = executeWriteTransaction(repoRoot, results.planned, { dryRun, preimages });
   const lines = [
     `${dryRun ? '[dry-run] ' : ''}Installed notes graph kit ${kitVersion} into ${repoRoot}`,
     ...results.written.filter((rel) => rel !== instructionFile).map((rel) => `  write ${rel}`),
@@ -1085,10 +1098,6 @@ function upgrade(args) {
   if (packageMerge.write) {
     writes.push(packageMerge.write);
   }
-  const packageLockWrite = mergePackageLock(repoRoot, packageMerge.write?.content, { resolveLock: Boolean(args['resolve-lock']) });
-  if (packageLockWrite) {
-    writes.push(packageLockWrite);
-  }
 
   const appName = validateAppName(config.appName);
   const vaultDir = validateVaultDir(config.vaultDir);
@@ -1096,9 +1105,16 @@ function upgrade(args) {
   const instructionResults = [instructionFile].map((file) =>
     buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase, file, config.appRel));
   writes.push(...instructionResults.flatMap((result) => result.write ? [result.write] : []));
+  const preimages = captureWritePreimages(repoRoot, [
+    ...writes,
+    { rel: 'package-lock.json', kind: 'package' }
+  ]);
+  args._beforeLockResolution?.();
+  const packageLockWrite = mergePackageLock(repoRoot, packageMerge.write?.content, { resolveLock: Boolean(args['resolve-lock']) });
+  if (packageLockWrite) writes.push(packageLockWrite);
 
   const results = planWrites(repoRoot, writes, { force: true, forceVault: false });
-  const transaction = executeWriteTransaction(repoRoot, results.planned, { dryRun });
+  const transaction = executeWriteTransaction(repoRoot, results.planned, { dryRun, preimages });
   const lines = [
     `${dryRun ? '[dry-run] ' : ''}Upgraded notes graph kit ${previousVersion} -> ${kitVersion} in ${repoRoot}`,
     ...results.written.map((rel) => `  write ${rel}`),
@@ -1154,6 +1170,7 @@ if (require.main === module) {
 
 module.exports = {
   main,
+  upgrade,
   instructionFileForAgent,
   parseArgs,
   buildConfig,
@@ -1178,6 +1195,7 @@ module.exports = {
   planWrites,
   preflightWriteTargets,
   executeWriteTransaction,
+  captureWritePreimages,
   validateVaultDir,
   validateAppName,
   fileBaseForApp,

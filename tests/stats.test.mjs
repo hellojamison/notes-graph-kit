@@ -34,11 +34,11 @@ function fixture(withContract = true) {
   return repo;
 }
 
-function run(repo, args = []) {
+function run(repo, args = [], env = {}) {
   return spawnSync('node', [path.join(kitRoot, 'scripts/project-notes-stats.cjs'), ...args], {
     cwd: repo,
     encoding: 'utf8',
-    env: { ...process.env, PROJECT_NOTES_NOTES_REPO_ROOT: repo }
+    env: { ...process.env, PROJECT_NOTES_NOTES_REPO_ROOT: repo, ...env }
   });
 }
 
@@ -114,6 +114,21 @@ test('stats does not treat fenced marker examples as installed agent instruction
     const result = run(repo, ['--json']);
     assert.equal(result.status, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).adoption.instruction.presence, 'missing');
+  } finally { fs.rmSync(repo, { recursive: true, force: true }); }
+});
+
+test('stats adoption honors PROJECT_NOTES_CONFIG overrides', () => {
+  const repo = fixture(false);
+  try {
+    const override = path.join(repo, 'alternate-notes-config.json');
+    fs.writeFileSync(override, JSON.stringify({ vaultDir: 'Project Notes', agent: 'claude' }));
+    fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '<!-- notes-graph-kit:start -->\nlive instructions\n<!-- notes-graph-kit:end -->\n');
+    const result = run(repo, ['--json'], { PROJECT_NOTES_CONFIG: override });
+    assert.equal(result.status, 0, result.stderr);
+    const adoption = JSON.parse(result.stdout).adoption;
+    assert.equal(adoption.instruction.selected_agent, 'claude');
+    assert.equal(adoption.instruction.file, 'CLAUDE.md');
+    assert.equal(adoption.instruction.presence, 'present');
   } finally { fs.rmSync(repo, { recursive: true, force: true }); }
 });
 

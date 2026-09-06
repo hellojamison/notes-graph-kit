@@ -411,7 +411,7 @@ function run(argv = process.argv.slice(2), options = {}) {
     Object.hasOwn(args, 'eval-file'),
     options.clock
   );
-  report.adoption = adoptionReport(repoRoot, graph, { evaluation: report.evaluation });
+  report.adoption = adoptionReport(repoRoot, graph, { evaluation: report.evaluation, env });
   if (args.baseline) {
     const file = safeRepoFile(repoRoot, args.baseline, { mustExist: true });
     report.baselineComparison = { file: path.relative(repoRoot, file).split(path.sep).join('/'), ...compareBaseline(loadBaseline(file), report) };

@@ -37,13 +37,13 @@ function parseMarkedYamlBlocks(body, startMarker, endMarker, label) {
       continue;
     }
     const contentStart = body.indexOf('\n', start.start) + 1;
-    const marked = body.slice(contentStart, end.start).trim();
-    const match = marked.match(/^```yaml[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t]*$/);
+    const marked = body.slice(contentStart, end.start);
+    const match = marked.match(/^[ \t\r\n]*```yaml[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t\r\n]*$/);
     if (!match) {
       addError(`${label} markers must enclose exactly one yaml fenced block`, start.start);
     } else {
       try {
-        const yamlStart = contentStart + marked.indexOf(match[1]);
+        const yamlStart = contentStart + match[0].indexOf(match[1]);
         blocks.push({
           value: yaml.load(match[1]),
           start: start.start,

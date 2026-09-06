@@ -99,7 +99,8 @@ function inspect(repoRoot) {
   const contextEvaluationCi = /npm\s+run\s+notes:context:eval\b/.test(workflows);
   const baselineCi = /npm\s+run\s+notes:stats\s+--\s+--baseline\b/.test(workflows);
   const recommendations = [];
-  const adoption = adoptionReport(repoRoot, loadVaultGraph({ env: { ...process.env, PROJECT_NOTES_NOTES_REPO_ROOT: repoRoot }, vaultRoot }));
+  const adoptionEnv = { ...process.env, PROJECT_NOTES_NOTES_REPO_ROOT: repoRoot };
+  const adoption = adoptionReport(repoRoot, loadVaultGraph({ env: adoptionEnv, vaultRoot }), { env: adoptionEnv });
 
   if (adoption.instruction.presence !== 'present') {
     recommendations.push(recommendation('selected-agent-instruction-block', adoption.instruction.presence, 'recommended', {
