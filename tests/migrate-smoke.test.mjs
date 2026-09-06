@@ -506,6 +506,29 @@ test('migration preserves Scripts casing and makes js-yaml available to producti
   }
 });
 
+test('--resolve-lock repairs a missing transitive entry even when the root declaration already matches', () => {
+  const repoRoot = initRepo('notes-graph-lock-repair-');
+  try {
+    const installer = requireFromTest(installerPath);
+    const packageJson = { name: 'lock-repair', private: true, dependencies: { 'js-yaml': '^4.1.0' } };
+    fs.writeFileSync(path.join(repoRoot, 'package.json'), `${JSON.stringify(packageJson, null, 2)}\n`);
+    const lock = JSON.parse(fs.readFileSync(path.join(kitRoot, 'package-lock.json'), 'utf8'));
+    lock.name = 'lock-repair';
+    lock.packages[''].dependencies = { 'js-yaml': '^4.1.0' };
+    delete lock.packages['node_modules/argparse'];
+    delete lock.dependencies?.argparse;
+    fs.writeFileSync(path.join(repoRoot, 'package-lock.json'), `${JSON.stringify(lock, null, 2)}\n`);
+    const repaired = installer.mergePackageLock(repoRoot, JSON.stringify(packageJson), { resolveLock: true });
+    assert.ok(repaired, 'an explicit resolve must not short-circuit on the matching root declaration');
+    fs.writeFileSync(path.join(repoRoot, repaired.rel), repaired.content);
+    const repairedLock = JSON.parse(repaired.content);
+    assert.ok(repairedLock.packages['node_modules/argparse']);
+    execFileSync('npm', ['ci', '--omit=dev', '--ignore-scripts'], { cwd: repoRoot, stdio: 'pipe' });
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
 test('known historical managed docs migrate cumulatively without acceptance', () => {
   for (const version of ['0.2.15', '0.2.16', '0.3.0']) {
     const repoRoot = initRepo();

@@ -130,14 +130,18 @@ function planInstructionFile(planner, agentsRel, migration, category) {
           });
         }
       } else {
-        planner.preserved({
+        const desired = planner.installer.agentsSnippet(
+          planner.appName, planner.vaultDir, path.posix.basename(planner.appRel, '.md'), planner.appRel
+        ).trimEnd();
+        planner.propose({
           id: itemId(category, agentsRel),
           migration,
           category,
           rel: agentsRel,
-          reason: `unmanaged ${agentsRel} content is preserved byte-for-byte`,
-          evidence: ['no notes-graph-kit managed marker pair'],
-          action: 'preserve'
+          candidate: `${agents}${agents.endsWith('\n') ? '\n' : '\n\n'}${desired}\n`,
+          reason: `append managed instructions while preserving ordinary ${agentsRel} content`,
+          evidence: ['no notes-graph-kit managed marker pair; balanced fences'],
+          action: 'append', destructive: false, optInRequired: false
         });
       }
     } else {

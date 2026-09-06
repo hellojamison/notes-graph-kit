@@ -30,8 +30,15 @@ function instruction(config, repoRoot) {
     const text = fs.readFileSync(file, 'utf8');
     const marker = text.includes(SECTION_START) || text.includes(SECTION_END)
       ? [SECTION_START, SECTION_END] : [LEGACY_SECTION_START, LEGACY_SECTION_END];
-    const starts = text.split(marker[0]).length - 1; const ends = text.split(marker[1]).length - 1;
-    presence = starts === 1 && ends === 1 && text.indexOf(marker[0]) < text.indexOf(marker[1]) ? 'present' : starts || ends ? 'malformed' : 'missing';
+    let fence = null; let starts = 0; let ends = 0; let startAt = -1; let endAt = -1;
+    for (const [index, line] of text.split(/\r?\n/).entries()) {
+      const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (fence) { if (new RegExp(`^ {0,3}\\${fence.char}{${fence.length},}[ \\t]*$`).test(line)) fence = null; continue; }
+      if (fenceMatch) { fence = { char: fenceMatch[1][0], length: fenceMatch[1].length }; continue; }
+      if (line.trim() === marker[0]) { starts += 1; startAt = index; }
+      if (line.trim() === marker[1]) { ends += 1; endAt = index; }
+    }
+    presence = starts === 1 && ends === 1 && startAt < endAt ? 'present' : starts || ends ? 'malformed' : 'missing';
   } else if (state === 'unsafe') presence = 'unsafe';
   return { selected_agent: agent, file: rel, presence };
 }

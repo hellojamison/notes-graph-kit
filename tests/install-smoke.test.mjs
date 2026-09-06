@@ -1747,6 +1747,27 @@ test('upgrade refreshes scripts and stamps kitVersion', () => {
   }
 });
 
+test('unknown managed baselines permit an upgrade only when every exact current hash is accepted', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-unknown-baseline-'));
+  try {
+    run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--app', 'Smoke App']);
+    const configPath = path.join(repoRoot, 'notes-graph.config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    delete config.managedScriptHashes;
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+    assert.throws(
+      () => run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']),
+      /Managed helper baseline is unknown/
+    );
+    const output = run(kitRoot, [
+      'install-notes-graph.cjs', '--repo', repoRoot, '--upgrade', ...managedChangeArgs(repoRoot)
+    ]);
+    assert.match(output, /Upgraded notes graph kit/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
 test('upgrade refuses downgrade unless explicitly allowed', () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-downgrade-'));
   try {
@@ -2278,6 +2299,28 @@ test('write transaction rolls back early, middle, late, and post-commit failures
     } finally {
       fs.rmSync(repoRoot, { recursive: true, force: true });
     }
+  }
+});
+
+test('write transaction refuses a target edited after staging and before replacement', () => {
+  const installer = requireFromTest(path.join(kitRoot, 'install-notes-graph.cjs'));
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-concurrent-write-'));
+  try {
+    const target = path.join(repoRoot, 'managed.txt');
+    fs.writeFileSync(target, 'original\n');
+    assert.throws(
+      () => installer.executeWriteTransaction(repoRoot, [
+        { rel: 'managed.txt', content: 'replacement\n', kind: 'script' }
+      ], {
+        beforeOperation({ phase, rel }) {
+          if (phase === 'before-write' && rel === 'managed.txt') fs.writeFileSync(target, 'concurrent edit\n');
+        }
+      }),
+      /managed\.txt changed after transaction staging/
+    );
+    assert.equal(fs.readFileSync(target, 'utf8'), 'concurrent edit\n');
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
   }
 });
 

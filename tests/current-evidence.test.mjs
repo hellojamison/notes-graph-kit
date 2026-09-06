@@ -169,3 +169,28 @@ test('validator rejects bare test totals, non-chronological managed daily entrie
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
 });
+
+test('decisions and releases may supersede only their own type', () => {
+  const repoRoot = installRepo();
+  try {
+    const decisionRel = createdRel(run(repoRoot, [
+      'scripts/project-notes.cjs', 'new', '--type', 'decision', '--title', 'Decision Source'
+    ]));
+    const releaseRel = createdRel(run(repoRoot, [
+      'scripts/project-notes.cjs', 'new', '--type', 'release', '--title', 'Release Target'
+    ]));
+    const decisionPath = path.join(repoRoot, 'Project Notes', decisionRel);
+    const releasePath = path.join(repoRoot, 'Project Notes', releaseRel);
+    const decision = frontmatter(decisionPath);
+    const release = frontmatter(releasePath);
+    decision.value.supersedes = `[[${releaseRel.replace(/\.md$/, '')}|Release Target]]`;
+    release.value.superseded_by = `[[${decisionRel.replace(/\.md$/, '')}|Decision Source]]`;
+    fs.writeFileSync(decisionPath, `---\n${yaml.dump(decision.value)}---\n${decision.text.split('\n---\n').slice(1).join('\n---\n')}`);
+    fs.writeFileSync(releasePath, `---\n${yaml.dump(release.value)}---\n${release.text.split('\n---\n').slice(1).join('\n---\n')}`);
+    const validation = runFailure(repoRoot, ['scripts/validate-project-notes-graph.cjs']);
+    assert.match(validation, /Decision Source\.md: supersedes target .* must be type decision; found release/);
+    assert.match(validation, /Release Target\.md: superseded_by target .* must be type release; found decision/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});

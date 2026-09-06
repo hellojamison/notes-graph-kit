@@ -139,16 +139,20 @@ for (const [agent, instructionFile] of Object.entries({ codex: 'AGENTS.md', clau
     }
   });
 
-  test(`${instructionFile} migration preserves unmanaged content and rejects malformed managed blocks`, () => {
+  test(`${instructionFile} migration appends live instructions after fenced marker examples and rejects malformed managed blocks`, () => {
     const repo = fixture(agent);
     try {
       const file = path.join(repo, instructionFile);
       const unmanaged = `# Local policy\n\n\`\`\`md\n${start}\n## Project Notes Graph\n${end}\n\`\`\`\n`;
       fs.writeFileSync(file, unmanaged);
-      const preserved = migrate(repo, 'audit').report.items.find(({ rel }) => rel === instructionFile);
-      assert.equal(preserved.state, 'preserved');
-      migrate(repo, 'apply', '--all-safe');
-      assert.equal(fs.readFileSync(file, 'utf8'), unmanaged);
+      const planned = migrate(repo, 'audit').report.items.find(({ rel }) => rel === instructionFile);
+      assert.equal(planned.state, 'planned');
+      assert.equal(migrate(repo, 'apply', '--all-safe').status, 0);
+      const adopted = fs.readFileSync(file, 'utf8');
+      assert.ok(adopted.startsWith(unmanaged), 'the fenced example must remain untouched');
+      assert.match(adopted, /<!-- notes-graph-kit:start -->/);
+      assert.match(adopted, /<!-- notes-graph-kit:end -->/);
+      assert.equal((adopted.match(/<!-- notes-graph-kit:start -->/g) || []).length, 2);
       for (const content of [
         `${start}\nMissing end\n`,
         `${start}\n${end}\n${start}\n${end}\n`,

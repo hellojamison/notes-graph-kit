@@ -100,6 +100,23 @@ test('stats adoption reports recorded state, helper drift, process status covera
   } finally { fs.rmSync(repo, { recursive: true, force: true }); }
 });
 
+test('stats does not treat fenced marker examples as installed agent instructions', () => {
+  const repo = fixture(false);
+  try {
+    const configPath = path.join(repo, 'notes-graph.config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.agent = 'claude';
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+    fs.writeFileSync(path.join(repo, 'CLAUDE.md'), [
+      '# Local instructions', '', '```md', '<!-- notes-graph-kit:start -->',
+      '## Project Notes Graph', '<!-- notes-graph-kit:end -->', '```', ''
+    ].join('\n'));
+    const result = run(repo, ['--json']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).adoption.instruction.presence, 'missing');
+  } finally { fs.rmSync(repo, { recursive: true, force: true }); }
+});
+
 test('stats treats an absent default evaluation contract as not configured', () => {
   const repo = fixture(false);
   try {

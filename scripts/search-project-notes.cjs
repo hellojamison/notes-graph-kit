@@ -5,7 +5,7 @@ const {
   loadVaultGraph,
   markdownLinesOutsideFences
 } = require('./lib/project-notes-graph.cjs');
-const { extractReceiptBlocks, extractOpenItemsBlock, validateReceipt, receiptIdPattern } = require('./lib/project-notes-receipts.cjs');
+const { extractReceiptBlocks, extractOpenItemsBlock, validateReceipt, validateOpenItem } = require('./lib/project-notes-receipts.cjs');
 
 const DEFAULT_LIMIT = 10;
 const BM25_K1 = 1.2;
@@ -114,7 +114,16 @@ function stripMarkdown(line) {
     .trim();
 }
 
-function splitSections(note) {
+function structuredDiagnostic(note, line, id, reason, record) {
+  return { path: note.rel, line: sourceLine(note, line), id: id == null || String(id).trim() === '' ? null : String(id), reason, record };
+}
+
+function sourceLine(note, bodyLine) {
+  const bodyStart = note.text.indexOf(note.body);
+  return note.text.slice(0, bodyStart).split(/\r?\n/).length + bodyLine - 1;
+}
+
+function splitSections(note, diagnostics = []) {
   const sections = [];
   let heading = note.frontmatter?.title || note.rel.replace(/\.md$/i, '');
   let level = 0;
@@ -145,19 +154,34 @@ function splitSections(note) {
   // intentionally structured operational evidence, so index only valid data.
   const receiptResult = extractReceiptBlocks(note.body);
   const ids = new Set();
-  for (const receipt of receiptResult.receipts) {
-    if (validateReceipt(receipt, ids).length > 0) continue;
+  for (const { value: receipt, line } of receiptResult.receiptRecords) {
+    const errors = validateReceipt(receipt, ids);
+    if (errors.length > 0) {
+      diagnostics.push(structuredDiagnostic(note, line, receipt.id, errors.join('; '), 'receipt'));
+      continue;
+    }
     const tests = receipt.tests ? `tests ${receipt.tests.passed} ${receipt.tests.filter}` : '';
     const open = [receipt.open_items, receipt.closes_open_items].flat().filter(Boolean).join(' ');
     const text = [receipt.id, receipt.summary, receipt.outcome, receipt.command, tests, open].filter(Boolean).join(' ');
-    if (text) sections.push({ heading: `Receipt ${receipt.id}`, level: 7, line: 1, text, record: 'receipt', recordId: receipt.id });
+    if (text) sections.push({ heading: `Receipt ${receipt.id}`, level: 7, line: sourceLine(note, line), text, record: 'receipt', recordId: receipt.id });
+  }
+  for (const { message, line } of receiptResult.errorRecords) {
+    diagnostics.push(structuredDiagnostic(note, line, null, message, 'receipt'));
   }
   const openItems = extractOpenItemsBlock(note.body);
   if (openItems.errors.length === 0 && Array.isArray(openItems.items)) {
-    for (const item of openItems.items) {
-      if (!item || typeof item !== 'object' || !receiptIdPattern.test(String(item.id || ''))) continue;
+    for (const { item, line } of openItems.itemRecords) {
+      const errors = validateOpenItem(item);
+      if (errors.length > 0) {
+        diagnostics.push(structuredDiagnostic(note, line, item?.id, errors.join('; '), 'open-item'));
+        continue;
+      }
       const text = [item.id, item.summary, item.state, item.outcome].filter(Boolean).join(' ');
-      if (text) sections.push({ heading: `Open Item ${item.id}`, level: 7, line: 1, text, record: 'open-item', recordId: item.id });
+      if (text) sections.push({ heading: `Open Item ${item.id}`, level: 7, line: sourceLine(note, line), text, record: 'open-item', recordId: item.id });
+    }
+  } else {
+    for (const { message, line } of openItems.errorRecords) {
+      diagnostics.push(structuredDiagnostic(note, line, null, message, 'open-item'));
     }
   }
   return sections;
@@ -257,7 +281,8 @@ function searchNotes(query, notes, options = {}) {
   if (queryTokens.length === 0) {
     throw new Error('Search query must contain a letter or number');
   }
-  const documents = notes.flatMap((note) => splitSections(note).map((section) => {
+  const diagnostics = options.diagnostics || [];
+  const documents = notes.flatMap((note) => splitSections(note, diagnostics).map((section) => {
     const title = String(note.frontmatter?.title || '');
     const weightedText = `${title} ${title} ${section.heading} ${section.heading} ${section.text}`;
     const tokens = tokenize(weightedText);
@@ -324,6 +349,11 @@ function renderText(query, results) {
   ].join('\n')).join('\n\n')}\n`;
 }
 
+function renderDiagnostics(diagnostics) {
+  if (diagnostics.length === 0) return '';
+  return `\nStructured record diagnostics:\n${diagnostics.map((item) => `- ${item.path}:${item.line}${item.id ? ` (${item.id})` : ''}: ${item.reason}`).join('\n')}\n`;
+}
+
 function main(argv = process.argv.slice(2), options = {}) {
   const args = parseArgs(argv);
   if (args.help) return printHelp();
@@ -331,16 +361,17 @@ function main(argv = process.argv.slice(2), options = {}) {
   const vaultRoot = getVaultRoot({ env: options.env, vaultRoot: options.vaultRoot });
   const graph = loadVaultGraph({ env: options.env, vaultRoot });
   const notes = graph.notes.filter((note) => matchesFilters(note, args));
-  const results = searchNotes(query, notes, { limit });
+  const diagnostics = [];
+  const results = searchNotes(query, notes, { limit, diagnostics });
   if (args.json) {
     return `${JSON.stringify({ query, filters: {
       type: args.type,
       status: args.status,
       since: args.since || null,
       includeTemplates: Boolean(args['include-templates'])
-    }, count: results.length, results }, null, 2)}\n`;
+    }, count: results.length, results, diagnostics }, null, 2)}\n`;
   }
-  return renderText(query, results);
+  return `${renderText(query, results).trimEnd()}${renderDiagnostics(diagnostics)}`.trimEnd() + '\n';
 }
 
 if (require.main === module) {

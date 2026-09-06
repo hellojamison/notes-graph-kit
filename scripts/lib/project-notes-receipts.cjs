@@ -21,6 +21,11 @@ function asArray(value) {
 function parseMarkedYamlBlocks(body, startMarker, endMarker, label) {
   const blocks = [];
   const errors = [];
+  const errorRecords = [];
+  const addError = (message, start = 0) => {
+    errors.push(message);
+    errorRecords.push({ message, line: lineForOffset(body, start) });
+  };
   const outsideLines = markdownLinesOutsideFences(body);
   const starts = outsideLines.filter(({ line }) => line.trim() === startMarker);
   const ends = outsideLines.filter(({ line }) => line.trim() === endMarker);
@@ -28,56 +33,96 @@ function parseMarkedYamlBlocks(body, startMarker, endMarker, label) {
   for (const start of starts) {
     const end = ends.find((candidate) => candidate.start > start.start && candidate.start >= endCursor);
     if (!end) {
-      errors.push(`${label} marker is not closed`);
+      addError(`${label} marker is not closed`, start.start);
       continue;
     }
     const contentStart = body.indexOf('\n', start.start) + 1;
     const marked = body.slice(contentStart, end.start).trim();
     const match = marked.match(/^```yaml[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t]*$/);
     if (!match) {
-      errors.push(`${label} markers must enclose exactly one yaml fenced block`);
+      addError(`${label} markers must enclose exactly one yaml fenced block`, start.start);
     } else {
       try {
-        blocks.push({ value: yaml.load(match[1]), start: start.start, end: end.start + endMarker.length });
+        const yamlStart = contentStart + marked.indexOf(match[1]);
+        blocks.push({
+          value: yaml.load(match[1]),
+          start: start.start,
+          end: end.start + endMarker.length,
+          yaml: match[1],
+          yamlStart,
+          line: lineForOffset(body, yamlStart)
+        });
       } catch (error) {
-        errors.push(`invalid ${label} YAML: ${error.message}`);
+        addError(`invalid ${label} YAML: ${error.message}`, start.start);
       }
     }
     endCursor = end.start + endMarker.length;
   }
   if (ends.length > starts.length) {
-    errors.push(`${label} marker has an unmatched end`);
+    for (const end of ends.slice(starts.length)) addError(`${label} marker has an unmatched end`, end.start);
   }
-  return { blocks, errors };
+  return { blocks, errors, errorRecords };
+}
+
+function lineForOffset(text, offset) {
+  return text.slice(0, Math.max(0, offset)).split(/\r?\n/).length;
+}
+
+function yamlScalarPattern(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// YAML parsers intentionally do not retain source locations.  The structured
+// record format has stable id fields, so recover the exact id line for useful,
+// deterministic retrieval diagnostics without changing the public YAML values.
+function lineForRecordId(block, id) {
+  if (id == null) return block.line;
+  const pattern = new RegExp(`^\\s*(?:-\\s+)?id:\\s*["']?${yamlScalarPattern(id)}["']?\\s*(?:#.*)?$`);
+  const index = block.yaml.split(/\r?\n/).findIndex((line) => pattern.test(line));
+  return index < 0 ? block.line : block.line + index;
 }
 
 function extractReceiptBlocks(body) {
   const parsed = parseMarkedYamlBlocks(body, receiptStartMarker, receiptEndMarker, 'receipt');
   const receipts = [];
   const errors = [...parsed.errors];
-  parsed.blocks.forEach(({ value }, index) => {
+  const errorRecords = [...parsed.errorRecords];
+  const receiptRecords = [];
+  parsed.blocks.forEach((block, index) => {
+    const { value } = block;
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      errors.push(`receipt ${index + 1} must be a YAML mapping`);
+      const message = `receipt ${index + 1} must be a YAML mapping`;
+      errors.push(message);
+      errorRecords.push({ message, line: block.line });
       return;
     }
     receipts.push(value);
+    receiptRecords.push({ value, line: lineForRecordId(block, value.id) });
   });
-  return { receipts, errors };
+  return { receipts, receiptRecords, errors, errorRecords };
 }
 
 function extractOpenItemsBlock(body) {
   const parsed = parseMarkedYamlBlocks(body, openItemStartMarker, openItemEndMarker, 'open-items');
   if (parsed.blocks.length > 1) {
-    parsed.errors.push('Status note has more than one open-items block');
+    const message = 'Status note has more than one open-items block';
+    parsed.errors.push(message);
+    parsed.errorRecords.push({ message, line: parsed.blocks[1].line });
   }
   if (parsed.blocks.length === 0) {
-    return { items: null, errors: parsed.errors };
+    return { items: null, itemRecords: [], errors: parsed.errors, errorRecords: parsed.errorRecords };
   }
   const value = parsed.blocks[0].value;
   if (!value || typeof value !== 'object' || Array.isArray(value) || !Array.isArray(value.items)) {
-    return { items: null, errors: [...parsed.errors, 'open-items YAML must be a mapping with an items array'] };
+    const message = 'open-items YAML must be a mapping with an items array';
+    return { items: null, itemRecords: [], errors: [...parsed.errors, message], errorRecords: [...parsed.errorRecords, { message, line: parsed.blocks[0].line }] };
   }
-  return { items: value.items, errors: parsed.errors };
+  return {
+    items: value.items,
+    itemRecords: value.items.map((item) => ({ item, line: lineForRecordId(parsed.blocks[0], item?.id) })),
+    errors: parsed.errors,
+    errorRecords: parsed.errorRecords
+  };
 }
 
 function validateReceipt(receipt, knownIds = new Set()) {
@@ -132,6 +177,21 @@ function validateReceipt(receipt, knownIds = new Set()) {
   return errors;
 }
 
+function validateOpenItem(item) {
+  const errors = [];
+  if (!item || typeof item !== 'object' || Array.isArray(item)) {
+    return ['Open Items entries must be mappings'];
+  }
+  if (!isNonEmptyString(item.id) || !receiptIdPattern.test(item.id)) {
+    errors.push('id must be a lowercase kebab-case identifier');
+  }
+  if (!isNonEmptyString(item.summary)) errors.push('missing a summary');
+  if (!isNonEmptyString(item.opened_by)) errors.push('missing opened_by evidence');
+  if (!['open', 'closed'].includes(item.state)) errors.push('state must be open or closed');
+  if (item.state === 'closed' && !isNonEmptyString(item.closed_by)) errors.push('missing closed_by evidence');
+  return errors;
+}
+
 function isSafeArtifactRel(value) {
   if (!isNonEmptyString(value)) {
     return false;
@@ -162,5 +222,6 @@ module.exports = {
   receiptIdPattern,
   receiptStartMarker,
   stripMarkedReceiptBlocks,
-  validateReceipt
+  validateReceipt,
+  validateOpenItem
 };

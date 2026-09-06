@@ -526,9 +526,6 @@ function managedScriptHashes(commit = null) {
 function assertManagedScriptsUnchanged(repoRoot, scriptsDir, config, accepted = []) {
   const baseline = config.managedScriptHashes || (config.kitVersion === '0.14.0' ? VERIFIED_014_HASHES : null);
   const existingManaged = MANAGED_SCRIPTS.filter((sourceRel) => pathExists(path.join(repoRoot, `${scriptsDir}/${sourceRel.slice('scripts/'.length)}`)));
-  if (!baseline && existingManaged.length > 0) {
-    throw new Error('Managed helper baseline is unknown; review the helper diffs and reinstall or migrate with an explicit accepted baseline before upgrade');
-  }
   const changed = [];
   for (const sourceRel of MANAGED_SCRIPTS) {
     const targetRel = `${scriptsDir}/${sourceRel.slice('scripts/'.length)}`;
@@ -539,7 +536,10 @@ function assertManagedScriptsUnchanged(repoRoot, scriptsDir, config, accepted = 
       if (!accepted.includes(`${targetRel}=${actual}`)) changed.push(`${targetRel}=${actual}`);
     }
   }
-  if (changed.length) throw new Error(`Managed helpers changed since their recorded baseline; review required: ${changed.join(', ')}`);
+  if (changed.length) {
+    const label = baseline ? 'Managed helpers changed since their recorded baseline' : 'Managed helper baseline is unknown';
+    throw new Error(`${label}; review required: ${changed.join(', ')}`);
+  }
 }
 
 function mergePackageJson(repoRoot, scriptsDir = detectScriptsDir(repoRoot)) {
@@ -594,7 +594,7 @@ function mergePackageLock(repoRoot, proposedPackageContent, options = {}) {
   const locked = lock.packages?.['']?.dependencies?.['js-yaml'] || lock.dependencies?.['js-yaml']?.version;
   const wanted = proposed.dependencies?.['js-yaml'];
   // An existing compatible lock is already npm's resolution; leave it alone.
-  if (locked && wanted && (locked === wanted || String(locked).replace(/^\^/, '') === String(wanted).replace(/^\^/, ''))) return null;
+  if (!options.resolveLock && locked && wanted && (locked === wanted || String(locked).replace(/^\^/, '') === String(wanted).replace(/^\^/, ''))) return null;
   if (!options.resolveLock) {
     throw new Error('package-lock.json needs regeneration for the proposed package.json; rerun with --resolve-lock (the target has not been changed)');
   }
@@ -838,6 +838,15 @@ function executeWriteTransaction(repoRoot, writes, options = {}) {
   }
 
   const transactionRoot = fs.mkdtempSync(path.join(repoRoot, '.notes-graph-kit-transaction-'));
+  const preimages = new Map(writes.map((write) => {
+    const target = targetPathForWrite(repoRoot, write.rel);
+    return [write.rel, pathExists(target) ? hashText(fs.readFileSync(target, 'utf8')) : null];
+  }));
+  const assertPreimage = (write) => {
+    const target = targetPathForWrite(repoRoot, write.rel);
+    const actual = pathExists(target) ? hashText(fs.readFileSync(target, 'utf8')) : null;
+    if (actual !== preimages.get(write.rel)) throw new Error(`${write.rel} changed after transaction staging; refusing to overwrite`);
+  };
   const staged = [];
   const operations = [];
   const createdDirectories = [];
@@ -863,10 +872,14 @@ function executeWriteTransaction(repoRoot, writes, options = {}) {
     });
 
     preflightWriteTargets(repoRoot, writes);
+    writes.forEach(assertPreimage);
     hook({ phase: 'before-commit', rel: null, index: -1 });
     staged.forEach(({ write, stagedPath, backupPath }, index) => {
       const targetPath = targetPathForWrite(repoRoot, write.rel);
       hook({ phase: 'before-write', rel: write.rel, index });
+      // A caller or another process can still edit a target after staging.
+      // Check at the last safe point before moving its original aside.
+      assertPreimage(write);
       createParentDirectories(repoRoot, targetPath, createdDirectories);
       const operation = {
         targetPath,

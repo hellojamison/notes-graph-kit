@@ -34,7 +34,8 @@ const {
   isSafeArtifactRel,
   receiptIdPattern,
   stripMarkedReceiptBlocks,
-  validateReceipt
+  validateReceipt,
+  validateOpenItem
 } = require('./project-notes-receipts.cjs');
 
 const allowedBaseViewTypes = new Set(['table', 'cards', 'list', 'map']);
@@ -620,26 +621,12 @@ function validateProjectNotesGraph(options = {}) {
           errors.push(`${rel}: status_format 2 requires a structured Open Items block`);
         } else {
           for (const item of parsedOpenItems.items) {
-            if (!item || typeof item !== 'object' || Array.isArray(item)) {
-              errors.push(`${rel}: Open Items entries must be mappings`);
-              continue;
+            const itemId = item && typeof item === 'object' && !Array.isArray(item) ? item.id : '(missing)';
+            for (const error of validateOpenItem(item)) {
+              if (error === 'Open Items entries must be mappings') errors.push(`${rel}: ${error}`);
+              else errors.push(`${rel}: Open Item ${itemId} ${error}`);
             }
-            if (!receiptIdPattern.test(item.id)) {
-              errors.push(`${rel}: Open Item id must be lowercase kebab-case`);
-              continue;
-            }
-            if (!isNonEmptyString(item.summary)) {
-              errors.push(`${rel}: Open Item ${item.id} is missing a summary`);
-            }
-            if (!isNonEmptyString(item.opened_by)) {
-              errors.push(`${rel}: Open Item ${item.id} is missing opened_by evidence`);
-            }
-            if (!['open', 'closed'].includes(item.state)) {
-              errors.push(`${rel}: Open Item ${item.id} state must be open or closed`);
-            }
-            if (item.state === 'closed' && !isNonEmptyString(item.closed_by)) {
-              errors.push(`${rel}: closed Open Item ${item.id} is missing closed_by evidence`);
-            }
+            if (!isNonEmptyString(item?.id) || !receiptIdPattern.test(item.id)) continue;
             if (statusItems.has(item.id)) {
               errors.push(`${rel}: Open Item id ${item.id} also appears in ${statusItems.get(item.id).rel}`);
             } else {
@@ -772,7 +759,9 @@ function validateProjectNotesGraph(options = {}) {
               continue;
             }
             const targetFrontmatter = frontmatterByRel.get(resolved);
-            const expectedTypes = relationshipTypeExpectations[field];
+            const expectedTypes = ['supersedes', 'superseded_by'].includes(field)
+              && ['decision', 'release'].includes(frontmatter.type)
+              ? new Set([frontmatter.type]) : relationshipTypeExpectations[field];
             // Historical task/incident/evidence supersession links predate the
             // typed Decision/Release model. They must resolve, but do not gain
             // Decision-only lifecycle or target-type rules.

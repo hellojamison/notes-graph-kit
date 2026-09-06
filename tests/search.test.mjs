@@ -208,6 +208,50 @@ test('notes search rejects invalid options and empty queries', () => {
   }
 });
 
+test('structured retrieval excludes invalid records and reports their source locations', () => {
+  const { repoRoot, vaultRoot } = searchFixture();
+  try {
+    writeNote(vaultRoot, 'Evidence/Structured Diagnostics.md', [
+      'schema_version: 1', 'title: Structured Diagnostics', 'type: evidence',
+      'status: verified', 'date: "2026-09-06"', 'tags: [notes/evidence]'
+    ].join('\n'), [
+      '# Structured Diagnostics', '',
+      '<!-- notes-graph-kit:receipt:start -->', '```yaml',
+      'id: invalid-receipt', 'outcome: invented', 'summary: invalid receipt keyword',
+      '```', '<!-- notes-graph-kit:receipt:end -->', '',
+      '<!-- notes-graph-kit:receipt:start -->', '```yaml',
+      'id: valid-receipt', 'outcome: verified', 'summary: valid receipt keyword',
+      '```', '<!-- notes-graph-kit:receipt:end -->'
+    ].join('\n'));
+    writeNote(vaultRoot, 'Status/Structured Diagnostics.md', [
+      'schema_version: 1', 'title: Structured Diagnostics Status', 'type: status',
+      'status: active', 'date: "2026-09-06"', 'tags: [notes/status]'
+    ].join('\n'), [
+      '# Structured Diagnostics Status', '', '<!-- notes-graph-kit:open-items:start -->', '```yaml', 'items:',
+      '  - id: invalid-item', '    summary: invalid item keyword', '    opened_by: "[[Evidence/Structured Diagnostics]]"', '    state: paused',
+      '  - id: missing-summary', '    opened_by: "[[Evidence/Structured Diagnostics]]"', '    state: open',
+      '  - id: valid-item', '    summary: valid item keyword', '    opened_by: "[[Evidence/Structured Diagnostics]]"', '    state: open',
+      '```', '<!-- notes-graph-kit:open-items:end -->'
+    ].join('\n'));
+    const report = JSON.parse(run(kitRoot, [
+      'scripts/search-project-notes.cjs', 'keyword', '--json'
+    ], { PROJECT_NOTES_NOTES_REPO_ROOT: repoRoot }));
+    assert.ok(report.results.some((item) => item.heading === 'Receipt valid-receipt' && item.line > 1));
+    assert.ok(report.results.some((item) => item.heading === 'Open Item valid-item' && item.line > 1));
+    assert.ok(!report.results.some((item) => /invalid-receipt|invalid-item|missing-summary/.test(item.heading)));
+    assert.deepEqual(report.diagnostics.map(({ path, line, id, record }) => [path, line, id, record]), [
+      ['Evidence/Structured Diagnostics.md', 14, 'invalid-receipt', 'receipt'],
+      ['Status/Structured Diagnostics.md', 15, 'invalid-item', 'open-item'],
+      ['Status/Structured Diagnostics.md', 19, 'missing-summary', 'open-item']
+    ]);
+    assert.match(report.diagnostics[0].reason, /outcome must be one of/);
+    assert.match(report.diagnostics[1].reason, /state must be open or closed/);
+    assert.match(report.diagnostics[2].reason, /missing a summary/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
 test('installed repos receive the search command and script', () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-search-install-'));
   try {
