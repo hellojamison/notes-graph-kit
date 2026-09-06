@@ -23,6 +23,16 @@ const MIGRATIONS = Object.freeze([
     id: 'vault-0.14.0-current-evidence',
     version: '0.14.0',
     module: './0.14.0.cjs'
+  }),
+  Object.freeze({
+    id: 'vault-0.15.0-claude-instructions',
+    version: '0.15.0',
+    module: './0.15.0.cjs'
+  }),
+  Object.freeze({
+    id: 'vault-0.16.0-compatibility-safety',
+    version: '0.16.0',
+    module: './0.16.0.cjs'
   })
 ]);
 

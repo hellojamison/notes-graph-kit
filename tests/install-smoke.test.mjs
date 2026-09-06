@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
@@ -35,6 +36,16 @@ function commandOutput(error) {
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function managedChangeArgs(repoRoot, scriptsDir = 'scripts') {
+  const installer = requireFromTest(path.join(kitRoot, 'install-notes-graph.cjs'));
+  return installer.buildScriptWrites(scriptsDir).flatMap(({ rel }) => {
+    const target = path.join(repoRoot, rel);
+    if (!fs.existsSync(target)) return [];
+    const hash = crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex');
+    return ['--accept-managed-change', `${rel}=${hash}`];
+  });
 }
 
 function assertValidateFails(repoRoot, pattern) {
@@ -1711,10 +1722,19 @@ test('upgrade refreshes scripts and stamps kitVersion', () => {
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
     fs.writeFileSync(path.join(repoRoot, 'scripts/project-notes.cjs'), '// stale\n');
 
+    assert.throws(
+      () => run(kitRoot, [
+        'install-notes-graph.cjs',
+        '--repo', repoRoot,
+        '--upgrade'
+      ]),
+      /Managed helpers changed since their recorded baseline/
+    );
     const upgradeOutput = run(kitRoot, [
       'install-notes-graph.cjs',
       '--repo', repoRoot,
-      '--upgrade'
+      '--upgrade',
+      ...managedChangeArgs(repoRoot)
     ]);
     assert.match(upgradeOutput, /Upgraded notes graph kit 0\.0\.0 -> /);
 
@@ -1749,11 +1769,21 @@ test('upgrade refuses downgrade unless explicitly allowed', () => {
     assert.equal(fs.readFileSync(scriptPath, 'utf8'), '// newer script\n');
     assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '999.0.0');
 
+    assert.throws(
+      () => run(kitRoot, [
+        'install-notes-graph.cjs',
+        '--repo', repoRoot,
+        '--upgrade',
+        '--allow-downgrade'
+      ]),
+      /Managed helpers changed since their recorded baseline/
+    );
     const output = run(kitRoot, [
       'install-notes-graph.cjs',
       '--repo', repoRoot,
       '--upgrade',
-      '--allow-downgrade'
+      '--allow-downgrade',
+      ...managedChangeArgs(repoRoot)
     ]);
     assert.match(output, /Upgraded notes graph kit 999\.0\.0 -> /);
     assert.ok(fs.readFileSync(scriptPath, 'utf8').length > 100);
@@ -1823,10 +1853,10 @@ test('upgrade output surfaces all applicable migrations for direct and previousl
         '--upgrade',
         '--dry-run'
       ]);
-      assert.match(output, new RegExp(`\\[dry-run\\] Upgraded notes graph kit ${escapeRegExp(installedVersion)} -> 0\\.14\\.0`));
+      assert.match(output, new RegExp(`\\[dry-run\\] Upgraded notes graph kit ${escapeRegExp(installedVersion)} -> 0\\.16\\.0`));
       assert.match(
         output,
-        new RegExp(`migrate-notes-graph\\.cjs audit --repo ${escapeRegExp(JSON.stringify(fs.realpathSync(repoRoot)))} --to 0\\.14\\.0`)
+        new RegExp(`migrate-notes-graph\\.cjs audit --repo ${escapeRegExp(JSON.stringify(fs.realpathSync(repoRoot)))} --to 0\\.16\\.0`)
       );
       assert.equal(
         JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion,
@@ -1895,9 +1925,16 @@ test('upgrade permits missing legacy kitVersion but rejects malformed values', (
 
     delete config.kitVersion;
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
-    const output = run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']);
-    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.14\.0/);
-    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.14.0');
+    assert.throws(
+      () => run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']),
+      /Managed helpers changed since their recorded baseline/
+    );
+    const output = run(kitRoot, [
+      'install-notes-graph.cjs', '--repo', repoRoot, '--upgrade',
+      ...managedChangeArgs(repoRoot)
+    ]);
+    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.16\.0/);
+    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.16.0');
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
@@ -1952,32 +1989,33 @@ test('vault overwrites require both --force and --force-vault', () => {
   }
 });
 
-test('install skips AGENTS.md when Project Notes Graph section exists', () => {
+for (const instructionFile of ['AGENTS.md', 'CLAUDE.md']) {
+test(`install skips ${instructionFile} when Project Notes Graph section exists`, () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-agents-'));
   try {
-    const agentsPath = path.join(repoRoot, 'AGENTS.md');
+    const agentsPath = path.join(repoRoot, instructionFile);
     fs.writeFileSync(agentsPath, '# Existing\n\n## Project Notes Graph\n\nCustom block.\n');
     const installOutput = run(kitRoot, [
       'install-notes-graph.cjs',
       '--repo', repoRoot,
-      '--app', 'Smoke App'
+      '--app', 'Smoke App', '--agent', instructionFile === 'CLAUDE.md' ? 'claude' : 'codex'
     ]);
-    assert.match(installOutput, /skip\s+AGENTS\.md/);
+    assert.match(installOutput, new RegExp(`skip\\s+${escapeRegExp(instructionFile)}`));
     assert.equal(fs.readFileSync(agentsPath, 'utf8'), '# Existing\n\n## Project Notes Graph\n\nCustom block.\n');
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
 });
 
-test('install appends Project Notes Graph to existing AGENTS.md', () => {
+test(`install appends Project Notes Graph to existing ${instructionFile}`, () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-agents-append-'));
   try {
-    const agentsPath = path.join(repoRoot, 'AGENTS.md');
+    const agentsPath = path.join(repoRoot, instructionFile);
     fs.writeFileSync(agentsPath, '# Existing App\n\n## Commands\n\n- build\n');
     run(kitRoot, [
       'install-notes-graph.cjs',
       '--repo', repoRoot,
-      '--app', 'Smoke App'
+      '--app', 'Smoke App', '--agent', instructionFile === 'CLAUDE.md' ? 'claude' : 'codex'
     ]);
     const agentsMd = fs.readFileSync(agentsPath, 'utf8');
     assert.match(agentsMd, /^# Existing App/m);
@@ -1991,7 +2029,7 @@ test('install appends Project Notes Graph to existing AGENTS.md', () => {
   }
 });
 
-test('AGENTS detection ignores prose and fenced examples but honors managed markers', () => {
+test(`${instructionFile} detection ignores prose and fenced examples but honors managed markers`, () => {
   const cases = [
     {
       name: 'prose',
@@ -2037,12 +2075,12 @@ test('AGENTS detection ignores prose and fenced examples but honors managed mark
   for (const fixture of cases) {
     const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), `notes-graph-kit-agents-${fixture.name}-`));
     try {
-      const agentsPath = path.join(repoRoot, 'AGENTS.md');
+      const agentsPath = path.join(repoRoot, instructionFile);
       fs.writeFileSync(agentsPath, fixture.content);
       run(kitRoot, [
         'install-notes-graph.cjs',
         '--repo', repoRoot,
-        '--app', 'Smoke App'
+        '--app', 'Smoke App', '--agent', instructionFile === 'CLAUDE.md' ? 'claude' : 'codex'
       ]);
       const installed = fs.readFileSync(agentsPath, 'utf8');
       assert.match(installed, /## Project Notes Graph/);
@@ -2058,7 +2096,7 @@ test('AGENTS detection ignores prose and fenced examples but honors managed mark
 
   const markedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-agents-marked-'));
   try {
-    const agentsPath = path.join(markedRoot, 'AGENTS.md');
+    const agentsPath = path.join(markedRoot, instructionFile);
     const marked = [
       '# Existing',
       '',
@@ -2071,26 +2109,26 @@ test('AGENTS detection ignores prose and fenced examples but honors managed mark
     const output = run(kitRoot, [
       'install-notes-graph.cjs',
       '--repo', markedRoot,
-      '--app', 'Smoke App'
+      '--app', 'Smoke App', '--agent', instructionFile === 'CLAUDE.md' ? 'claude' : 'codex'
     ]);
-    assert.match(output, /skip\s+AGENTS\.md/);
+    assert.match(output, new RegExp(`skip\\s+${escapeRegExp(instructionFile)}`));
     assert.equal(fs.readFileSync(agentsPath, 'utf8'), marked);
   } finally {
     fs.rmSync(markedRoot, { recursive: true, force: true });
   }
 });
 
-test('install rejects incomplete AGENTS markers before writing anything else', () => {
+test(`install rejects incomplete ${instructionFile} markers before writing anything else`, () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-agents-incomplete-'));
   try {
-    const agentsPath = path.join(repoRoot, 'AGENTS.md');
+    const agentsPath = path.join(repoRoot, instructionFile);
     fs.writeFileSync(agentsPath, '# Existing\n\n<!-- notes-graph-kit:start -->\n');
     const before = snapshotTree(repoRoot);
     assert.throws(
       () => run(kitRoot, [
         'install-notes-graph.cjs',
         '--repo', repoRoot,
-        '--app', 'Smoke App'
+        '--app', 'Smoke App', '--agent', instructionFile === 'CLAUDE.md' ? 'claude' : 'codex'
       ]),
       /incomplete or duplicate/
     );
@@ -2101,14 +2139,14 @@ test('install rejects incomplete AGENTS markers before writing anything else', (
 
   const unclosedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-agents-unclosed-'));
   try {
-    const agentsPath = path.join(unclosedRoot, 'AGENTS.md');
+    const agentsPath = path.join(unclosedRoot, instructionFile);
     fs.writeFileSync(agentsPath, '# Existing\n\n```md\nExample remains open.\n');
     const before = snapshotTree(unclosedRoot);
     assert.throws(
       () => run(kitRoot, [
         'install-notes-graph.cjs',
         '--repo', unclosedRoot,
-        '--app', 'Smoke App'
+        '--app', 'Smoke App', '--agent', instructionFile === 'CLAUDE.md' ? 'claude' : 'codex'
       ]),
       /unclosed fenced code block/
     );
@@ -2117,6 +2155,8 @@ test('install rejects incomplete AGENTS markers before writing anything else', (
     fs.rmSync(unclosedRoot, { recursive: true, force: true });
   }
 });
+
+}
 
 test('repo guard requires an exact Git root and supports explicit non-Git installs and worktrees', () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-repo-guard-'));
@@ -2338,7 +2378,9 @@ test('fresh installs stamp all applicable vault migration IDs', () => {
         'vault-0.3.0-typed-templates',
         'vault-0.4.0-managed-sections',
         'vault-0.13.0-status-notes',
-        'vault-0.14.0-current-evidence'
+        'vault-0.14.0-current-evidence',
+        'vault-0.15.0-claude-instructions',
+        'vault-0.16.0-compatibility-safety'
       ]
     });
   } finally {
@@ -2423,4 +2465,134 @@ test('callable validator reports stable prospective virtual-tree errors', () => 
   assert.deepEqual(result.warnings, [
     'route alias "notes-graph-maintenance" points to missing Processes/Notes Graph Maintenance.md'
   ]);
+});
+
+test('upgrade adds CLAUDE instructions without changing existing blocks or vault content', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-claude-upgrade-'));
+  try {
+    run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--app', 'Smoke App']);
+    const claudePath = path.join(repoRoot, 'CLAUDE.md');
+    fs.writeFileSync(claudePath, '# Local Claude rules\n');
+    const agentsBefore = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
+    const vaultBefore = snapshotTree(path.join(repoRoot, 'Project Notes'));
+    const before = snapshotTree(repoRoot);
+    run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade', '--agent', 'claude', '--dry-run']);
+    assert.deepEqual(snapshotTree(repoRoot), before);
+    run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade', '--agent', 'claude']);
+    const claude = fs.readFileSync(claudePath, 'utf8');
+    assert.ok(claude.startsWith('# Local Claude rules\n'));
+    assert.match(claude, /Apps\/Smoke App\.md/);
+    assert.equal(fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8'), agentsBefore);
+    assert.deepEqual(snapshotTree(path.join(repoRoot, 'Project Notes')), vaultBefore);
+    run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade', '--agent', 'claude']);
+    assert.equal(fs.readFileSync(claudePath, 'utf8'), claude);
+    fs.writeFileSync(claudePath, '<!-- notes-graph-kit:start -->\n');
+    const malformedBefore = snapshotTree(repoRoot);
+    assert.throws(() => run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade', '--agent', 'claude']), /incomplete or duplicate/);
+    assert.deepEqual(snapshotTree(repoRoot), malformedBefore);
+    fs.unlinkSync(claudePath);
+    run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade', '--agent', 'claude']);
+    assert.match(fs.readFileSync(claudePath, 'utf8'), /Project Notes Graph/);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+for (const appRel of ['Products/Main.md', 'Apps/Nested/Main.md']) {
+  test(`upgrade instruction blocks honor configured appRel ${appRel}`, () => {
+    const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-kit-app-path-'));
+    try {
+      run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--app', 'Smoke App']);
+      const configPath = path.join(repoRoot, 'notes-graph.config.json');
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      config.appRel = appRel;
+      fs.writeFileSync(configPath, JSON.stringify(config));
+      for (const file of ['AGENTS.md', 'CLAUDE.md']) fs.rmSync(path.join(repoRoot, file), { force: true });
+      run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade', '--agent', 'codex']);
+      run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade', '--agent', 'claude']);
+      for (const file of ['AGENTS.md', 'CLAUDE.md']) {
+        const content = fs.readFileSync(path.join(repoRoot, file), 'utf8');
+        assert.ok(content.includes(appRel));
+        assert.ok(!content.includes('Apps/Smoke App.md'));
+      }
+    } finally {
+      fs.rmSync(repoRoot, { recursive: true, force: true });
+    }
+  });
+}
+
+const agentFiles = {
+  codex: 'AGENTS.md', cursor: 'AGENTS.md', claude: 'CLAUDE.md',
+  gemini: 'GEMINI.md', copilot: '.github/copilot-instructions.md'
+};
+for (const [agent, selectedFile] of Object.entries(agentFiles)) {
+  test(`${agent} install and saved upgrade manage only ${selectedFile}`, () => {
+    const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-selected-agent-'));
+    try {
+      const args = ['install-notes-graph.cjs', '--repo', repoRoot, '--app', 'Smoke App', '--agent', agent];
+      const before = snapshotTree(repoRoot);
+      run(kitRoot, [...args, '--dry-run']);
+      assert.deepEqual(snapshotTree(repoRoot), before);
+      run(kitRoot, args);
+      for (const file of new Set(Object.values(agentFiles))) {
+        assert.equal(fs.existsSync(path.join(repoRoot, file)), file === selectedFile, file);
+      }
+      const config = JSON.parse(fs.readFileSync(path.join(repoRoot, 'notes-graph.config.json'), 'utf8'));
+      assert.equal(config.agent, agent);
+      for (const file of new Set(Object.values(agentFiles))) {
+        if (file === selectedFile) continue;
+        fs.mkdirSync(path.dirname(path.join(repoRoot, file)), { recursive: true });
+        fs.writeFileSync(path.join(repoRoot, file), '<!-- notes-graph-kit:start -->\nUnselected custom content\n');
+      }
+      fs.unlinkSync(path.join(repoRoot, selectedFile));
+      run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']);
+      assert.match(fs.readFileSync(path.join(repoRoot, selectedFile), 'utf8'), /Project Notes Graph/);
+      for (const file of new Set(Object.values(agentFiles))) {
+        if (file !== selectedFile) assert.equal(fs.readFileSync(path.join(repoRoot, file), 'utf8'), '<!-- notes-graph-kit:start -->\nUnselected custom content\n');
+      }
+      const after = snapshotTree(repoRoot);
+      run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']);
+      assert.deepEqual(snapshotTree(repoRoot), after);
+    } finally {
+      fs.rmSync(repoRoot, { recursive: true, force: true });
+    }
+  });
+}
+
+test('invalid agent fails before writes and legacy upgrades default to codex', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-agent-guard-'));
+  try {
+    const before = snapshotTree(repoRoot);
+    assert.throws(() => run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--app', 'Smoke App', '--agent', 'unknown']), /Unknown agent/);
+    assert.deepEqual(snapshotTree(repoRoot), before);
+    run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--app', 'Smoke App']);
+    const configPath = path.join(repoRoot, 'notes-graph.config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    delete config.agent;
+    fs.writeFileSync(configPath, JSON.stringify(config));
+    fs.unlinkSync(path.join(repoRoot, 'AGENTS.md'));
+    run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']);
+    assert.ok(fs.existsSync(path.join(repoRoot, 'AGENTS.md')));
+    assert.equal(fs.existsSync(path.join(repoRoot, 'CLAUDE.md')), false);
+    const installed = snapshotTree(repoRoot);
+    assert.throws(() => run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade', '--agent', 'unknown']), /Unknown agent/);
+    assert.deepEqual(snapshotTree(repoRoot), installed);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('Copilot instruction parent symlink is rejected without writes', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-copilot-guard-'));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-copilot-outside-'));
+  try {
+    fs.symlinkSync(outside, path.join(root, '.github'));
+    const before = snapshotTree(root);
+    assert.throws(() => run(kitRoot, ['install-notes-graph.cjs', '--repo', root, '--app', 'Smoke App', '--agent', 'copilot']), /symlink|symbolic/i);
+    assert.deepEqual(snapshotTree(root), before);
+    assert.deepEqual(fs.readdirSync(outside), []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(outside, { recursive: true, force: true });
+  }
 });

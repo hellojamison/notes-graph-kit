@@ -122,6 +122,17 @@ function resolveContext(options) {
   });
   const git = isGitWorktree(repoRoot);
   const installedConfig = readConfig(repoRoot);
+  if (installedConfig?.kitVersion != null && !installer.parseSemver(installedConfig.kitVersion)) {
+    throw new MigrationInputError(`Installed kitVersion must be valid semantic versioning; found ${JSON.stringify(installedConfig.kitVersion)}`);
+  }
+  if (installedConfig?.kitVersion && installer.compareSemver(installedConfig.kitVersion, installer.kitVersion) > 0 && !options.allowDowngrade) {
+    throw new MigrationInputError(`Refusing to downgrade notes graph kit ${installedConfig.kitVersion} -> ${installer.kitVersion}. Use --allow-downgrade to proceed intentionally.`);
+  }
+  if (installedConfig && options.agent != null) {
+    throw new MigrationInputError('--agent is only valid for unmanaged adoption; use install-notes-graph.cjs --upgrade --agent to change an installed selection');
+  }
+  const agent = installedConfig?.agent ?? options.agent ?? 'codex';
+  const instructionFile = installer.instructionFileForAgent(agent);
   if (!installedConfig && (!options.app || !options.vault)) {
     throw new MigrationInputError(
       'An unmanaged vault requires both --app and --vault'
@@ -157,7 +168,12 @@ function resolveContext(options) {
     appFileBase,
     appRel,
     installedConfig,
+    agent,
+    instructionFile,
     git,
+    resolveLock: Boolean(options.resolveLock),
+    acceptManagedChange: options.acceptManagedChange || [],
+    allowDowngrade: Boolean(options.allowDowngrade),
     targetVersion: supportedTargetVersion(options.to)
   };
 }
@@ -460,6 +476,9 @@ function planInfrastructure(planner, context) {
   }
 
   const scriptsDir = installer.detectScriptsDir(context.repoRoot);
+  if (context.installedConfig) {
+    installer.assertManagedScriptsUnchanged(context.repoRoot, scriptsDir, context.installedConfig, context.acceptManagedChange);
+  }
   for (const write of installer.buildScriptWrites(scriptsDir)) {
     const existing = planner.readRepo(write.rel);
     planner.propose({
@@ -513,7 +532,7 @@ function planInfrastructure(planner, context) {
       evidence: [preserved.current]
     });
   }
-  const packageLockWrite = installer.mergePackageLock(context.repoRoot);
+  const packageLockWrite = installer.mergePackageLock(context.repoRoot, packageMerge.write?.content, { resolveLock: context.resolveLock });
   if (packageLockWrite) {
     planner.propose({
       id: `${infrastructureMigration}:package:package-lock.json`,
@@ -607,7 +626,9 @@ function prospectiveConfig(context, state) {
   base.appName = context.appName;
   base.vaultDir = context.vaultDir;
   base.appRel = context.appRel;
+  base.agent = context.agent;
   base.kitVersion = installer.kitVersion;
+  base.managedScriptHashes = installer.managedScriptHashes();
   base.vaultMigrationState = state;
   return base;
 }

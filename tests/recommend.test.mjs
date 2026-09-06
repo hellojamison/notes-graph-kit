@@ -83,6 +83,17 @@ test('unsafe opt-in paths require attention and malformed command input exits tw
   } finally { fs.rmSync(repo, { recursive: true, force: true }); }
 });
 
+test('recommend includes adoption gaps without turning them into validation failures', () => {
+  const repo = fixture(1);
+  try {
+    const report = JSON.parse(run(repo, ['--json']).stdout);
+    assert.equal(report.adoption.instruction.presence, 'missing');
+    assert.ok(report.recommendations.some(({ id }) => id === 'selected-agent-instruction-block'));
+    assert.ok(report.recommendations.some(({ id }) => id === 'managed-helper-review'));
+    assert.ok(report.recommendations.some(({ id }) => id === 'retrieval-contract-coverage'));
+  } finally { fs.rmSync(repo, { recursive: true, force: true }); }
+});
+
 test('install and upgrade deliver and surface the agent recommendation command', () => {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-recommend-install-'));
   try {

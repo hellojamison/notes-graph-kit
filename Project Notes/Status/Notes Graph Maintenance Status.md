@@ -22,18 +22,20 @@ related_runbooks:
 related_decisions:
   - "[[Decisions/Notes Graph Adoption Policy|Notes Graph Adoption Policy]]"
   - "[[Decisions/Structured Evidence Contract|Structured Evidence Contract]]"
-last_verified: "2026-09-02"
+last_verified: "2026-09-05"
 created_by: project-notes-cli
-last_updated: "2026-09-02"
+last_updated: "2026-09-05"
 ---
 
 # Notes Graph Maintenance Status
 
 ## Current Phase
 
-Phase 0.14 complete: current evidence contract
+Phase 0.15 complete: one selected agent instruction file
 
 ## Certified
+
+- Kit 0.15.0 install, upgrade, and migration tests passed 150/150; only the selected agent instruction file is managed across install, upgrade, unmanaged adoption, migration, and rollback. Consumer rollout and actual Claude behavior remain unverified.
 
 - Evidence has a current verdict, one topic, receipts, artifact index generation, and validator enforcement.
 
@@ -54,6 +56,8 @@ items:
 - [[Decisions/Structured Evidence Contract|Structured Evidence Contract]]: Current verdicts and open items are structured, linked objects.
 
 ## Recent Phase Closeouts
+
+- 2026-09-05: [[Evidence/2026-09-05 CLAUDE Instruction Parity|CLAUDE Instruction Parity]] — Kit 0.15.0 implemented locally; `npm test` 125/125 passed.
 
 - 2026-09-02: [[Evidence/2026-09-02 Current Evidence Contract|Current Evidence Contract]] — Phase 0.14 complete: current evidence contract
 

@@ -2,6 +2,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { loadVaultGraph } = require('./lib/project-notes-graph.cjs');
+const { adoptionReport } = require('./lib/project-notes-adoption.cjs');
 
 const defaultRepoRoot = path.resolve(__dirname, '..');
 const SCALE_RECOMMENDATION_NOTES = 20;
@@ -97,6 +99,36 @@ function inspect(repoRoot) {
   const contextEvaluationCi = /npm\s+run\s+notes:context:eval\b/.test(workflows);
   const baselineCi = /npm\s+run\s+notes:stats\s+--\s+--baseline\b/.test(workflows);
   const recommendations = [];
+  const adoption = adoptionReport(repoRoot, loadVaultGraph({ env: { ...process.env, PROJECT_NOTES_NOTES_REPO_ROOT: repoRoot }, vaultRoot }));
+
+  if (adoption.instruction.presence !== 'present') {
+    recommendations.push(recommendation('selected-agent-instruction-block', adoption.instruction.presence, 'recommended', {
+      requiresUserApproval: true, actionKind: 'writes-instructions',
+      rationale: `The selected ${adoption.instruction.selected_agent} instruction file does not have a usable Project Notes Graph block.`,
+      nextStep: 'Ask before safely adding or repairing the selected agent instruction block.', command: null
+    }));
+  }
+  if (!adoption.helpers.recorded || adoption.helpers.modified || adoption.helpers.missing || adoption.helpers.unsafe) {
+    recommendations.push(recommendation('managed-helper-review', adoption.helpers.recorded ? 'attention-required' : 'unknown-baseline', 'recommended', {
+      requiresUserApproval: true, actionKind: 'upgrade-review',
+      rationale: adoption.helpers.recorded ? 'Managed helper drift or missing helpers require explicit review before an upgrade can overwrite anything.' : 'This install has no recorded managed-helper hashes.',
+      nextStep: 'Run an upgrade dry-run and explicitly review every reported helper hash before accepting a managed change.', command: 'node install-notes-graph.cjs --upgrade --dry-run'
+    }));
+  }
+  if (adoption.processes.missing_status.length || adoption.processes.duplicate_status.length) {
+    recommendations.push(recommendation('process-status-coverage', 'incomplete', 'recommended', {
+      requiresUserApproval: true, actionKind: 'writes-reviewed-notes',
+      rationale: `${adoption.processes.missing_status.length} configured process(es) lack a Status note and ${adoption.processes.duplicate_status.length} have duplicate Status notes.`,
+      nextStep: 'Inspect current evidence, then ask before creating a missing Status note or resolving a duplicate.', command: null
+    }));
+  }
+  if (adoption.contracts.search.state === 'missing' || adoption.contracts.context.state === 'missing') {
+    recommendations.push(recommendation('retrieval-contract-coverage', 'incomplete', 'recommended', {
+      requiresUserApproval: true, actionKind: 'writes-reviewed-file',
+      rationale: 'One or both reviewed retrieval contracts are missing.',
+      nextStep: 'Ask whether the user wants to author representative search and context expectations; never generate expectations from current results automatically.', command: null
+    }));
+  }
 
   recommendations.push(recommendation('search-evaluation-contract', evaluationState,
     evaluationState === 'missing' ? (substantial ? 'recommended' : 'optional') : evaluationState === 'configured' ? 'enabled' : 'attention-required', {
@@ -179,6 +211,7 @@ function inspect(repoRoot) {
     repo: repoRoot,
     vault: vaultDir,
     note_count: noteCount,
+    adoption,
     agent_policy: {
       prompt_only_when_requires_user_approval: true,
       never_enable_opt_ins_silently: true,

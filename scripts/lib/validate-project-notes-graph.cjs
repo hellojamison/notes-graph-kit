@@ -526,7 +526,7 @@ function validateProjectNotesGraph(options = {}) {
       }
     }
 
-    if (!frontmatter) {
+    if (!frontmatter || note.hasFrontmatter === false) {
       if (structured) {
         warnings.push(`${rel}: legacy structured note is missing frontmatter`);
       } else if (isDaily(rel)) {
@@ -773,6 +773,13 @@ function validateProjectNotesGraph(options = {}) {
             }
             const targetFrontmatter = frontmatterByRel.get(resolved);
             const expectedTypes = relationshipTypeExpectations[field];
+            // Historical task/incident/evidence supersession links predate the
+            // typed Decision/Release model. They must resolve, but do not gain
+            // Decision-only lifecycle or target-type rules.
+            if (['supersedes', 'superseded_by'].includes(field)
+              && !['decision', 'release'].includes(frontmatter.type)) {
+              continue;
+            }
             if (!targetFrontmatter?.type || !expectedTypes.has(targetFrontmatter.type)) {
               const expected = [...expectedTypes].join(' or ');
               const actual = targetFrontmatter?.type || 'missing type';

@@ -54,8 +54,10 @@ const relationshipTypeExpectations = {
   related_processes: new Set(['process']),
   related_runbooks: new Set(['runbook']),
   related_decisions: new Set(['decision']),
-  supersedes: new Set(['decision']),
-  superseded_by: new Set(['decision']),
+  // A release package can supersede another release package.  Decisions are
+  // stricter below in the validator; ordinary legacy links still resolve.
+  supersedes: new Set(['decision', 'release']),
+  superseded_by: new Set(['decision', 'release']),
   verdict_decision: new Set(['decision']),
   follow_up: new Set(['evidence']),
   related_incidents: new Set(['incident']),
@@ -155,7 +157,7 @@ function parseMarkdown(filePath, vaultRoot) {
   const text = fs.readFileSync(filePath, 'utf8');
   const rel = relativePath(filePath, vaultRoot);
   if (!text.startsWith('---\n')) {
-    return { rel, filePath, text, frontmatter: null, body: text, frontmatterError: null };
+    return { rel, filePath, text, frontmatter: null, hasFrontmatter: false, body: text, frontmatterError: null };
   }
   const endIndex = text.indexOf('\n---\n', 4);
   if (endIndex === -1) {
@@ -164,6 +166,7 @@ function parseMarkdown(filePath, vaultRoot) {
       filePath,
       text,
       frontmatter: null,
+      hasFrontmatter: false,
       body: text,
       frontmatterError: 'frontmatter block is not closed'
     };
@@ -176,6 +179,7 @@ function parseMarkdown(filePath, vaultRoot) {
       filePath,
       text,
       frontmatter,
+      hasFrontmatter: true,
       body: text.slice(endIndex + 5),
       frontmatterError: null
     };
@@ -185,14 +189,30 @@ function parseMarkdown(filePath, vaultRoot) {
       filePath,
       text,
       frontmatter: null,
+      hasFrontmatter: true,
       body: text.slice(endIndex + 5),
       frontmatterError: `invalid YAML frontmatter: ${error.message}`
     };
   }
 }
 
+function normalizeFrontmatter(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
 function loadFrontmatter(rawFrontmatter) {
-  return yaml.load(rawFrontmatter, { schema: frontmatterSchema }) || {};
+  return normalizeFrontmatter(yaml.load(rawFrontmatter, { schema: frontmatterSchema }));
+}
+
+// Evidence v2 deliberately separates lifecycle (`status: open|done`) from
+// confidence in the evidence (`verification`).  Old notes used status for
+// both, so retain that interpretation without rewriting historical files.
+function verificationFor(frontmatter) {
+  const fm = normalizeFrontmatter(frontmatter);
+  if (fm.evidence_format === 2 || fm.evidence_format === '2') {
+    return ['verified', 'unverified'].includes(fm.verification) ? fm.verification : null;
+  }
+  return fm.status === 'verified' ? 'verified' : 'unverified';
 }
 
 function normalizeFrontmatterDateFields(frontmatter) {
@@ -493,7 +513,14 @@ function loadVaultGraph(options = {}) {
   const markdownFiles = walk(vaultRoot, (filePath) => filePath.endsWith('.md'));
   const baseFiles = walk(vaultRoot, (filePath) => filePath.endsWith('.base'));
   const index = buildNoteIndex([...markdownFiles, ...baseFiles], vaultRoot);
-  const notes = markdownFiles.map((filePath) => parseMarkdown(filePath, vaultRoot));
+  const notes = markdownFiles.map((filePath) => {
+    const note = parseMarkdown(filePath, vaultRoot);
+    // Missing and YAML-null frontmatter are both legacy, untyped notes. Keep
+    // the source untouched but give every consumer a safe mapping.
+    note.hasFrontmatter = Boolean(note.hasFrontmatter && note.frontmatter);
+    note.frontmatter = normalizeFrontmatter(note.frontmatter);
+    return note;
+  });
   const frontmatterByRel = buildFrontmatterByRel(notes);
   const noteByRel = new Map(notes.map((note) => [note.rel, note]));
   return { vaultRoot, markdownFiles, baseFiles, index, notes, frontmatterByRel, noteByRel };
@@ -790,6 +817,8 @@ module.exports = {
   relativePath,
   walk,
   loadFrontmatter,
+  normalizeFrontmatter,
+  verificationFor,
   normalizeFrontmatterDateFields,
   parseMarkdown,
   noteKeyForRel,

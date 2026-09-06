@@ -17,21 +17,22 @@ function help() {
   return `Build a deterministic, source-attributed project-notes context packet
 
 Usage:
-  node scripts/build-project-notes-context.cjs "query terms" [--results 5] [--max-words 3000] [--type evidence] [--status verified] [--since YYYY-MM-DD] [--json]
+  node scripts/build-project-notes-context.cjs "query terms" [--results 5] [--max-words 3000] [--type evidence] [--status open] [--verification verified] [--since YYYY-MM-DD] [--json]
 
 Options:
   --results COUNT    Ranked sections to seed the packet (1-20; default: 5)
   --max-words COUNT  Maximum source-content words (100-20000; default: 3000)
   --type TYPE        Filter seed notes by frontmatter type (repeatable)
   --status STATUS    Filter seed notes by frontmatter status (repeatable)
+  --verification STATE Filter evidence verified|unverified (repeatable)
   --since DATE       Filter seed notes dated on or after YYYY-MM-DD
   --json             Emit machine-readable JSON
 `;
 }
 
 function parseArgs(argv) {
-  const result = { _: [], type: [], status: [] };
-  const repeatable = new Set(['type', 'status']);
+  const result = { _: [], type: [], status: [], verification: [] };
+  const repeatable = new Set(['type', 'status', 'verification']);
   const values = new Set(['results', 'max-words', 'since']);
   const booleans = new Set(['json', 'help']);
   for (let index = 0; index < argv.length; index += 1) {
@@ -122,10 +123,11 @@ function relatedNotes(seedNotes, graph, query) {
 function buildContext(query, graph, options = {}) {
   const resultLimit = options.results || DEFAULT_RESULTS;
   const maxWords = options.maxWords || DEFAULT_MAX_WORDS;
-  const filters = options.filters || { type: [], status: [] };
+  const filters = options.filters || { type: [], status: [], verification: [] };
   const searchable = graph.notes.filter((note) => matchesFilters(note, {
     type: filters.type || [],
     status: filters.status || [],
+    verification: filters.verification || [],
     since: filters.since,
     'include-templates': false
   }));
@@ -169,7 +171,7 @@ function buildContext(query, graph, options = {}) {
   }
   return {
     query,
-    filters: { type: filters.type || [], status: filters.status || [], since: filters.since || null },
+    filters: { type: filters.type || [], status: filters.status || [], verification: filters.verification || [], since: filters.since || null },
     budget: { maxSourceWords: maxWords, usedSourceWords: usedWords, remainingSourceWords: maxWords - usedWords },
     seedResults: ranked.length,
     sources: included.length,
@@ -205,6 +207,7 @@ function run(argv = process.argv.slice(2), options = {}) {
   const query = args._.join(' ').trim();
   if (!query) throw new Error('Context query is required');
   if (args.since && !/^\d{4}-\d{2}-\d{2}$/.test(args.since)) throw new Error('--since must be YYYY-MM-DD');
+  if (args.verification.some((value) => !['verified', 'unverified'].includes(value))) throw new Error('--verification must be verified or unverified');
   const results = integer(args.results, DEFAULT_RESULTS, 'results', 1, 20);
   const maxWords = integer(args['max-words'], DEFAULT_MAX_WORDS, 'max-words', 100, 20000);
   const env = options.env || process.env;
@@ -212,7 +215,7 @@ function run(argv = process.argv.slice(2), options = {}) {
   const report = buildContext(query, graph, {
     results,
     maxWords,
-    filters: { type: args.type, status: args.status, since: args.since }
+    filters: { type: args.type, status: args.status, verification: args.verification, since: args.since }
   });
   return { output: args.json ? `${JSON.stringify(report, null, 2)}\n` : render(report), report };
 }

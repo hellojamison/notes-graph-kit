@@ -123,7 +123,9 @@ test('unmanaged audit is read-only and apply is idempotent and rollback-capable'
       'vault-0.3.0-typed-templates',
       'vault-0.4.0-managed-sections',
       'vault-0.13.0-status-notes',
-      'vault-0.14.0-current-evidence'
+      'vault-0.14.0-current-evidence',
+      'vault-0.15.0-claude-instructions',
+      'vault-0.16.0-compatibility-safety'
     ]);
     assert.ok(auditReport.items.some((item) =>
       item.rel === 'Existing Notes/Legacy.md'
@@ -163,7 +165,9 @@ test('unmanaged audit is read-only and apply is idempotent and rollback-capable'
         'vault-0.3.0-typed-templates',
         'vault-0.4.0-managed-sections',
         'vault-0.13.0-status-notes',
-        'vault-0.14.0-current-evidence'
+        'vault-0.14.0-current-evidence',
+        'vault-0.15.0-claude-instructions',
+        'vault-0.16.0-compatibility-safety'
       ]
     });
     const backupRoot = path.join(
@@ -200,7 +204,9 @@ test('unmanaged audit is read-only and apply is idempotent and rollback-capable'
       'vault-0.3.0-typed-templates',
       'vault-0.4.0-managed-sections',
       'vault-0.13.0-status-notes',
-      'vault-0.14.0-current-evidence'
+      'vault-0.14.0-current-evidence',
+      'vault-0.15.0-claude-instructions',
+      'vault-0.16.0-compatibility-safety'
     ]);
     assert.deepEqual(rollbackReport.prospectiveApplied, []);
     assert.deepEqual(fs.readFileSync(legacyPath), legacyBytes);
@@ -465,9 +471,18 @@ test('migration preserves Scripts casing and makes js-yaml available to producti
     lock.packages['node_modules/argparse'].dev = true;
     fs.writeFileSync(path.join(repoRoot, 'package-lock.json'), `${JSON.stringify(lock, null, 2)}\n`);
 
-    const apply = runMigration([
+    const beforeResolution = snapshotUserTree(repoRoot);
+    const unresolved = runMigration([
       'apply', '--repo', repoRoot, '--app', 'Runtime App',
       '--vault', 'Existing Notes', '--all-safe', '--json'
+    ]);
+    assert.equal(unresolved.status, 2);
+    assert.match(unresolved.stderr, /package-lock\.json needs regeneration.*--resolve-lock/);
+    assert.deepEqual(snapshotUserTree(repoRoot), beforeResolution);
+
+    const apply = runMigration([
+      'apply', '--repo', repoRoot, '--app', 'Runtime App',
+      '--vault', 'Existing Notes', '--all-safe', '--resolve-lock', '--json'
     ]);
     assert.equal(apply.status, 0, apply.stderr);
     assert.ok(fs.readdirSync(repoRoot).includes('Scripts'));

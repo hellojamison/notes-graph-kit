@@ -1,10 +1,12 @@
 # Agent Instructions Snippet
 
-The installer writes this managed block into the target repo's `AGENTS.md` automatically (creating the file if needed, appending if it exists, and skipping if an installed marker pair or a real `## Project Notes Graph` heading already exists outside a fenced code block). For manual installs, copy the complete marked block into `AGENTS.md`, `CLAUDE.md`, or equivalent, replacing `Project Notes` and `My Project` if you changed `vaultDir` or `appName` in `notes-graph.config.json`.
+The installer writes this managed block into only the selected agent's instruction file automatically (creating the file if needed, appending if it exists, and skipping if an installed marker pair or a real `## Project Notes Graph` heading already exists outside a fenced code block). Pass `--agent codex|claude|gemini|copilot|cursor` for the agent using the target repo; do not install every format. For manual installs, copy the complete marked block into only that agent's instruction file, replacing `Project Notes` and `My Project` if you changed `vaultDir` or `appName` in `notes-graph.config.json`.
 
 ```md
 <!-- notes-graph-kit:start -->
 ## Project Notes Graph
+
+When installing or upgrading this kit, select only the instruction file needed by the agent using the repo (`--agent codex|claude|gemini|copilot|cursor`); do not install every format. Preserve other agents' existing files.
 
 Keep concise date-and-time-stamped notes in this worktree's `Project Notes/` vault per substantive task.
 

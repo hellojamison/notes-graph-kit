@@ -2,7 +2,7 @@
 
 Portable installer and helper scripts for the project notes graph workflow used across multiple project repos. This repo is the **single authoritative source** for the kit — retired copies inside individual app repos are pointers only; change the kit here, then install or upgrade target repos.
 
-The kit scaffolds an Obsidian vault skeleton, copies config-driven CLI helpers (`notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:context`, `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, `notes:validate`), merges npm scripts, stamps `kitVersion`, and writes the `## Project Notes Graph` block into each target repo's `AGENTS.md`.
+The kit scaffolds an Obsidian vault skeleton, copies config-driven CLI helpers (`notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:context`, `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, `notes:validate`), merges npm scripts, stamps `kitVersion`, and writes the `## Project Notes Graph` block into the selected agent's instruction file.
 
 ## Repo map
 
@@ -19,7 +19,7 @@ The kit scaffolds an Obsidian vault skeleton, copies config-driven CLI helpers (
 - `scripts/validate-project-notes-graph.cjs` — structured note/link validator.
 - `scripts/lib/project-notes-graph.cjs` — shared graph utilities (statuses, wikilink rules, route resolution).
 - `notes-graph.config.json` — kit-local config (app name, vault folder, routes); target repos get their own copy on install.
-- `AGENTS-snippet.md` — source block the installer merges into target `AGENTS.md` files.
+- `AGENTS-snippet.md` — source block the installer merges into the selected agent's instruction file.
 - `Project Notes/` — starter Obsidian vault skeleton (marked typed-note templates, Bases, seed notes). Placeholder app name is `My Project`.
 - `tests/install-smoke.test.mjs` — end-to-end install/upgrade smoke test.
 - `README.md` — user-facing install and daily-use guide.
@@ -48,10 +48,11 @@ cd notes-graph-kit
 node install-notes-graph.cjs \
   --repo /path/to/target/repo \
   --app "App Name" \
+  --agent codex \
   --vault "Project Notes"
 ```
 
-Options: `--repo` (exact Git worktree root; defaults to cwd), `--app` (required; rejects `[`, `]`, and `|` because they break Obsidian wikilinks), `--vault` (directory name only, defaults to `Project Notes`), `--force` (overwrite managed scripts/config), `--force-vault` (with `--force`, also overwrite vault files), `--allow-non-git` (explicit bootstrap escape hatch), `--dry-run` (preview only).
+Options: `--agent codex|claude|gemini|copilot|cursor` (saved selection; backward-compatible default `codex`), `--repo` (exact Git worktree root; defaults to cwd), `--app` (required; rejects `[`, `]`, and `|` because they break Obsidian wikilinks), `--vault` (directory name only, defaults to `Project Notes`), `--force` (overwrite managed scripts/config), `--force-vault` (with `--force`, also overwrite vault files), `--allow-non-git` (explicit bootstrap escape hatch), `--dry-run` (preview only).
 
 The installer:
 
@@ -59,9 +60,9 @@ The installer:
 2. Writes `notes-graph.config.json` with app name, vault dir, routes, `kitVersion`, and independent `vaultMigrationState`.
 3. Copies the vault skeleton with the app name substituted, excluding this kit repo's dated local task notes (existing vault files are not overwritten unless both `--force` and `--force-vault` are used).
 4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:context`, `notes:context:eval`, `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, `notes:validate` into `package.json` and adds `js-yaml`; existing customized `notes:*` commands are preserved with a warning.
-5. Writes or appends a managed-marker-wrapped `## Project Notes Graph` block to `AGENTS.md` (creates the file if missing; skips a marker pair or exact legacy heading outside fenced code).
+5. Writes or appends a managed-marker-wrapped `## Project Notes Graph` block to only the selected agent's instruction file (creates the file if missing; skips a marker pair or exact legacy heading outside fenced code).
 
-Writes are staged and committed as one rollback-capable transaction, including `package.json` and `AGENTS.md`. This protects ordinary synchronous failures, not power loss or forced process termination.
+Writes are staged and committed as one rollback-capable transaction, including `package.json` and the selected instruction file. This protects ordinary synchronous failures, not power loss or forced process termination.
 
 Then in the target repo:
 
@@ -72,7 +73,7 @@ npm run notes:search -- "rollback evidence" --type evidence --status verified
 npm run notes:validate
 ```
 
-Upgrade an existing install (scripts + `kitVersion` only; vault untouched):
+Upgrade an existing install (scripts, `kitVersion`, and missing instruction blocks; vault untouched):
 
 ```bash
 node install-notes-graph.cjs --repo /path/to/target/repo --upgrade
@@ -102,6 +103,8 @@ GitHub Actions CI runs `npm ci`, `npm test`, `npm run notes:search:eval`, `npm r
 
 ## Hard rules and gotchas
 
+- **One agent file** — explicitly pass `--agent` for the agent using the target repo. Manage only its file: Codex/Cursor use `AGENTS.md`, Claude uses `CLAUDE.md`, Gemini uses `GEMINI.md`, Copilot uses `.github/copilot-instructions.md`. Do not install every format. Upgrades and migrations use saved `config.agent`; legacy missing values default to `codex`. Changing selection preserves other agents' files. Unmanaged migration adoption accepts `--agent`; repeat the same selection in audit and apply. Installed migrations use the saved choice and reject overrides.
+
 - **Authoritative source only** — fix bugs and add features here, then `--upgrade` consuming repos. Do not edit retired `notes-graph-kit/` copies inside app repos.
 - **Target safety** — `--repo` must be the exact Git worktree root unless `--allow-non-git` is intentional. Filesystem root and the user home directory are always rejected.
 - **Vault safety** — `--vault` must be a directory name, not a path. Install never overwrites existing vault files unless both `--force` and `--force-vault` are supplied. Upgrade never touches vault content.
@@ -109,7 +112,7 @@ GitHub Actions CI runs `npm ci`, `npm test`, `npm run notes:search:eval`, `npm r
 - **Script safety** — install refuses to overwrite existing managed helper scripts unless `--force`; use `--upgrade` for repos already carrying this kit.
 - **Config guard** — re-install without `--force` or `--upgrade` fails if `notes-graph.config.json` already exists.
 - **Custom npm scripts** — if a target repo customized a `notes:*` command, the installer preserves it instead of overwriting.
-- **AGENTS.md merge** — install creates or appends a managed `## Project Notes Graph` block; it does not replace an existing section. Heading and marker examples inside fenced blocks do not count. Migration refreshes an existing managed block automatically; a legacy unmarked heading is preserved unless its exact audited adoption item is accepted.
+- **Selected instruction file merge** — install creates or appends a managed `## Project Notes Graph` block; it does not replace an existing section. Heading and marker examples inside fenced blocks do not count. Migration refreshes an existing managed block automatically; a legacy unmarked heading is preserved unless its exact audited adoption item is accepted.
 - **Template contract** — all eight product templates are `type: template` source notes with exactly one marked fenced YAML mapping. Generate notes through `notes:new`; never copy scaffold metadata manually. Normal upgrade leaves these vault files untouched.
 - **Managed document sections** — `_Codex/Start Here.md`, `Notes System.md`, and `Templates/_README.md` wrap kit-owned body regions in path-specific managed markers. Put repo-specific additions outside those markers so later audited migrations can preserve them deterministically.
 - **Placeholder substitution** — only vault skeleton files get app/vault name substitution; scripts are copied verbatim.

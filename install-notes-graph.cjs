@@ -8,12 +8,44 @@
 // the kit-owned vault skeleton files.
 
 const fs = require('node:fs');
+const crypto = require('node:crypto');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const kitRoot = __dirname;
 const kitVersion = JSON.parse(fs.readFileSync(path.join(kitRoot, 'package.json'), 'utf8')).version;
+const VERIFIED_014_COMMIT = '48a7346';
+const VERIFIED_014_HASHES = Object.freeze({
+  'scripts/project-notes.cjs': 'd4f4f6828010e277c65707d09ad09478760a9289e55c34d1908823dbf6d3f884',
+  'scripts/search-project-notes.cjs': '8c09a7577e164db6e7cc4df19ee47ea22e35da8d95469e4a27726ea3d324ab3c',
+  'scripts/build-project-notes-context.cjs': '2c6e2bb74a7bc627b8a03406a26facad1d6f589817cae8aeee0793a6454f2c19',
+  'scripts/evaluate-project-notes-context.cjs': '5b1d62591674987f2d585ee78fa3df8c225f7c32b74515aa85b3b15511fb9dbc',
+  'scripts/evaluate-project-notes-search.cjs': '8527ae14eeaeafc8101a5d4b6f6c02427ad18f91e4c098ecba65ecdd60efacc0',
+  'scripts/project-notes-stats.cjs': '09c1297fa5d388754c2b05179f5fdc6036f6e791587184cd96956344fabd4576',
+  'scripts/find-project-notes-duplicates.cjs': '78815c796fe3d4d7b15efdd1027e081eb8391d1f68a1f7b8375d4d7f19f36909',
+  'scripts/recommend-project-notes-opt-ins.cjs': '8b0d0f7f6a0c1ba923232090f1b1f02f232e0a6ab39e03e942ce0cb98deaac4b',
+  'scripts/build-project-notes-artifact-index.cjs': '62d00d9a98701b5c5bf245e237c891214fbf5b3889e47273155b24ee69ce6e17',
+  'scripts/validate-project-notes-graph.cjs': '569f32a5072cea570adf8ff4106f25c9751b7252f80754ad015ea5ea3a7f86b5',
+  'scripts/lib/project-notes-graph.cjs': '78f51ac808098c2e48a57e1e6d93f6e58833025cc3a9e1ad969e3113801864a9',
+  'scripts/lib/project-notes-receipts.cjs': 'a68d84e75313aa8cb1cdc2a5f3032026953c8c6739a4bc49f39141836d678376',
+  'scripts/lib/validate-project-notes-graph.cjs': '12be7d178b3190c13d63f3d07e67aa8e4d9fe6131e55a13740e7c816b9e08bce'
+});
+
+const AGENT_INSTRUCTION_FILES = Object.freeze({
+  codex: 'AGENTS.md',
+  cursor: 'AGENTS.md',
+  claude: 'CLAUDE.md',
+  gemini: 'GEMINI.md',
+  copilot: '.github/copilot-instructions.md'
+});
+
+function instructionFileForAgent(agent = 'codex') {
+  if (typeof agent !== 'string' || !Object.hasOwn(AGENT_INSTRUCTION_FILES, agent)) {
+    throw new Error(`Unknown agent ${JSON.stringify(agent)}; choose ${Object.keys(AGENT_INSTRUCTION_FILES).join(', ')}`);
+  }
+  return AGENT_INSTRUCTION_FILES[agent];
+}
 
 const PLACEHOLDER_APP = 'My Project';
 const SKELETON_VAULT_DIR = 'Project Notes';
@@ -34,6 +66,7 @@ const MANAGED_SCRIPTS = [
   'scripts/validate-project-notes-graph.cjs',
   'scripts/lib/project-notes-graph.cjs',
   'scripts/lib/project-notes-receipts.cjs',
+  'scripts/lib/project-notes-adoption.cjs',
   'scripts/lib/validate-project-notes-graph.cjs'
 ];
 
@@ -57,6 +90,14 @@ const VAULT_MIGRATIONS = [
   {
     version: '0.14.0',
     id: 'vault-0.14.0-current-evidence'
+  },
+  {
+    version: '0.15.0',
+    id: 'vault-0.15.0-claude-instructions'
+  },
+  {
+    version: '0.16.0',
+    id: 'vault-0.16.0-compatibility-safety'
   }
 ];
 
@@ -71,11 +112,16 @@ Options:
   --repo      Exact target Git worktree root. Defaults to current working
               directory.
   --app       App/product name (required for install).
+  --agent     codex | claude | gemini | copilot | cursor. Install only its file.
+              Saved for upgrades; legacy/default agent is codex.
   --vault     Vault directory name. Defaults to "Project Notes".
-  --upgrade   Re-copy kit-managed scripts and bump kitVersion in the target
+  --upgrade   Re-copy kit-managed scripts, add missing agent instruction blocks,
+              and bump kitVersion in the target
               config. Never touches vault content.
   --allow-downgrade
               Permit --upgrade to replace a newer installed kit version.
+  --resolve-lock
+              Resolve a required package-lock.json update in isolated staging.
   --force     Overwrite existing kit-managed scripts and config on install.
   --force-vault
               With --force, also overwrite existing vault skeleton files.
@@ -93,10 +139,10 @@ function parseArgs(argv) {
     'allow-non-git',
     'dry-run',
     'upgrade',
-    'allow-downgrade',
+    'allow-downgrade', 'resolve-lock',
     'help'
   ]);
-  const valueFlags = new Set(['repo', 'app', 'vault']);
+  const valueFlags = new Set(['repo', 'app', 'vault', 'agent', 'accept-managed-change']);
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (!arg.startsWith('--')) {
@@ -117,6 +163,10 @@ function parseArgs(argv) {
         throw new Error(`--${key} does not take a value`);
       }
       parsed[key] = true;
+      continue;
+    }
+    if (key === 'accept-managed-change') {
+      (parsed[key] ||= []).push(equalsIndex !== -1 ? arg.slice(equalsIndex + 1) : argv[++index]);
       continue;
     }
     if (equalsIndex !== -1) {
@@ -300,8 +350,8 @@ function yamlDoubleQuoted(value) {
   return JSON.stringify(String(value));
 }
 
-function replaceAppPlaceholders(content, appName, appFileBase) {
-  const appLink = `[[Apps/${appFileBase}|${appName}]]`;
+function replaceAppPlaceholders(content, appName, appFileBase, appRel = `Apps/${appFileBase}.md`) {
+  const appLink = `[[${appRel.replace(/\.md$/, '')}|${appName}]]`;
   const sentinels = {
     quotedAppLink: '\u0000NOTES_GRAPH_QUOTED_APP_LINK\u0000',
     appLink: '\u0000NOTES_GRAPH_APP_LINK\u0000',
@@ -320,7 +370,7 @@ function replaceAppPlaceholders(content, appName, appFileBase) {
     .split(PLACEHOLDER_APP).join(sentinels.appName)
     .split(sentinels.quotedAppLink).join(yamlDoubleQuoted(appLink))
     .split(sentinels.appLink).join(appLink)
-    .split(sentinels.appPath).join(`Apps/${appFileBase}.md`)
+    .split(sentinels.appPath).join(appRel)
     .split(sentinels.quotedAppName).join(yamlDoubleQuoted(appName))
     .split(sentinels.releaseTitle).join(`title: ${yamlDoubleQuoted(`${appName} Version`)}`)
     .split(sentinels.appName).join(appName);
@@ -460,6 +510,38 @@ function buildScriptWrites(scriptsDir = 'scripts') {
   }));
 }
 
+function hashText(text) {
+  return crypto.createHash('sha256').update(text).digest('hex');
+}
+
+function managedScriptHashes(commit = null) {
+  return Object.fromEntries(MANAGED_SCRIPTS.map((sourceRel) => {
+    let content;
+    if (commit) return [sourceRel, VERIFIED_014_HASHES[sourceRel] || null];
+    content ??= fs.readFileSync(path.join(kitRoot, sourceRel), 'utf8');
+    return [sourceRel, hashText(content)];
+  }));
+}
+
+function assertManagedScriptsUnchanged(repoRoot, scriptsDir, config, accepted = []) {
+  const baseline = config.managedScriptHashes || (config.kitVersion === '0.14.0' ? VERIFIED_014_HASHES : null);
+  const existingManaged = MANAGED_SCRIPTS.filter((sourceRel) => pathExists(path.join(repoRoot, `${scriptsDir}/${sourceRel.slice('scripts/'.length)}`)));
+  if (!baseline && existingManaged.length > 0) {
+    throw new Error('Managed helper baseline is unknown; review the helper diffs and reinstall or migrate with an explicit accepted baseline before upgrade');
+  }
+  const changed = [];
+  for (const sourceRel of MANAGED_SCRIPTS) {
+    const targetRel = `${scriptsDir}/${sourceRel.slice('scripts/'.length)}`;
+    const target = path.join(repoRoot, targetRel);
+    if (!pathExists(target)) continue;
+    const actual = hashText(fs.readFileSync(target, 'utf8'));
+    if (!baseline?.[sourceRel] || actual !== baseline[sourceRel]) {
+      if (!accepted.includes(`${targetRel}=${actual}`)) changed.push(`${targetRel}=${actual}`);
+    }
+  }
+  if (changed.length) throw new Error(`Managed helpers changed since their recorded baseline; review required: ${changed.join(', ')}`);
+}
+
 function mergePackageJson(repoRoot, scriptsDir = detectScriptsDir(repoRoot)) {
   const packagePath = path.join(repoRoot, 'package.json');
   assertRegularFileIfExists(packagePath, 'package.json');
@@ -501,65 +583,40 @@ function mergePackageJson(repoRoot, scriptsDir = detectScriptsDir(repoRoot)) {
   };
 }
 
-function mergePackageLock(repoRoot) {
+function mergePackageLock(repoRoot, proposedPackageContent, options = {}) {
   const lockPath = path.join(repoRoot, 'package-lock.json');
   if (!pathExists(lockPath)) {
     return null;
   }
   assertRegularFileIfExists(lockPath, 'package-lock.json');
   const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
-  const packagePath = path.join(repoRoot, 'package.json');
-  const packageJson = pathExists(packagePath)
-    ? JSON.parse(fs.readFileSync(packagePath, 'utf8'))
-    : {};
-  const jsYamlRange = packageJson.dependencies?.['js-yaml']
-    || packageJson.devDependencies?.['js-yaml']
-    || '^4.1.0';
-  const sourceLock = JSON.parse(
-    fs.readFileSync(path.join(kitRoot, 'package-lock.json'), 'utf8')
-  );
-  let changed = false;
-  if (lock.packages && lock.packages['']) {
-    lock.packages[''].dependencies = lock.packages[''].dependencies || {};
-    if (!lock.packages[''].dependencies['js-yaml']) {
-      lock.packages[''].dependencies['js-yaml'] = jsYamlRange;
-      changed = true;
-    }
-    if (lock.packages[''].devDependencies?.['js-yaml']) {
-      delete lock.packages[''].devDependencies['js-yaml'];
-      if (Object.keys(lock.packages[''].devDependencies).length === 0) {
-        delete lock.packages[''].devDependencies;
-      }
-      changed = true;
-    }
-    for (const rel of ['node_modules/js-yaml', 'node_modules/argparse']) {
-      if (!lock.packages[rel]) {
-        lock.packages[rel] = sourceLock.packages[rel];
-        changed = true;
-      }
-      if (lock.packages[rel]?.dev === true) {
-        delete lock.packages[rel].dev;
-        changed = true;
-      }
-    }
+  const proposed = JSON.parse(proposedPackageContent || fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+  const locked = lock.packages?.['']?.dependencies?.['js-yaml'] || lock.dependencies?.['js-yaml']?.version;
+  const wanted = proposed.dependencies?.['js-yaml'];
+  // An existing compatible lock is already npm's resolution; leave it alone.
+  if (locked && wanted && (locked === wanted || String(locked).replace(/^\^/, '') === String(wanted).replace(/^\^/, ''))) return null;
+  if (!options.resolveLock) {
+    throw new Error('package-lock.json needs regeneration for the proposed package.json; rerun with --resolve-lock (the target has not been changed)');
   }
-  if (lock.dependencies?.['js-yaml']) {
-    if (lock.dependencies['js-yaml'].dev === true) {
-      delete lock.dependencies['js-yaml'].dev;
-      changed = true;
-    }
-    if (lock.dependencies.argparse?.dev === true) {
-      delete lock.dependencies.argparse.dev;
-      changed = true;
-    }
+  if (proposed.workspaces || Object.values(proposed.dependencies || {}).some((value) => String(value).startsWith('file:') || String(value).startsWith('workspace:'))) {
+    throw new Error('Cannot safely stage a workspace or local-dependency lockfile; resolve it in the consumer repository');
   }
-  return changed
-    ? {
-        rel: 'package-lock.json',
-        content: `${JSON.stringify(lock, null, 2)}\n`,
-        kind: 'package'
-      }
-    : null;
+  const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-graph-lock-'));
+  try {
+    fs.writeFileSync(path.join(staging, 'package.json'), `${JSON.stringify(proposed, null, 2)}\n`);
+    fs.copyFileSync(lockPath, path.join(staging, 'package-lock.json'));
+    execFileSync('npm', ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'], {
+      cwd: staging,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, npm_config_ignore_scripts: 'true', npm_config_audit: 'false', npm_config_fund: 'false' }
+    });
+    return { rel: 'package-lock.json', content: fs.readFileSync(path.join(staging, 'package-lock.json'), 'utf8'), kind: 'package' };
+  } catch (error) {
+    throw new Error(`Could not resolve package-lock.json in staging: ${error.stderr?.trim() || error.message}`);
+  } finally {
+    fs.rmSync(staging, { recursive: true, force: true });
+  }
 }
 
 function preservedScriptLines(preservedScripts) {
@@ -571,12 +628,12 @@ function preservedScriptLines(preservedScripts) {
 const AGENTS_SECTION_START = '<!-- notes-graph-kit:start -->';
 const AGENTS_SECTION_END = '<!-- notes-graph-kit:end -->';
 
-function agentsSnippet(appName, vaultDir, appFileBase) {
+function agentsSnippet(appName, vaultDir, appFileBase, appRel) {
   const raw = fs.readFileSync(path.join(kitRoot, 'AGENTS-snippet.md'), 'utf8');
   const blockMatch = raw.match(/```md\n([\s\S]*?)```/);
   const block = blockMatch ? blockMatch[1] : raw;
   const headingSentinel = '\u0000NOTES_GRAPH_AGENTS_HEADING\u0000';
-  const rendered = replaceAppPlaceholders(block, appName, appFileBase)
+  const rendered = replaceAppPlaceholders(block, appName, appFileBase, appRel)
     .replace(/^## Project Notes Graph[ \t]*$/m, headingSentinel)
     .split(SKELETON_VAULT_DIR).join(vaultDir);
   const restored = rendered.replace(headingSentinel, '## Project Notes Graph');
@@ -619,12 +676,12 @@ function scanAgentsContent(content) {
   return { starts, ends, hasLegacyHeading, unclosedFence: fence != null };
 }
 
-function buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase) {
-  const agentsPath = path.join(repoRoot, 'AGENTS.md');
-  const section = agentsSnippet(appName, vaultDir, appFileBase).trimEnd();
-  const result = { rel: 'AGENTS.md', kind: 'agents' };
+function buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase, instructionFile = 'AGENTS.md', appRel) {
+  const agentsPath = path.join(repoRoot, instructionFile);
+  const section = agentsSnippet(appName, vaultDir, appFileBase, appRel).trimEnd();
+  const result = { rel: instructionFile, kind: 'agents' };
 
-  assertRegularFileIfExists(agentsPath, 'AGENTS.md');
+  assertRegularFileIfExists(agentsPath, instructionFile);
   if (pathExists(agentsPath)) {
     const content = fs.readFileSync(agentsPath, 'utf8');
     const scan = scanAgentsContent(content);
@@ -633,14 +690,14 @@ function buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase) {
       && scan.starts[0] < scan.ends[0];
     const hasAnyMarkers = scan.starts.length > 0 || scan.ends.length > 0;
     if (hasAnyMarkers && !hasCompleteMarkers) {
-      throw new Error('AGENTS.md has incomplete or duplicate notes-graph-kit managed markers');
+      throw new Error(`${instructionFile} has incomplete or duplicate notes-graph-kit managed markers`);
     }
     if (hasCompleteMarkers || scan.hasLegacyHeading) {
       result.action = 'skip';
       return result;
     }
     if (scan.unclosedFence) {
-      throw new Error('AGENTS.md has an unclosed fenced code block; cannot safely append');
+      throw new Error(`${instructionFile} has an unclosed fenced code block; cannot safely append`);
     }
     const separator = content.endsWith('\n') ? '\n' : '\n\n';
     result.content = `${content}${separator}${section}\n`;
@@ -912,11 +969,16 @@ function install(args) {
   const vaultWrites = buildVaultWrites(appName, vaultDir, appFileBase);
   const hasPreservedVaultCollision = !(force && forceVault)
     && vaultWrites.some((write) => pathExists(targetPathForWrite(repoRoot, write.rel)));
+  const agent = args.agent ?? 'codex';
+  const instructionFile = instructionFileForAgent(agent);
   const config = buildConfig(appName, vaultDir, appFileBase, {
     appliedMigrations: hasPreservedVaultCollision
       ? []
       : applicableVaultMigrations(kitVersion).map((migration) => migration.id)
   });
+
+  config.agent = agent;
+  config.managedScriptHashes = managedScriptHashes();
 
   const writes = [
     ...buildScriptWrites(scriptsDir),
@@ -931,26 +993,25 @@ function install(args) {
   if (packageMerge.write) {
     writes.push(packageMerge.write);
   }
-  const packageLockWrite = mergePackageLock(repoRoot);
+  const packageLockWrite = mergePackageLock(repoRoot, packageMerge.write?.content, { resolveLock: Boolean(args['resolve-lock']) });
   if (packageLockWrite) {
     writes.push(packageLockWrite);
   }
-  const agentsResult = buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase);
-  if (agentsResult.write) {
-    writes.push(agentsResult.write);
-  }
+  const instructionResults = [instructionFile].map((file) =>
+    buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase, file));
+  writes.push(...instructionResults.flatMap((result) => result.write ? [result.write] : []));
 
   const results = planWrites(repoRoot, writes, { force, forceVault });
   const transaction = executeWriteTransaction(repoRoot, results.planned, { dryRun });
   const lines = [
     `${dryRun ? '[dry-run] ' : ''}Installed notes graph kit ${kitVersion} into ${repoRoot}`,
-    ...results.written.filter((rel) => rel !== 'AGENTS.md').map((rel) => `  write ${rel}`),
+    ...results.written.filter((rel) => rel !== instructionFile).map((rel) => `  write ${rel}`),
     ...results.skipped.map((rel) => `  skip  ${rel} (exists)`),
     ...preservedScriptLines(packageMerge.preservedScripts),
     ...(transaction?.cleanupWarning ? [`  warn  ${transaction.cleanupWarning}`] : []),
-    agentsResult.action === 'skip'
-      ? '  skip  AGENTS.md (Project Notes Graph section exists)'
-      : `  ${dryRun ? 'write' : agentsResult.action} AGENTS.md`,
+    ...instructionResults.map((result) => result.action === 'skip'
+      ? `  skip  ${result.rel} (Project Notes Graph section exists)`
+      : `  ${dryRun ? 'write' : result.action} ${result.rel}`),
     '',
     'Next steps:',
     '  npm install',
@@ -958,8 +1019,8 @@ function install(args) {
     '  npm run notes:validate',
     '  npm run notes:recommend  # review agent opt-ins; ask before writes or CI edits'
   ];
-  if (agentsResult.action === 'skip') {
-    lines.push('', 'AGENTS.md already had a Project Notes Graph section; snippet not changed.');
+  for (const result of instructionResults.filter((result) => result.action === 'skip')) {
+    lines.push('', `${result.rel} already had a Project Notes Graph section; snippet not changed.`);
   }
   if (packageMerge.preservedScripts.length > 0) {
     lines.push('', 'package.json has custom notes:* scripts; verify they call the refreshed kit or update them manually.');
@@ -996,8 +1057,12 @@ function upgrade(args) {
   }
 
   const scriptsDir = detectScriptsDir(repoRoot);
+  assertManagedScriptsUnchanged(repoRoot, scriptsDir, config, args['accept-managed-change']);
   const writes = buildScriptWrites(scriptsDir);
   config.kitVersion = kitVersion;
+  config.managedScriptHashes = managedScriptHashes();
+  config.agent = args.agent ?? config.agent ?? 'codex';
+  const instructionFile = instructionFileForAgent(config.agent);
   writes.push({
     rel: 'notes-graph.config.json',
     content: `${JSON.stringify(config, null, 2)}\n`,
@@ -1007,16 +1072,25 @@ function upgrade(args) {
   if (packageMerge.write) {
     writes.push(packageMerge.write);
   }
-  const packageLockWrite = mergePackageLock(repoRoot);
+  const packageLockWrite = mergePackageLock(repoRoot, packageMerge.write?.content, { resolveLock: Boolean(args['resolve-lock']) });
   if (packageLockWrite) {
     writes.push(packageLockWrite);
   }
+
+  const appName = validateAppName(config.appName);
+  const vaultDir = validateVaultDir(config.vaultDir);
+  const appFileBase = fileBaseForApp(appName);
+  const instructionResults = [instructionFile].map((file) =>
+    buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase, file, config.appRel));
+  writes.push(...instructionResults.flatMap((result) => result.write ? [result.write] : []));
 
   const results = planWrites(repoRoot, writes, { force: true, forceVault: false });
   const transaction = executeWriteTransaction(repoRoot, results.planned, { dryRun });
   const lines = [
     `${dryRun ? '[dry-run] ' : ''}Upgraded notes graph kit ${previousVersion} -> ${kitVersion} in ${repoRoot}`,
     ...results.written.map((rel) => `  write ${rel}`),
+    ...instructionResults.filter((result) => result.action === 'skip')
+      .map((result) => `  skip  ${result.rel} (Project Notes Graph section exists; audit to refresh)`),
     ...preservedScriptLines(packageMerge.preservedScripts),
     ...(transaction?.cleanupWarning ? [`  warn  ${transaction.cleanupWarning}`] : []),
     '',
@@ -1067,10 +1141,13 @@ if (require.main === module) {
 
 module.exports = {
   main,
+  instructionFileForAgent,
   parseArgs,
   buildConfig,
   buildVaultWrites,
   buildScriptWrites,
+  managedScriptHashes,
+  assertManagedScriptsUnchanged,
   mergePackageJson,
   mergePackageLock,
   detectScriptsDir,

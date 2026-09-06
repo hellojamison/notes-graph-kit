@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const kitRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -58,9 +59,45 @@ test('stats reports scale, graph health, evidence, freshness, and evaluation met
     assert.equal(report.evaluation.queries, 1);
     assert.equal(typeof report.evaluation.elapsedMs, 'number');
     assert.equal(report.largest.notes.length, 2);
+    assert.equal(report.adoption.kit_version, null);
+    assert.equal(report.adoption.instruction.presence, 'missing');
+    assert.deepEqual(report.adoption.migrations.recorded_ids, []);
+    assert.equal(report.adoption.contracts.search.result.status, 'passing');
+    assert.equal(report.adoption.contracts.context.state, 'missing');
   } finally {
     fs.rmSync(repo, { recursive: true, force: true });
   }
+});
+
+test('stats adoption reports recorded state, helper drift, process status coverage, and v2 receipts', () => {
+  const repo = fixture(false);
+  try {
+    const helper = path.join(repo, 'scripts/project-notes.cjs');
+    fs.mkdirSync(path.dirname(helper), { recursive: true });
+    fs.writeFileSync(helper, 'local helper\n');
+    const digest = crypto.createHash('sha256').update('different baseline\n').digest('hex');
+    fs.writeFileSync(path.join(repo, 'notes-graph.config.json'), JSON.stringify({
+      vaultDir: 'Project Notes', kitVersion: '0.16.0', agent: 'claude',
+      managedScriptHashes: { 'scripts/project-notes.cjs': digest },
+      vaultMigrationState: { schemaVersion: 1, applied: ['vault-0.14.0-current-evidence'] },
+      routes: [{ processRel: 'Processes/Active.md' }]
+    }));
+    fs.mkdirSync(path.join(repo, 'Project Notes/Processes'), { recursive: true });
+    fs.mkdirSync(path.join(repo, 'Project Notes/Status'), { recursive: true });
+    fs.writeFileSync(path.join(repo, 'Project Notes/Processes/Active.md'), note('title: Active\ntype: process\nstatus: active', '# Active'));
+    fs.writeFileSync(path.join(repo, 'Project Notes/Status/Active.md'), note('title: Active status\ntype: status\nstatus: current\nlast_updated: "2026-09-06"\nrelated_processes:\n  - "[[Processes/Active]]"', '# Status'));
+    fs.writeFileSync(path.join(repo, 'Project Notes/Evidence/V2.md'), note('title: V2\ntype: evidence\nevidence_format: 2\nstatus: open\ntopic: test\nverification: unverified', '# V2\n\n<!-- notes-graph-kit:receipt:start -->\n```yaml\nid: check\noutcome: working\n```\n<!-- notes-graph-kit:receipt:end -->'));
+    fs.writeFileSync(path.join(repo, 'CLAUDE.md'), `Instructions\n${'<!-- notes-graph-kit:agents:start -->'}\nbody\n${'<!-- notes-graph-kit:agents:end -->'}\n`);
+    const result = run(repo, ['--json']);
+    assert.equal(result.status, 0, result.stderr);
+    const adoption = JSON.parse(result.stdout).adoption;
+    assert.equal(adoption.instruction.presence, 'present');
+    assert.equal(adoption.helpers.modified, 1);
+    assert.deepEqual(adoption.migrations.recorded_ids, ['vault-0.14.0-current-evidence']);
+    assert.equal(adoption.processes.covered, 1);
+    assert.equal(adoption.evidence_v2.valid_receipts, 1);
+    assert.deepEqual(adoption.status_update_dates.find((entry) => entry.path === 'Status/Active.md'), { path: 'Status/Active.md', date: '2026-09-06' });
+  } finally { fs.rmSync(repo, { recursive: true, force: true }); }
 });
 
 test('stats treats an absent default evaluation contract as not configured', () => {

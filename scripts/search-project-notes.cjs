@@ -5,6 +5,7 @@ const {
   loadVaultGraph,
   markdownLinesOutsideFences
 } = require('./lib/project-notes-graph.cjs');
+const { extractReceiptBlocks, extractOpenItemsBlock, validateReceipt, receiptIdPattern } = require('./lib/project-notes-receipts.cjs');
 
 const DEFAULT_LIMIT = 10;
 const BM25_K1 = 1.2;
@@ -28,8 +29,8 @@ Options:
 }
 
 function parseArgs(argv) {
-  const parsed = { _: [], type: [], status: [] };
-  const repeatable = new Set(['type', 'status']);
+  const parsed = { _: [], type: [], status: [], verification: [] };
+  const repeatable = new Set(['type', 'status', 'verification']);
   const values = new Set(['since', 'limit']);
   const booleans = new Set(['json', 'include-templates', 'help']);
   for (let index = 0; index < argv.length; index += 1) {
@@ -96,6 +97,9 @@ function validateOptions(args) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
     throw new Error('--limit must be an integer from 1 to 100');
   }
+  if (args.verification.some((value) => !['verified', 'unverified'].includes(value))) {
+    throw new Error('--verification must be verified or unverified');
+  }
   return { query, limit };
 }
 
@@ -137,6 +141,25 @@ function splitSections(note) {
     }
   }
   flush();
+  // Ordinary fenced code stays out of retrieval.  These marked records are
+  // intentionally structured operational evidence, so index only valid data.
+  const receiptResult = extractReceiptBlocks(note.body);
+  const ids = new Set();
+  for (const receipt of receiptResult.receipts) {
+    if (validateReceipt(receipt, ids).length > 0) continue;
+    const tests = receipt.tests ? `tests ${receipt.tests.passed} ${receipt.tests.filter}` : '';
+    const open = [receipt.open_items, receipt.closes_open_items].flat().filter(Boolean).join(' ');
+    const text = [receipt.id, receipt.summary, receipt.outcome, receipt.command, tests, open].filter(Boolean).join(' ');
+    if (text) sections.push({ heading: `Receipt ${receipt.id}`, level: 7, line: 1, text, record: 'receipt', recordId: receipt.id });
+  }
+  const openItems = extractOpenItemsBlock(note.body);
+  if (openItems.errors.length === 0 && Array.isArray(openItems.items)) {
+    for (const item of openItems.items) {
+      if (!item || typeof item !== 'object' || !receiptIdPattern.test(String(item.id || ''))) continue;
+      const text = [item.id, item.summary, item.state, item.outcome].filter(Boolean).join(' ');
+      if (text) sections.push({ heading: `Open Item ${item.id}`, level: 7, line: 1, text, record: 'open-item', recordId: item.id });
+    }
+  }
   return sections;
 }
 
@@ -150,6 +173,10 @@ function matchesFilters(note, args) {
   }
   if (args.status.length > 0 && !args.status.includes(String(frontmatter.status || ''))) {
     return false;
+  }
+  if ((args.verification || []).length > 0) {
+    const { verificationFor } = require('./lib/project-notes-graph.cjs');
+    if (!args.verification.includes(verificationFor(frontmatter))) return false;
   }
   if (args.since && normalizeDate(frontmatter.date) < args.since) {
     return false;
@@ -176,7 +203,8 @@ function authorityFor(frontmatter = {}) {
   if (['evidence', 'audit', 'known-good'].includes(type)) {
     multiplier += 0.08;
     reasons.push(`${type} note`);
-    if (status === 'verified') {
+    const { verificationFor } = require('./lib/project-notes-graph.cjs');
+    if (verificationFor(frontmatter) === 'verified') {
       multiplier += 0.12;
       reasons.push('verified status');
     }

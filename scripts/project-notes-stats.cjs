@@ -12,12 +12,18 @@ const {
   resolveTargetDetailed,
   isDaily
 } = require('./lib/project-notes-graph.cjs');
+const { verificationFor, extractOpenItemsBlock, extractReceiptBlocks } = (() => ({
+  verificationFor: require('./lib/project-notes-graph.cjs').verificationFor,
+  extractOpenItemsBlock: require('./lib/project-notes-receipts.cjs').extractOpenItemsBlock,
+  extractReceiptBlocks: require('./lib/project-notes-receipts.cjs').extractReceiptBlocks
+}))();
 const { tokenize, splitSections } = require('./search-project-notes.cjs');
 const {
   safeEvalPath,
   loadContract,
   evaluateContract
 } = require('./evaluate-project-notes-search.cjs');
+const { adoptionReport } = require('./lib/project-notes-adoption.cjs');
 
 const DEFAULT_TOP = 10;
 const DEFAULT_STALE_DAYS = 90;
@@ -334,8 +340,8 @@ function collectStats(graph, options = {}) {
     graph: { links, brokenLinks, ambiguousLinks, orphans: orphanPaths.length, orphanPaths },
     evidence: {
       total: evidenceNotes.length,
-      verified: evidenceNotes.filter((note) => note.frontmatter?.status === 'verified').length,
-      unverified: evidenceNotes.filter((note) => note.frontmatter?.status !== 'verified').length
+      verified: evidenceNotes.filter((note) => verificationFor(note.frontmatter) === 'verified').length,
+      unverified: evidenceNotes.filter((note) => verificationFor(note.frontmatter) !== 'verified').length
     },
     freshness: { staleDays, staleBefore, staleCurrentGuides: staleGuides.length, paths: staleGuides },
     largest: { notes: noteRows.slice(0, top), sections: sectionRows.slice(0, top) }
@@ -405,6 +411,7 @@ function run(argv = process.argv.slice(2), options = {}) {
     Object.hasOwn(args, 'eval-file'),
     options.clock
   );
+  report.adoption = adoptionReport(repoRoot, graph, { evaluation: report.evaluation });
   if (args.baseline) {
     const file = safeRepoFile(repoRoot, args.baseline, { mustExist: true });
     report.baselineComparison = { file: path.relative(repoRoot, file).split(path.sep).join('/'), ...compareBaseline(loadBaseline(file), report) };

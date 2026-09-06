@@ -12,14 +12,16 @@ function usage() {
   return `Notes graph vault migrator (kit version ${kitVersion})
 
 Usage:
-  node migrate-notes-graph.cjs audit --repo /path/to/repo [--app "App" --vault "Existing Notes"] [--map migration.yml] [--to ${kitVersion}] [--json]
-  node migrate-notes-graph.cjs apply --repo /path/to/repo [--app "App" --vault "Existing Notes"] [--map migration.yml] --all-safe [--accept <item-id> ...] [--dry-run] [--json]
+  node migrate-notes-graph.cjs audit --repo /path/to/repo [--app "App" --vault "Existing Notes" --agent claude] [--map migration.yml] [--to ${kitVersion}] [--allow-downgrade] [--resolve-lock] [--json]
+  node migrate-notes-graph.cjs apply --repo /path/to/repo [--app "App" --vault "Existing Notes" --agent claude] [--map migration.yml] --all-safe [--accept <item-id> ...] [--allow-downgrade] [--resolve-lock] [--dry-run] [--json]
   node migrate-notes-graph.cjs rollback --repo /path/to/repo --backup <backup-id> [--backup-dir /path] [--dry-run] [--json]
 
 Options:
   --repo             Exact Git worktree root. Defaults to the current directory.
   --app              Required with --vault when adopting an unmanaged vault.
   --vault            Existing vault directory name for unmanaged adoption.
+  --agent            Agent for unmanaged adoption: codex|claude|gemini|copilot|cursor.
+                     Installed repos use their saved selection; change it via upgrade.
   --map              YAML mapping for explicit in-place legacy-note promotion.
   --to               Supported target version at or below this kit (default ${kitVersion}).
   --all-safe         Required by apply; selects every deterministic safe action.
@@ -34,12 +36,12 @@ Options:
 
 function parseArgs(argv) {
   const booleanOptions = new Set([
-    'all-safe', 'dry-run', 'json', 'allow-non-git', 'help'
+    'all-safe', 'dry-run', 'json', 'allow-non-git', 'allow-downgrade', 'resolve-lock', 'help'
   ]);
   const valueOptions = new Set([
-    'repo', 'app', 'vault', 'map', 'to', 'accept', 'backup-dir', 'backup'
+    'repo', 'app', 'vault', 'agent', 'map', 'to', 'accept', 'accept-managed-change', 'backup-dir', 'backup'
   ]);
-  const result = { accept: [], _: [] };
+  const result = { accept: [], 'accept-managed-change': [], _: [] };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (!arg.startsWith('--')) {
@@ -64,8 +66,8 @@ function parseArgs(argv) {
         `Missing value for --${key}; use --${key}=VALUE when a value begins with --`
       );
     }
-    if (key === 'accept') {
-      result.accept.push(value);
+    if (key === 'accept' || key === 'accept-managed-change') {
+      result[key].push(value);
     } else {
       if (Object.prototype.hasOwnProperty.call(result, key)) {
         throw new MigrationInputError(`Duplicate option: --${key}`);
@@ -84,24 +86,28 @@ function normalizedOptions(args, mode) {
     mode,
     repo: args.repo,
     app: args.app,
+    agent: args.agent,
     vault: args.vault,
     map: args.map,
     to: args.to,
     allSafe: Boolean(args['all-safe']),
     accept: args.accept,
+    acceptManagedChange: args['accept-managed-change'],
     dryRun: Boolean(args['dry-run']),
     json: Boolean(args.json),
     allowNonGit: Boolean(args['allow-non-git']),
     backupDir: args['backup-dir'],
-    backup: args.backup
+    backup: args.backup,
+    allowDowngrade: Boolean(args['allow-downgrade']),
+    resolveLock: Boolean(args['resolve-lock'])
   };
 }
 
 function assertCommandOptions(args, mode) {
-  const common = new Set(['repo', 'to', 'dry-run', 'json', 'allow-non-git', 'help', '_', 'accept']);
+  const common = new Set(['repo', 'to', 'dry-run', 'json', 'allow-non-git', 'allow-downgrade', 'resolve-lock', 'help', '_', 'accept', 'accept-managed-change']);
   const allowed = mode === 'rollback'
     ? new Set([...common, 'backup', 'backup-dir'])
-    : new Set([...common, 'app', 'vault', 'map', 'all-safe', 'backup-dir']);
+    : new Set([...common, 'app', 'vault', 'agent', 'map', 'all-safe', 'backup-dir']);
   const incompatible = Object.keys(args).filter((key) =>
     key !== 'accept'
     && args[key] != null

@@ -41,6 +41,7 @@ cd notes-graph-kit
 node install-notes-graph.cjs \
   --repo /path/to/target/repo \
   --app "App Name" \
+  --agent codex \
   --vault "Project Notes"
 ```
 
@@ -75,11 +76,11 @@ The installer:
    `notes:context:eval`, `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, and
    `notes:validate` into `package.json` (existing customized commands are
    preserved with a warning) and adds the `js-yaml` dependency.
-5. Writes or appends a marked `## Project Notes Graph` block to `AGENTS.md`
+5. Writes or appends a marked `## Project Notes Graph` block to only the selected agent's instruction file
    (creates the file if missing; skips a managed block or an exact legacy
    heading outside fenced code).
 
-All planned files, including `package.json` and `AGENTS.md`, are staged before
+All planned files, including `package.json` and the selected instruction file, are staged before
 replacement. Ordinary write failures roll back files already changed. This
 cannot provide whole-install atomicity against power loss or a forced process
 termination.
@@ -129,7 +130,9 @@ node install-notes-graph.cjs --repo /path/to/target/repo --upgrade
 ```
 
 Re-copies the kit-managed scripts, bumps `kitVersion` in the target config, and
-never touches vault content. Use `--dry-run` to preview. The target's
+adds a missing Project Notes Graph block only to the saved agent's instruction file.
+Existing managed blocks and legacy sections are preserved for audited migration.
+Upgrade never touches vault content. Use `--dry-run` to preview. The target's
 `kitVersion` tells you which kit vintage a repo has.
 
 After upgrading to 0.4.0, audit the still-untouched vault:
@@ -161,6 +164,62 @@ Existing repos with older or renamed helper scripts (e.g. `overcue-notes.cjs`,
 `notes.cjs`, split `notes-*.cjs`) keep working through their `notes:*` npm
 scripts; upgrade them only when a fix needs propagating.
 
+### Choose one agent in 0.15.0
+
+Install only the instruction file needed by the agent using the repository.
+Always pass `--agent` when setting up a repo for an agent; do not install every
+format or infer the active agent from files that happen to exist.
+
+| Agent | Option | File managed by the kit |
+| --- | --- | --- |
+| Codex | `--agent codex` | `AGENTS.md` |
+| Cursor | `--agent cursor` | `AGENTS.md` |
+| Claude Code | `--agent claude` | `CLAUDE.md` |
+| Gemini CLI | `--agent gemini` | `GEMINI.md` |
+| GitHub Copilot | `--agent copilot` | `.github/copilot-instructions.md` |
+
+[Cursor supports AGENTS.md](https://docs.cursor.com/context/rules-for-ai),
+so this workflow does not need an additional `.cursor/rules` file.
+[Claude Code](https://code.claude.com/docs/en/memory),
+[Gemini CLI](https://geminicli.com/docs/cli/gemini-md/), and
+[Copilot](https://code.visualstudio.com/docs/agent-customization/custom-instructions)
+document their respective instruction files. Tool-specific rules or custom-agent
+profiles serve other purposes; do not scaffold them for this notes workflow.
+
+```bash
+node install-notes-graph.cjs --repo /path/to/repo --app "App Name" --agent claude
+node install-notes-graph.cjs --repo /path/to/repo --upgrade
+```
+
+The choice is saved as `agent` in `notes-graph.config.json`. Upgrade uses that
+choice; pass `--upgrade --agent gemini` to change it intentionally. Each invocation
+manages one file. Other agents' files are never deleted or refreshed. For backward
+compatibility, omitted `--agent` on install and legacy configs without `agent`
+default to `codex`; agents setting up a repo must select themselves explicitly.
+
+All formats use `AGENTS-snippet.md` as their shared source. Custom surrounding
+content is preserved. Existing instruction sections are left unchanged during
+install/upgrade; malformed selected-file markers, unclosed fences, and symlink
+targets fail before writes. Dry-run previews the complete transaction.
+
+Audit with `node migrate-notes-graph.cjs audit --repo /path/to/repo --to 0.15.0`
+to refresh the selected file's managed section. Migration reads the saved agent
+selection. A legacy unmarked section requires its exact adoption item ID.
+Backups and rollback cover selected instruction changes.
+
+When adopting an existing vault that has no `notes-graph.config.json`, pass the
+same `--agent` to both audit and apply:
+
+```bash
+node migrate-notes-graph.cjs audit --repo /path/to/repo --app "App Name" --vault "Existing Notes" --agent gemini --to 0.15.0
+node migrate-notes-graph.cjs apply --repo /path/to/repo --app "App Name" --vault "Existing Notes" --agent gemini --to 0.15.0 --all-safe
+```
+
+Review the audit before applying. Adoption saves the selection; future migrations
+use it automatically. Installed repos reject a migration `--agent` override:
+change the selection through `install-notes-graph.cjs --upgrade --agent` first.
+Rollback restores the backed-up config and does not accept an agent override.
+
 ### Existing vault migration for 0.2.16
 
 Version 0.2.16 makes wikilink resolution path-safe, checks links in root
@@ -174,8 +233,8 @@ be selected with `--all-safe`; collisions or customized files remain unchanged
 unless their exact item IDs are accepted. Use a mapping when an existing
 renamed or unmanaged note should satisfy a required typed path.
 
-Fresh installs already contain these changes. Existing `AGENTS.md` content
-remains upgrade-untouched and is handled as a separate audited item.
+Fresh installs already contain these changes. Existing notes sections in the selected instruction file
+remain upgrade-untouched and are handled as separate audited items.
 
 ### Existing vault migration for 0.3.0
 
@@ -254,7 +313,7 @@ overwrite user content.
    ```
 
    `--accept` is repeatable. Use only item IDs reviewed in the matching audit.
-   Omit an item to leave it unchanged. Repeat the same `--app`, `--vault`, and
+   Omit an item to leave it unchanged. Repeat the same `--app`, `--vault`, `--agent`, and
    `--map` inputs used for audit. Omit `--map` from both commands when no
    adoption mapping is needed.
 
@@ -270,7 +329,7 @@ overwrite user content.
    ```bash
    npm run notes:validate -- --verbose
    git diff --check
-   git diff -- "Project Notes" AGENTS.md notes-graph.config.json
+   git diff -- "Project Notes" AGENTS.md CLAUDE.md GEMINI.md .github/copilot-instructions.md notes-graph.config.json
    ```
 
    If the vault has a different configured name, substitute that path. Exercise
