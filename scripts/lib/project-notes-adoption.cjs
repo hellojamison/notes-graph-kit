@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { extractWikilinkTargets, resolveTargetDetailed } = require('./project-notes-graph.cjs');
+const { extractWikilinkTargets, resolveTargetDetailed, getConfig } = require('./project-notes-graph.cjs');
 const { extractReceiptBlocks, extractOpenItemsBlock, validateReceipt } = require('./project-notes-receipts.cjs');
 
 const AGENT_FILES = Object.freeze({ codex: 'AGENTS.md', cursor: 'AGENTS.md', claude: 'CLAUDE.md', gemini: 'GEMINI.md', copilot: '.github/copilot-instructions.md' });
@@ -83,8 +83,7 @@ function statusAndEvidence(graph, config) {
 }
 function adoptionReport(repoRoot, graph, options = {}) {
   const env = options.env || process.env;
-  const configPath = path.resolve(env.PROJECT_NOTES_CONFIG || path.join(repoRoot, 'notes-graph.config.json'));
-  const config = options.config || JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const config = options.config || getConfig(env);
   const status = graph ? statusAndEvidence(graph, config) : { processes: { configured_active: Array.isArray(config.routes) ? config.routes.length : 0, covered: 0, missing_status: [], duplicate_status: [], entries: [] }, evidence_v2: { notes: 0, valid_receipts: 0, invalid_receipts: 0 }, status_update_dates: [], malformed_open_item_blocks: 0 };
   const contracts = { search: { state: contractState(repoRoot, 'notes-search-eval.yml') }, context: { state: contractState(repoRoot, 'notes-context-eval.yml') } };
   if (options.evaluation) contracts.search.result = options.evaluation;

@@ -132,6 +132,19 @@ test('stats adoption honors PROJECT_NOTES_CONFIG overrides', () => {
   } finally { fs.rmSync(repo, { recursive: true, force: true }); }
 });
 
+test('stats adoption supports a vault supplied only through environment overrides', () => {
+  const repo = fixture(false);
+  try {
+    const vault = path.join(repo, 'Project Notes');
+    fs.rmSync(path.join(repo, 'notes-graph.config.json'));
+    const result = run(repo, ['--json'], { PROJECT_NOTES_NOTES_VAULT_ROOT: vault });
+    assert.equal(result.status, 0, result.stderr);
+    const adoption = JSON.parse(result.stdout).adoption;
+    assert.equal(adoption.kit_version, null);
+    assert.equal(adoption.instruction.selected_agent, 'codex');
+  } finally { fs.rmSync(repo, { recursive: true, force: true }); }
+});
+
 test('stats treats an absent default evaluation contract as not configured', () => {
   const repo = fixture(false);
   try {
