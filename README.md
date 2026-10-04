@@ -64,7 +64,7 @@ Options:
 
 The installer:
 
-1. Copies thirteen managed helper/library files verbatim into the target's
+1. Copies managed helper/library files verbatim into the target's
    existing `scripts/` or `Scripts/` directory spelling (refuses to
    overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with the app name, vault dir, a
@@ -639,6 +639,59 @@ YAML receipt blocks. `notes:validate` verifies that artifact files and stated
 hashes/commits resolve; it intentionally does not infer claims from prose.
 `notes:artifacts -- --write` generates `artifacts/INDEX.md` from those
 receipts.
+
+### Opt-in handoff mode (0.17.0)
+
+Handoff mode transfers a bounded assignment to another agent. It does not
+change `notes:context`, note types, evidence certification, or Status/Decision
+closeout. The optional reusable skill is `skills/notes-handoff/SKILL.md` in the
+kit; load it explicitly or copy it into your agent's skill directory. The
+installer distributes the CLI helper, not global skills or a job runner.
+
+Create an assignment JSON in your task's scratch area:
+
+```json
+{
+  "question": "Investigate rollback failures",
+  "sender": "astra",
+  "recipient": "qwen-worker-1",
+  "scope": ["Trace rollback behavior; report findings without editing source"],
+  "acceptance": ["Reproduce material findings", "List examined paths and coverage gaps"],
+  "inputs": ["AGENTS.md", "migrate-notes-graph.cjs", "tests/migrate-smoke.test.mjs"],
+  "query": "rollback evidence",
+  "maxWords": 1500,
+  "results": 3
+}
+```
+
+```bash
+npm run notes:handoff -- create --assignment work/assignment.json --out work/packet.json
+npm run notes:handoff -- check --packet work/packet.json
+```
+
+The output parent directory must already exist. Creation without `--out` prints
+JSON; `--out` exclusively creates a private file and refuses overwrite. Keep
+packets outside the canonical notes vault. `check` exits 0 for matching captured
+inputs, 1 for stale inputs, and 2 for malformed input/runtime errors. It compares
+the exact worktree and HEAD, declared input file bytes (including untracked and
+dirty files), and retrieved note file bytes. A content digest detects accidental
+packet edits, not malicious forgery. No commands, delivery, or certification are
+executed by the packet. Scope instructions are not a tool sandbox.
+
+Declare relevant source/tests/configuration/instruction files explicitly. Inputs
+must be existing files inside the repository, with no parent traversal; escaping
+symlinks are refused. Directories and newly added files outside the declared
+inputs are not covered. HEAD or captured-note changes conservatively require
+review; unrelated file changes are not a complete repository freshness check.
+The bounded context reports truncation and diagnostics; no matches is not proof
+that no prior knowledge exists. File hashes establish unchanged bytes, not true
+claims or exhaustive audit coverage.
+
+Workers return evidence and coverage gaps identified by packet ID; the sender
+reviews source and reproductions and owns acceptance. Reconcile intentional
+worker edits through the diff when they invalidate the pre-work snapshot. Only
+the coordinator promotes accepted results through the existing evidence workflow.
+There is no automatic dispatch, lifecycle engine, or shared-note writer.
 
 Typical agent workflow:
 

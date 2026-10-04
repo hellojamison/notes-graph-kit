@@ -56,7 +56,7 @@ Options: `--agent codex|claude|gemini|copilot|cursor` (saved selection; backward
 
 The installer:
 
-1. Copies eleven managed helper/library files into the target's existing `scripts/` or `Scripts/` directory spelling (refuses to overwrite existing helper scripts unless `--force` is used).
+1. Copies managed helper/library files into the target's existing `scripts/` or `Scripts/` directory spelling (refuses to overwrite existing helper scripts unless `--force` is used).
 2. Writes `notes-graph.config.json` with app name, vault dir, routes, `kitVersion`, and independent `vaultMigrationState`.
 3. Copies the vault skeleton with the app name substituted, excluding this kit repo's dated local task notes (existing vault files are not overwritten unless both `--force` and `--force-vault` are used).
 4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:context`, `notes:context:eval`, `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, `notes:validate` into `package.json` and adds `js-yaml`; existing customized `notes:*` commands are preserved with a warning.
@@ -138,6 +138,10 @@ Prefer the repo-local notes helper:
 - `npm run notes:new -- --title "<title>" --type <type> --summary "<goal>"` (`task`, `evidence`, `app`, `process`, `runbook`, `decision`, `incident`, or `release`; task/evidence require `--process`)
 - `npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD <task title>.md" --working "..." --verified "..." --not-verified "..."` (add `--certify` only for `status: verified`)
 - `npm run notes:validate` after graph metadata, templates, Bases, validator, helper script, or structured note changes.
+
+## Optional handoffs
+
+`npm run notes:handoff -- create --assignment <json> [--out <new-json>]` creates an opt-in assignment packet; `check --packet <json>` compares captured inputs. See `skills/notes-handoff/SKILL.md`. This is separate from evidence certification and does not change vault schemas or shared Status notes.
 
 ## Skills
 

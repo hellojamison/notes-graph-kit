@@ -1,6 +1,6 @@
 {
   "name": "notes-graph-kit",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "private": true,
   "description": "Portable Obsidian project notes graph helper kit.",
   "license": "MIT",
@@ -19,7 +19,8 @@
     "notes:duplicates": "node scripts/find-project-notes-duplicates.cjs",
     "notes:recommend": "node scripts/recommend-project-notes-opt-ins.cjs",
     "notes:artifacts": "node scripts/build-project-notes-artifact-index.cjs",
-    "notes:validate": "node scripts/validate-project-notes-graph.cjs"
+    "notes:validate": "node scripts/validate-project-notes-graph.cjs",
+    "notes:handoff": "node scripts/project-notes-handoff.cjs"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
