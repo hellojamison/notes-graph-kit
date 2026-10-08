@@ -1,9 +1,9 @@
 ---
 name: agent-memory-toolbox
-description: Proactively recall personal context at task start and retain useful preferences, corrections, and lessons across projects and sessions.
+description: Proactively recall personal context and retain explicitly stated identity facts, preferences, corrections, and useful lessons across projects and sessions.
 metadata:
   author: Jamison Rabbe (@hellojamison)
-  version: "1.1.0"
+  version: "1.1.1"
   hermes:
     category: productivity
     tags: [memory, personal, recall, preferences, experience]
@@ -20,7 +20,7 @@ an independent local profile, with sources and correction history.
 ## When to Use
 
 Load this skill at the first substantive task in a session, when the task topic
-changes, when the user states a durable preference or correction, and at task
+changes, when the user states a durable personal fact, preference, or correction, and at task
 closeout. Also load it for explicit remember, recall, correct, or forget requests.
 Carry out the memory cycle below without waiting for the user to say "remember
 this" or asking permission for routine local memory saves.
@@ -28,11 +28,21 @@ Keep detailed repository evidence in that repository's project notes.
 
 ## Persistent Activation
 
-During setup, append the [startup instruction](assets/hermes-startup.md) to the
-current Hermes home's `SOUL.md`, preserving its existing content. This short
-instruction is loaded at session start and directs Hermes to load this skill
-across projects. A new session picks up the change. Keep detailed procedures
-here; the startup instruction is only the activation cue.
+During setup, add `agent-memory-toolbox` to `skills.auto_load` in the current
+Hermes home's `config.yaml`, preserving any other pinned skills. Hermes then
+loads the complete skill at the start of new sessions across surfaces:
+
+```yaml
+skills:
+  auto_load:
+    - agent-memory-toolbox
+```
+
+Append the [startup instruction](assets/hermes-startup.md) to that home's
+`SOUL.md`, preserving existing content and replacing only an existing matching
+marked block. A new session picks up these changes; an already running chat
+must reload this skill or start a new session. The short startup cue complements
+the fully loaded skill; it does not replace persistent auto-load.
 
 ## Prerequisites
 
@@ -94,10 +104,20 @@ UTC timestamp, such as `2026-12-01T00:00:00Z`.
   recall for the new topic. Reuse the packet within the task rather than
   querying on every message. Lexical matching does not infer synonyms; try a
   more concrete query if needed. If the profile is missing, initialize it once.
-- When the user expresses a lasting preference, corrects a remembered fact,
-  identifies an ongoing goal, or establishes a recurring constraint, save or
-  revise it during that turn. Explicit statements are sufficient; the user
-  need not request a save. Honor requests not to retain something.
+- When the user explicitly states a durable personal fact (name, pronouns,
+  timezone, role, or recurring work context), expresses a lasting preference,
+  corrects a remembered fact, identifies an ongoing goal, or establishes a
+  recurring constraint, save or revise it during that turn, even in a brief
+  introduction. Explicit statements are sufficient; the user need not request
+  a save. Honor requests not to retain something.
+- For example, after "My name is Jamison," search for the existing name record
+  and save or correct the name with the user's statement as its source before
+  replying. Do not ask "Want me to save your name?" Routine retention is already
+  authorized. Do not infer a name from a username, account, or file path.
+- When asked whether something is remembered, check the store. If it is absent
+  but an explicit durable statement is available in the current conversation,
+  save it before replying, then accurately distinguish "saved just now" from
+  "already saved." If no reliable statement is available, say it is unknown.
 - Before the final answer at a task or phase boundary, review what was learned.
   Save the few useful new facts or procedures that would help a future session,
   including a verified workaround, a recurring failure to avoid, or a settled

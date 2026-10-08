@@ -153,14 +153,18 @@ the standalone CLI under `scripts/` so an installed copy runs independently of
 this checkout. The skill uses Hermes's `${HERMES_SKILL_DIR}` substitution and
 the `terminal` tool, with the explicitly selected `hermes` memory profile.
 Copy the complete folder into Hermes's profile-local skills library to install
-it. Append the skill's `assets/hermes-startup.md` block to the current Hermes
+it. Add `agent-memory-toolbox` to `skills.auto_load` in the current Hermes home's
+`config.yaml`, preserving any other pinned skills. This loads the full skill at
+session start rather than relying on the agent to choose it. Append the skill's
+`assets/hermes-startup.md` block to the current Hermes
 home's `SOUL.md`, preserving existing content, to make the agent load the skill
 at the first substantive task in each new session. Use one copy of the marked
 block; replace that block when upgrading. A new session picks up the change,
 and `/agent-memory-toolbox` can also load it in the current session.
 
-The memory cycle recalls a bounded packet before work, retains explicit durable
-preferences and corrections during a turn, and considers useful lessons before
+The memory cycle recalls a bounded packet before work, retains explicitly
+stated identity facts (including a name), durable preferences, and corrections
+during a turn, and considers useful lessons before
 the final answer. Routine saves require no reminder or confirmation. It skips
 temporary chatter and avoids duplicating existing memories. This is agent
 behavior guided by persistent instructions; it does not create a background job
