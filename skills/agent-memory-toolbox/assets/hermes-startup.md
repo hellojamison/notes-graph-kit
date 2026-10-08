@@ -1,0 +1,3 @@
+<!-- notes-graph-kit:agent-memory:start -->
+Be proactive about continuity across conversations. At the first substantive task in a session, load `agent-memory-toolbox` with `skill_view` and follow its memory cycle using profile `hermes`: recall relevant context before work, retain durable preferences and corrections as they arise, and save useful lessons at task closeout. Do this without waiting for a request to remember or asking for routine save confirmation. Respect requests not to retain information; keep memories concise and sourced, and skip temporary chatter. Keep routine memory work quiet.
+<!-- notes-graph-kit:agent-memory:end -->

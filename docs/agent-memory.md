@@ -6,8 +6,9 @@ without Git, npm dependencies, a project configuration, or an Obsidian vault.
 
 Personal memories have their own storage and schema. Project notes continue to
 describe repository work. This first version provides explicit storage and
-retrieval tools; an agent decides when to call them. It does not automatically
-capture conversations or attach memory to every model request.
+retrieval tools. The Hermes skill proactively calls them at task start, on
+durable preferences and corrections, and at task closeout. The CLI itself does
+not passively capture conversations or attach memory to every model request.
 
 ## Start a profile
 
@@ -152,7 +153,20 @@ the standalone CLI under `scripts/` so an installed copy runs independently of
 this checkout. The skill uses Hermes's `${HERMES_SKILL_DIR}` substitution and
 the `terminal` tool, with the explicitly selected `hermes` memory profile.
 Copy the complete folder into Hermes's profile-local skills library to install
-it; a new session can select it or invoke `/agent-memory-toolbox`. When refreshing
+it. Append the skill's `assets/hermes-startup.md` block to the current Hermes
+home's `SOUL.md`, preserving existing content, to make the agent load the skill
+at the first substantive task in each new session. Use one copy of the marked
+block; replace that block when upgrading. A new session picks up the change,
+and `/agent-memory-toolbox` can also load it in the current session.
+
+The memory cycle recalls a bounded packet before work, retains explicit durable
+preferences and corrections during a turn, and considers useful lessons before
+the final answer. Routine saves require no reminder or confirmation. It skips
+temporary chatter and avoids duplicating existing memories. This is agent
+behavior guided by persistent instructions; it does not create a background job
+or a deterministic runtime hook.
+
+When refreshing
 the bundled CLI, copy `agent-memory.cjs` from the kit root into the skill's
 `scripts/agent-memory.cjs`, then update the installed skill copy. Preserve any
 local customizations rather than overwriting them blindly.
