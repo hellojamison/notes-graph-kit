@@ -8,7 +8,7 @@ tags:
   - notes/process
 app: "My Project"
 source_of_truth: true
-last_verified: "2026-07-05"
+last_verified: "2026-10-07"
 confidence: "medium"
 related_apps:
   - "[[Apps/My Project|My Project]]"
@@ -23,3 +23,5 @@ related_evidence:
 # Notes Graph Maintenance
 
 Maintain the notes graph without turning old notes into a migration project.
+
+Review mutable guidance against the current repository before updating `last_verified`. Use [[Runbooks/Codex Notes Workflow|Codex Notes Workflow]] for the local validation checklist. A freshness regression requires a real review; preserve the reviewed stats baseline and record the result in a dated task note.
