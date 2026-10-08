@@ -1,0 +1,1272 @@
+
+> notes-graph-kit@0.18.0 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: profiles are explicit, isolated, idempotent, and independent of repositories
+ok 1 - profiles are explicit, isolated, idempotent, and independent of repositories
+  ---
+  duration_ms: 24.951958
+  type: 'test'
+  ...
+# Subtest: CLI runs from an unrelated non-Git working directory and env selects profile
+ok 2 - CLI runs from an unrelated non-Git working directory and env selects profile
+  ---
+  duration_ms: 90.228375
+  type: 'test'
+  ...
+# Subtest: extensible kinds, source, subject and conjunctive tag filters survive reload
+ok 3 - extensible kinds, source, subject and conjunctive tag filters survive reload
+  ---
+  duration_ms: 30.90275
+  type: 'test'
+  ...
+# Subtest: recall is deterministic and does not match source strings or history
+ok 4 - recall is deterministic and does not match source strings or history
+  ---
+  duration_ms: 21.274958
+  type: 'test'
+  ...
+# Subtest: revision compare-and-set rejects stale writers and preserves correction history
+ok 5 - revision compare-and-set rejects stale writers and preserves correction history
+  ---
+  duration_ms: 21.271959
+  type: 'test'
+  ...
+# Subtest: archive and expiry exclude memories from default recall and context
+ok 6 - archive and expiry exclude memories from default recall and context
+  ---
+  duration_ms: 35.759875
+  type: 'test'
+  ...
+# Subtest: forget removes current content and all history from persisted data
+ok 7 - forget removes current content and all history from persisted data
+  ---
+  duration_ms: 20.920542
+  type: 'test'
+  ...
+# Subtest: bounded context counts attribution and text, discloses truncation and treats data as untrusted
+ok 8 - bounded context counts attribution and text, discloses truncation and treats data as untrusted
+  ---
+  duration_ms: 13.93125
+  type: 'test'
+  ...
+# Subtest: export requires explicit inactive/history selection and leaves data untouched
+ok 9 - export requires explicit inactive/history selection and leaves data untouched
+  ---
+  duration_ms: 23.053583
+  type: 'test'
+  ...
+# Subtest: invalid options, names, timestamps and conflicting metadata fail without writes
+ok 10 - invalid options, names, timestamps and conflicting metadata fail without writes
+  ---
+  duration_ms: 9.502625
+  type: 'test'
+  ...
+# Subtest: corrupt store identity, schema and history fail closed without overwriting data
+ok 11 - corrupt store identity, schema and history fail closed without overwriting data
+  ---
+  duration_ms: 20.760875
+  type: 'test'
+  ...
+# Subtest: symlink store paths and dangling files are rejected without touching the target
+ok 12 - symlink store paths and dangling files are rejected without touching the target
+  ---
+  duration_ms: 9.549333
+  type: 'test'
+  ...
+# Subtest: busy writer lock fails promptly; read-only recall still works and new data is private
+ok 13 - busy writer lock fails promptly; read-only recall still works and new data is private
+  ---
+  duration_ms: 14.748709
+  type: 'test'
+  ...
+# Subtest: concurrent writers either succeed serially or report busy without losing successful records
+ok 14 - concurrent writers either succeed serially or report busy without losing successful records
+  ---
+  duration_ms: 53.878375
+  type: 'test'
+  ...
+# Subtest: context evaluation checks sources, order, exclusions, attribution, and budget
+ok 15 - context evaluation checks sources, order, exclusions, attribution, and budget
+  ---
+  duration_ms: 60.504917
+  type: 'test'
+  ...
+# Subtest: context evaluation exits one for reviewed expectation misses
+ok 16 - context evaluation exits one for reviewed expectation misses
+  ---
+  duration_ms: 59.759125
+  type: 'test'
+  ...
+# Subtest: context evaluation exits two for malformed and escaping contracts without writes
+ok 17 - context evaluation exits two for malformed and escaping contracts without writes
+  ---
+  duration_ms: 219.269791
+  type: 'test'
+  ...
+# Subtest: context packs ranked sections and one-hop operational links deterministically
+ok 18 - context packs ranked sections and one-hop operational links deterministically
+  ---
+  duration_ms: 118.132208
+  type: 'test'
+  ...
+# Subtest: context filters seed results but allows their reviewed one-hop relationships
+ok 19 - context filters seed results but allows their reviewed one-hop relationships
+  ---
+  duration_ms: 66.084625
+  type: 'test'
+  ...
+# Subtest: context preserves structured-record diagnostics in JSON and text output
+ok 20 - context preserves structured-record diagnostics in JSON and text output
+  ---
+  duration_ms: 124.191083
+  type: 'test'
+  ...
+# Subtest: context rejects missing queries and invalid bounds without writing
+ok 21 - context rejects missing queries and invalid bounds without writing
+  ---
+  duration_ms: 193.275334
+  type: 'test'
+  ...
+# Subtest: installed repos receive the context command and managed script
+ok 22 - installed repos receive the context command and managed script
+  ---
+  duration_ms: 94.248042
+  type: 'test'
+  ...
+# Subtest: structured evidence keeps the current verdict, open-item objects, receipts, and artifact index verifiable
+ok 23 - structured evidence keeps the current verdict, open-item objects, receipts, and artifact index verifiable
+  ---
+  duration_ms: 931.471167
+  type: 'test'
+  ...
+# Subtest: validator rejects bare test totals, non-chronological managed daily entries, and asymmetric decisions
+ok 24 - validator rejects bare test totals, non-chronological managed daily entries, and asymmetric decisions
+  ---
+  duration_ms: 455.131709
+  type: 'test'
+  ...
+# Subtest: decisions and releases may supersede only their own type
+ok 25 - decisions and releases may supersede only their own type
+  ---
+  duration_ms: 288.45775
+  type: 'test'
+  ...
+# Subtest: duplicate detection is deterministic, informational, and excludes templates and daily notes
+ok 26 - duplicate detection is deterministic, informational, and excludes templates and daily notes
+  ---
+  duration_ms: 182.474375
+  type: 'test'
+  ...
+# Subtest: duplicate detection rejects unsafe or noisy option ranges without writes
+ok 27 - duplicate detection rejects unsafe or noisy option ranges without writes
+  ---
+  duration_ms: 210.419708
+  type: 'test'
+  ...
+# Subtest: installed repos receive the informational duplicate command
+ok 28 - installed repos receive the informational duplicate command
+  ---
+  duration_ms: 100.433583
+  type: 'test'
+  ...
+# Subtest: handoff create/check preserves source, embeds bounded context, and requires review
+ok 29 - handoff create/check preserves source, embeds bounded context, and requires review
+  ---
+  duration_ms: 446.702
+  type: 'test'
+  ...
+# Subtest: handoff detects dirty bytes and retrieved note edits without HEAD changes
+ok 30 - handoff detects dirty bytes and retrieved note edits without HEAD changes
+  ---
+  duration_ms: 314.948292
+  type: 'test'
+  ...
+# Subtest: handoff captures explicit untracked inputs and detects deletion
+ok 31 - handoff captures explicit untracked inputs and detects deletion
+  ---
+  duration_ms: 278.457
+  type: 'test'
+  ...
+# Subtest: handoff detects HEAD changes even when captured file bytes match
+ok 32 - handoff detects HEAD changes even when captured file bytes match
+  ---
+  duration_ms: 298.965125
+  type: 'test'
+  ...
+# Subtest: handoff rejects another worktree identity even with matching HEAD and files
+ok 33 - handoff rejects another worktree identity even with matching HEAD and files
+  ---
+  duration_ms: 318.368291
+  type: 'test'
+  ...
+# Subtest: handoff rejects traversal and symlinks escaping the repository
+ok 34 - handoff rejects traversal and symlinks escaping the repository
+  ---
+  duration_ms: 302.70675
+  type: 'test'
+  ...
+# Subtest: handoff rejects malformed assignments, options, bounds, and packet digests
+ok 35 - handoff rejects malformed assignments, options, bounds, and packet digests
+  ---
+  duration_ms: 816.425959
+  type: 'test'
+  ...
+# Subtest: handoff output is exclusive and never overwrites existing files
+ok 36 - handoff output is exclusive and never overwrites existing files
+  ---
+  duration_ms: 345.704208
+  type: 'test'
+  ...
+# Subtest: handoff refuses output inside the canonical vault including symlink aliases
+ok 37 - handoff refuses output inside the canonical vault including symlink aliases
+  ---
+  duration_ms: 251.372375
+  type: 'test'
+  ...
+# Subtest: installer supports Scripts spelling and preserves customized handoff commands
+ok 38 - installer supports Scripts spelling and preserves customized handoff commands
+  ---
+  duration_ms: 195.660458
+  type: 'test'
+  ...
+# Subtest: upgrade adds handoff to older baseline but refuses an unknown colliding helper
+ok 39 - upgrade adds handoff to older baseline but refuses an unknown colliding helper
+  ---
+  duration_ms: 276.802166
+  type: 'test'
+  ...
+# ERROR Bases/Active Work.base: invalid Base YAML: unexpected end of the stream within a flow collection (3:1)
+#  1 | views:
+#  2 |   - type: [
+#  3 |
+# -----^
+# ERROR Bases/Active Work.base: views must be a non-empty array
+# ERROR Bases/Active Work.base: views must be a non-empty array
+# ERROR Bases/Active Work.base: views[0].type must be one of table, cards, list, or map
+# ERROR Bases/Active Work.base: views[0].order[1] references undefined formula.missing
+# ERROR Bases/Active Work.base: properties references undefined formula.missing
+# --vault must be a simple directory name, not a path
+# --force does not take a value
+# Unknown option: --dryrun
+# Write target parent must not be a symlink: /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-dry-run-IKKjro/symlink/scripts
+# package.json must be a regular file: /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-dry-run-IKKjro/target-symlink/package.json
+# Note already contains a closeout: Project Notes/Evidence/Unquoted Date.md
+# Note is outside vault: Project Notes/Evidence/Linked.md
+# ERROR Evidence/2026-10-07 Schema required smoke.md: schema-managed note date must be YYYY-MM-DD
+# ERROR Evidence/2026-10-07 Schema required smoke.md: schema-managed note tags must be a non-empty array of strings
+# WARN Summarized 1 recurring warning(s):
+# WARN   1 typed notes without related_apps
+# WARN Re-run with --verbose to print every warning.
+# ERROR Evidence/Timestamp Managed.md: schema-managed note date must be YYYY-MM-DD
+# ERROR Evidence/Timestamp Managed.md: schema-managed note last_verified must be YYYY-MM-DD
+# WARN Summarized 6 recurring warning(s):
+# WARN   1 typed notes without related_apps
+# WARN   1 legacy daily notes without frontmatter
+# WARN   1 other legacy notes without frontmatter
+# WARN   3 legacy structured notes without frontmatter
+# WARN Re-run with --verbose to print every warning.
+# ERROR 2020-01-01.md: has broken wikilink [[Missing Daily Target]]
+# ERROR Evidence/Legacy Structured.md: has broken wikilink [[Missing Structured Target]]
+# ERROR Legacy Named Daily.md: has broken wikilink [[Missing Typed Daily Target]]
+# ERROR Managed Root.md: has ambiguous wikilink [[Duplicate]] matching Evidence/Duplicate.md, Runbooks/Duplicate.md; use a vault-relative path
+# ERROR Managed Root.md: has broken wikilink [[Totally/Made Up/_README]]
+# ERROR Templates/App Template.md: has broken wikilink [[Missing Template Target]]
+# ERROR Evidence/Relationship Source.md: related_evidence has ambiguous wikilink [[Shared]] matching Evidence/Shared.md, Incidents/Shared.md; use a vault-relative path
+# ERROR 2026-10-07.md: malformed wikilink [[Evidence/Broken [target]|Alias]]
+# ERROR route "bad-route": processRel must be a non-empty string
+# Ambiguous notes route for "review the app": route "a-route" -> Processes/Notes Graph Maintenance.md, route "z-route" -> Processes/Notes Graph Maintenance.md; use an exact route id or process path
+# ERROR route "bad-route": processRel Apps/Smoke App.md must target type process; found app
+# Route "bad-route" points to missing or non-process note Apps/Smoke App.md
+# ERROR route "missing-route": processRel Wrong/Notes Graph Maintenance.md must target an existing process note
+# --app must not contain [, ], or | because those characters break Obsidian wikilinks
+# scripts/lib/project-notes-graph.cjs already exists in /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-script-guard-ZfdJgg. Use --force to overwrite managed helper scripts.
+# Managed helpers changed since their recorded baseline; review required: scripts/project-notes.cjs=7c1caccce0cb9e7fea8ea29110dee3c398a5116c6bc054859217a83453a9e00a
+# Managed helper baseline is unknown; review required: scripts/project-notes.cjs=d4f4f6828010e277c65707d09ad09478760a9289e55c34d1908823dbf6d3f884, scripts/search-project-notes.cjs=79d75b003b5871580af401d596891bbae2710a863f81dd5ba8c38d58e56cbac7, scripts/build-project-notes-context.cjs=1452cf2076a6df533a23826cec7ff9f5aa1c5112f697bb52d55eb356b5b64914, scripts/project-notes-handoff.cjs=b478c20c40044c170ed9d44284d7d50ddb5d8bf913d0442e99b5b4cf3d767db4, scripts/project-notes-worker.cjs=8918c41513332d6ad6b94f09c4649c8c49a62041d6c4f81b74541a588b5a77b7, scripts/evaluate-project-notes-context.cjs=5b1d62591674987f2d585ee78fa3df8c225f7c32b74515aa85b3b15511fb9dbc, scripts/evaluate-project-notes-search.cjs=8527ae14eeaeafc8101a5d4b6f6c02427ad18f91e4c098ecba65ecdd60efacc0, scripts/project-notes-stats.cjs=eb311bb6f37c2b5f82777193d412e06643b3e79f606cae18798ae4088e801af2, scripts/find-project-notes-duplicates.cjs=78815c796fe3d4d7b15efdd1027e081eb8391d1f68a1f7b8375d4d7f19f36909, scripts/recommend-project-notes-opt-ins.cjs=393dddf11ca1e871abe50e985692cd347a48cb450201b6a4871333d6b5698c35, scripts/build-project-notes-artifact-index.cjs=62d00d9a98701b5c5bf245e237c891214fbf5b3889e47273155b24ee69ce6e17, scripts/validate-project-notes-graph.cjs=569f32a5072cea570adf8ff4106f25c9751b7252f80754ad015ea5ea3a7f86b5, scripts/lib/project-notes-graph.cjs=b2f4c37b8272f59a73d86d8d51a57e8bcac9954503be8efad263868fe533f51c, scripts/lib/project-notes-receipts.cjs=93faf5637de5b59a409139223b3db0b14c47440822c5dacc3aa2c09f858ed167, scripts/lib/project-notes-adoption.cjs=515576fab2ef2cfedee18e8809424915da2a36b05676769aa65fbffc3684d975, scripts/lib/validate-project-notes-graph.cjs=76b08fa8e9e0cbc719d9e009507de0ffd9a5bcaa9048ea46021eaf711ca27817
+# Refusing to downgrade notes graph kit 999.0.0 -> 0.18.0. Use --allow-downgrade to proceed intentionally.
+# Managed helpers changed since their recorded baseline; review required: scripts/project-notes.cjs=a0fb6334e09ef982eafb3e4e335323342d7e5b437fd06fcda15630ad435e0eb8
+# --upgrade cannot be combined with --app
+# --upgrade cannot be combined with --vault
+# --upgrade cannot be combined with --force
+# --upgrade cannot be combined with --force, --force-vault
+# Installed kitVersion must be valid semantic versioning; found "not-semver"
+# Managed helpers changed since their recorded baseline; review required: scripts/project-notes.cjs=219893f20ab969332a86e51e61698b293c5188409bd1a88205feb49b32ae4047
+# --force-vault requires --force
+# AGENTS.md has incomplete or duplicate notes-graph-kit managed markers
+# AGENTS.md has an unclosed fenced code block; cannot safely append
+# CLAUDE.md has incomplete or duplicate notes-graph-kit managed markers
+# CLAUDE.md has an unclosed fenced code block; cannot safely append
+# /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-repo-guard-V7I2aV/non-git is not a Git worktree. Initialize Git or use --allow-non-git for an intentional non-Git install.
+# --repo must be the exact Git worktree root (/private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-repo-guard-V7I2aV/repo), not /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-repo-guard-V7I2aV/repo/nested
+# --repo must be the exact Git worktree root (/private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-repo-guard-V7I2aV/repo), not /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-repo-guard-V7I2aV/repo/nested
+# Refusing to install into filesystem root: /
+# Refusing to install into the user home directory: /Users/jamisonrabbe
+# scripts/project-notes.cjs already exists in /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-guard-76WwRE. Use --force to overwrite managed helper scripts.
+# CLAUDE.md has incomplete or duplicate notes-graph-kit managed markers
+# Unknown agent "unknown"; choose codex, cursor, claude, gemini, copilot
+# Unknown agent "unknown"; choose codex, cursor, claude, gemini, copilot
+# Write target parent must not be a symlink: /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-copilot-guard-0VbU3T/.github
+# Subtest: template frontmatter identifies every source file as a template
+ok 40 - template frontmatter identifies every source file as a template
+  ---
+  duration_ms: 5.954292
+  type: 'test'
+  ...
+# Subtest: fresh installs include the Status guide but never a kit-local living Status note
+ok 41 - fresh installs include the Status guide but never a kit-local living Status note
+  ---
+  duration_ms: 149.862666
+  type: 'test'
+  ...
+# Subtest: note index resolves explicit paths and rejects wrong or ambiguous basenames deterministically
+ok 42 - note index resolves explicit paths and rejects wrong or ambiguous basenames deterministically
+  ---
+  duration_ms: 10.938083
+  type: 'test'
+  ...
+# Subtest: fallback routes are skeleton-valid and alias matching is deterministic
+ok 43 - fallback routes are skeleton-valid and alias matching is deterministic
+  ---
+  duration_ms: 5.538208
+  type: 'test'
+  ...
+# Subtest: starter Active Work Base uses explicit open statuses, operational types, and ordered columns
+ok 44 - starter Active Work Base uses explicit open statuses, operational types, and ordered columns
+  ---
+  duration_ms: 0.521041
+  type: 'test'
+  ...
+# Subtest: all shipped note dashboards exclude Templates globally
+ok 45 - all shipped note dashboards exclude Templates globally
+  ---
+  duration_ms: 1.289708
+  type: 'test'
+  ...
+# Subtest: install, route, new, closeout, validate in a scaffolded repo
+ok 46 - install, route, new, closeout, validate in a scaffolded repo
+  ---
+  duration_ms: 424.380666
+  type: 'test'
+  ...
+# Subtest: validator reports Base schema problems without requiring order
+ok 47 - validator reports Base schema problems without requiring order
+  ---
+  duration_ms: 517.543125
+  type: 'test'
+  ...
+# Subtest: install rejects vault paths that would escape the target repo
+ok 48 - install rejects vault paths that would escape the target repo
+  ---
+  duration_ms: 46.532834
+  type: 'test'
+  ...
+# Subtest: installer rejects dangerous boolean values and unknown options before writing
+ok 49 - installer rejects dangerous boolean values and unknown options before writing
+  ---
+  duration_ms: 62.4395
+  type: 'test'
+  ...
+# Subtest: installer dry-run is read-only and rejects symlinked write parents
+ok 50 - installer dry-run is read-only and rejects symlinked write parents
+  ---
+  duration_ms: 162.602833
+  type: 'test'
+  ...
+# Subtest: project notes commands reject unknown, duplicate, missing, and misplaced arguments
+ok 51 - project notes commands reject unknown, duplicate, missing, and misplaced arguments
+  ---
+  duration_ms: 1.727875
+  type: 'test'
+  ...
+# Subtest: install keeps punctuation-heavy app names valid in YAML and wikilinks
+ok 52 - install keeps punctuation-heavy app names valid in YAML and wikilinks
+  ---
+  duration_ms: 214.904333
+  type: 'test'
+  ...
+# Subtest: new sanitizes task filenames so generated wikilink targets are parseable
+ok 53 - new sanitizes task filenames so generated wikilink targets are parseable
+  ---
+  duration_ms: 217.802625
+  type: 'test'
+  ...
+# Subtest: new honors task and evidence note types
+ok 54 - new honors task and evidence note types
+  ---
+  duration_ms: 255.174125
+  type: 'test'
+  ...
+# Subtest: new appends Graph Links when a customized task template omits the section
+ok 55 - new appends Graph Links when a customized task template omits the section
+  ---
+  duration_ms: 129.320417
+  type: 'test'
+  ...
+# Subtest: frontmatter dates remain canonical and repeated closeout is non-mutating
+ok 56 - frontmatter dates remain canonical and repeated closeout is non-mutating
+  ---
+  duration_ms: 163.184333
+  type: 'test'
+  ...
+# Subtest: frontmatter loader preserves unquoted dates and dump normalizes Date objects
+ok 57 - frontmatter loader preserves unquoted dates and dump normalizes Date objects
+  ---
+  duration_ms: 1.741291
+  type: 'test'
+  ...
+# Subtest: closeout refuses symlinked notes outside the vault
+ok 58 - closeout refuses symlinked notes outside the vault
+  ---
+  duration_ms: 110.141583
+  type: 'test'
+  ...
+# Subtest: validator enforces required fields for schema-managed notes
+ok 59 - validator enforces required fields for schema-managed notes
+  ---
+  duration_ms: 199.802375
+  type: 'test'
+  ...
+# Subtest: validator preserves legacy frontmatter notes without schema_version
+ok 60 - validator preserves legacy frontmatter notes without schema_version
+  ---
+  duration_ms: 128.15975
+  type: 'test'
+  ...
+# Subtest: validator rejects timestamp dates only for schema-managed notes
+ok 61 - validator rejects timestamp dates only for schema-managed notes
+  ---
+  duration_ms: 127.6805
+  type: 'test'
+  ...
+# Subtest: validator enforces strict paths and checks managed, template, structured, and daily bodies
+ok 62 - validator enforces strict paths and checks managed, template, structured, and daily bodies
+  ---
+  duration_ms: 130.052667
+  type: 'test'
+  ...
+# Subtest: validator reports ambiguous typed relationship links with deterministic candidates
+ok 63 - validator reports ambiguous typed relationship links with deterministic candidates
+  ---
+  duration_ms: 117.5745
+  type: 'test'
+  ...
+# Subtest: validator summarizes recurring warnings by default and expands them with --verbose
+ok 64 - validator summarizes recurring warnings by default and expands them with --verbose
+  ---
+  duration_ms: 169.4965
+  type: 'test'
+  ...
+# Subtest: validator reports malformed wikilinks in daily notes
+ok 65 - validator reports malformed wikilinks in daily notes
+  ---
+  duration_ms: 236.377625
+  type: 'test'
+  ...
+# Subtest: validator reports malformed route config without a stack trace
+ok 66 - validator reports malformed route config without a stack trace
+  ---
+  duration_ms: 119.037
+  type: 'test'
+  ...
+# Subtest: route command reports phrase-level alias ambiguity and exact ids override it
+ok 67 - route command reports phrase-level alias ambiguity and exact ids override it
+  ---
+  duration_ms: 172.572
+  type: 'test'
+  ...
+# Subtest: route config processRel must target a process note
+ok 68 - route config processRel must target a process note
+  ---
+  duration_ms: 142.105333
+  type: 'test'
+  ...
+# Subtest: validator fails when configured route target is missing
+ok 69 - validator fails when configured route target is missing
+  ---
+  duration_ms: 110.86975
+  type: 'test'
+  ...
+# Subtest: buildRoute uses per-call env route config in a reused process
+ok 70 - buildRoute uses per-call env route config in a reused process
+  ---
+  duration_ms: 145.11375
+  type: 'test'
+  ...
+# Subtest: install rejects app names with Obsidian wikilink delimiters
+ok 71 - install rejects app names with Obsidian wikilink delimiters
+  ---
+  duration_ms: 37.855292
+  type: 'test'
+  ...
+# Subtest: install refuses to overwrite existing managed helper scripts without force
+ok 72 - install refuses to overwrite existing managed helper scripts without force
+  ---
+  duration_ms: 45.396292
+  type: 'test'
+  ...
+# Subtest: install still merges an existing package.json
+ok 73 - install still merges an existing package.json
+  ---
+  duration_ms: 62.223334
+  type: 'test'
+  ...
+# Subtest: install and upgrade warn when preserving custom notes scripts
+ok 74 - install and upgrade warn when preserving custom notes scripts
+  ---
+  duration_ms: 130.982667
+  type: 'test'
+  ...
+# Subtest: upgrade refreshes scripts and stamps kitVersion
+ok 75 - upgrade refreshes scripts and stamps kitVersion
+  ---
+  duration_ms: 174.662708
+  type: 'test'
+  ...
+# Subtest: unknown managed baselines permit an upgrade only when every exact current hash is accepted
+ok 76 - unknown managed baselines permit an upgrade only when every exact current hash is accepted
+  ---
+  duration_ms: 173.776583
+  type: 'test'
+  ...
+# Subtest: upgrade refuses downgrade unless explicitly allowed
+ok 77 - upgrade refuses downgrade unless explicitly allowed
+  ---
+  duration_ms: 208.74475
+  type: 'test'
+  ...
+# Subtest: semantic version comparison handles identifiers larger than Number safely
+ok 78 - semantic version comparison handles identifiers larger than Number safely
+  ---
+  duration_ms: 0.2885
+  type: 'test'
+  ...
+# Subtest: vault migration catalog is cumulative and upgrade guidance points to the auditor
+ok 79 - vault migration catalog is cumulative and upgrade guidance points to the auditor
+  ---
+  duration_ms: 0.509042
+  type: 'test'
+  ...
+# Subtest: upgrade output surfaces all applicable migrations for direct and previously stamped upgrades
+ok 80 - upgrade output surfaces all applicable migrations for direct and previously stamped upgrades
+  ---
+  duration_ms: 532.094792
+  type: 'test'
+  ...
+# Subtest: upgrade rejects install-only flags without changing installed files
+ok 81 - upgrade rejects install-only flags without changing installed files
+  ---
+  duration_ms: 202.974917
+  type: 'test'
+  ...
+# Subtest: upgrade permits missing legacy kitVersion but rejects malformed values
+ok 82 - upgrade permits missing legacy kitVersion but rejects malformed values
+  ---
+  duration_ms: 218.078625
+  type: 'test'
+  ...
+# Subtest: vault overwrites require both --force and --force-vault
+ok 83 - vault overwrites require both --force and --force-vault
+  ---
+  duration_ms: 223.596208
+  type: 'test'
+  ...
+# Subtest: install skips AGENTS.md when Project Notes Graph section exists
+ok 84 - install skips AGENTS.md when Project Notes Graph section exists
+  ---
+  duration_ms: 66.684542
+  type: 'test'
+  ...
+# Subtest: install appends Project Notes Graph to existing AGENTS.md
+ok 85 - install appends Project Notes Graph to existing AGENTS.md
+  ---
+  duration_ms: 62.659541
+  type: 'test'
+  ...
+# Subtest: AGENTS.md detection ignores prose and fenced examples but honors managed markers
+ok 86 - AGENTS.md detection ignores prose and fenced examples but honors managed markers
+  ---
+  duration_ms: 346.090167
+  type: 'test'
+  ...
+# Subtest: install rejects incomplete AGENTS.md markers before writing anything else
+ok 87 - install rejects incomplete AGENTS.md markers before writing anything else
+  ---
+  duration_ms: 101.397166
+  type: 'test'
+  ...
+# Subtest: install skips CLAUDE.md when Project Notes Graph section exists
+ok 88 - install skips CLAUDE.md when Project Notes Graph section exists
+  ---
+  duration_ms: 69.951667
+  type: 'test'
+  ...
+# Subtest: install appends Project Notes Graph to existing CLAUDE.md
+ok 89 - install appends Project Notes Graph to existing CLAUDE.md
+  ---
+  duration_ms: 68.964791
+  type: 'test'
+  ...
+# Subtest: CLAUDE.md detection ignores prose and fenced examples but honors managed markers
+ok 90 - CLAUDE.md detection ignores prose and fenced examples but honors managed markers
+  ---
+  duration_ms: 363.723
+  type: 'test'
+  ...
+# Subtest: install rejects incomplete CLAUDE.md markers before writing anything else
+ok 91 - install rejects incomplete CLAUDE.md markers before writing anything else
+  ---
+  duration_ms: 104.476709
+  type: 'test'
+  ...
+# Subtest: repo guard requires an exact Git root and supports explicit non-Git installs and worktrees
+ok 92 - repo guard requires an exact Git root and supports explicit non-Git installs and worktrees
+  ---
+  duration_ms: 540.811042
+  type: 'test'
+  ...
+# Subtest: write transaction rolls back early, middle, late, and post-commit failures
+ok 93 - write transaction rolls back early, middle, late, and post-commit failures
+  ---
+  duration_ms: 8.905666
+  type: 'test'
+  ...
+# Subtest: write transaction refuses a target edited after staging and before replacement
+ok 94 - write transaction refuses a target edited after staging and before replacement
+  ---
+  duration_ms: 0.835292
+  type: 'test'
+  ...
+# Subtest: upgrade retains the pre-resolution snapshot when npm resolution is slow
+ok 95 - upgrade retains the pre-resolution snapshot when npm resolution is slow
+  ---
+  duration_ms: 303.521583
+  type: 'test'
+  ...
+# Subtest: write transaction preflights parent collisions without partial writes
+ok 96 - write transaction preflights parent collisions without partial writes
+  ---
+  duration_ms: 0.778375
+  type: 'test'
+  ...
+# Subtest: write transaction preserves permissions on successful replacements
+ok 97 - write transaction preserves permissions on successful replacements
+  ---
+  duration_ms: 1.33175
+  type: 'test'
+  ...
+# Subtest: install refuses to clobber an existing config without --force
+ok 98 - install refuses to clobber an existing config without --force
+  ---
+  duration_ms: 118.243542
+  type: 'test'
+  ...
+# Subtest: install preserves an existing Scripts directory spelling and promotes js-yaml to runtime
+ok 99 - install preserves an existing Scripts directory spelling and promotes js-yaml to runtime
+  ---
+  duration_ms: 68.115583
+  type: 'test'
+  ...
+# Subtest: fresh installs stamp all applicable vault migration IDs
+ok 100 - fresh installs stamp all applicable vault migration IDs
+  ---
+  duration_ms: 66.082667
+  type: 'test'
+  ...
+# Subtest: install does not attest migrations when preserving a colliding vault component
+ok 101 - install does not attest migrations when preserving a colliding vault component
+  ---
+  duration_ms: 70.483125
+  type: 'test'
+  ...
+# Subtest: callable validator reports stable prospective virtual-tree errors
+ok 102 - callable validator reports stable prospective virtual-tree errors
+  ---
+  duration_ms: 2.012625
+  type: 'test'
+  ...
+# Subtest: upgrade adds CLAUDE instructions without changing existing blocks or vault content
+ok 103 - upgrade adds CLAUDE instructions without changing existing blocks or vault content
+  ---
+  duration_ms: 349.751834
+  type: 'test'
+  ...
+# Subtest: upgrade instruction blocks honor configured appRel Products/Main.md
+ok 104 - upgrade instruction blocks honor configured appRel Products/Main.md
+  ---
+  duration_ms: 184.905084
+  type: 'test'
+  ...
+# Subtest: upgrade instruction blocks honor configured appRel Apps/Nested/Main.md
+ok 105 - upgrade instruction blocks honor configured appRel Apps/Nested/Main.md
+  ---
+  duration_ms: 187.598958
+  type: 'test'
+  ...
+# Subtest: codex install and saved upgrade manage only AGENTS.md
+ok 106 - codex install and saved upgrade manage only AGENTS.md
+  ---
+  duration_ms: 236.705
+  type: 'test'
+  ...
+# Subtest: cursor install and saved upgrade manage only AGENTS.md
+ok 107 - cursor install and saved upgrade manage only AGENTS.md
+  ---
+  duration_ms: 240.571
+  type: 'test'
+  ...
+# Subtest: claude install and saved upgrade manage only CLAUDE.md
+ok 108 - claude install and saved upgrade manage only CLAUDE.md
+  ---
+  duration_ms: 232.958375
+  type: 'test'
+  ...
+# Subtest: gemini install and saved upgrade manage only GEMINI.md
+ok 109 - gemini install and saved upgrade manage only GEMINI.md
+  ---
+  duration_ms: 240.454917
+  type: 'test'
+  ...
+# Subtest: copilot install and saved upgrade manage only .github/copilot-instructions.md
+ok 110 - copilot install and saved upgrade manage only .github/copilot-instructions.md
+  ---
+  duration_ms: 236.717333
+  type: 'test'
+  ...
+# Subtest: invalid agent fails before writes and legacy upgrades default to codex
+ok 111 - invalid agent fails before writes and legacy upgrades default to codex
+  ---
+  duration_ms: 226.000875
+  type: 'test'
+  ...
+# Subtest: Copilot instruction parent symlink is rejected without writes
+ok 112 - Copilot instruction parent symlink is rejected without writes
+  ---
+  duration_ms: 52.7135
+  type: 'test'
+  ...
+# Subtest: codex migration creates only selected instructions with read-only previews, idempotency, and rollback
+ok 113 - codex migration creates only selected instructions with read-only previews, idempotency, and rollback
+  ---
+  duration_ms: 1008.48
+  type: 'test'
+  ...
+# Subtest: cursor migration creates only selected instructions with read-only previews, idempotency, and rollback
+ok 114 - cursor migration creates only selected instructions with read-only previews, idempotency, and rollback
+  ---
+  duration_ms: 823.513292
+  type: 'test'
+  ...
+# Subtest: claude migration creates only selected instructions with read-only previews, idempotency, and rollback
+ok 115 - claude migration creates only selected instructions with read-only previews, idempotency, and rollback
+  ---
+  duration_ms: 741.67025
+  type: 'test'
+  ...
+# Subtest: gemini migration creates only selected instructions with read-only previews, idempotency, and rollback
+ok 116 - gemini migration creates only selected instructions with read-only previews, idempotency, and rollback
+  ---
+  duration_ms: 721.277333
+  type: 'test'
+  ...
+# Subtest: copilot migration creates only selected instructions with read-only previews, idempotency, and rollback
+ok 117 - copilot migration creates only selected instructions with read-only previews, idempotency, and rollback
+  ---
+  duration_ms: 696.424375
+  type: 'test'
+  ...
+# Subtest: AGENTS.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes
+ok 118 - AGENTS.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes
+  ---
+  duration_ms: 455.171833
+  type: 'test'
+  ...
+# Subtest: AGENTS.md legacy adoption requires its exact acceptance ID and rollback retains original content
+ok 119 - AGENTS.md legacy adoption requires its exact acceptance ID and rollback retains original content
+  ---
+  duration_ms: 497.969416
+  type: 'test'
+  ...
+# Subtest: AGENTS.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks
+ok 120 - AGENTS.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks
+  ---
+  duration_ms: 1167.734125
+  type: 'test'
+  ...
+# Subtest: CLAUDE.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes
+ok 121 - CLAUDE.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes
+  ---
+  duration_ms: 463.732875
+  type: 'test'
+  ...
+# Subtest: CLAUDE.md legacy adoption requires its exact acceptance ID and rollback retains original content
+ok 122 - CLAUDE.md legacy adoption requires its exact acceptance ID and rollback retains original content
+  ---
+  duration_ms: 501.511292
+  type: 'test'
+  ...
+# Subtest: CLAUDE.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks
+ok 123 - CLAUDE.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks
+  ---
+  duration_ms: 1195.00275
+  type: 'test'
+  ...
+# Subtest: GEMINI.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes
+ok 124 - GEMINI.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes
+  ---
+  duration_ms: 475.179083
+  type: 'test'
+  ...
+# Subtest: GEMINI.md legacy adoption requires its exact acceptance ID and rollback retains original content
+ok 125 - GEMINI.md legacy adoption requires its exact acceptance ID and rollback retains original content
+  ---
+  duration_ms: 497.356833
+  type: 'test'
+  ...
+# Subtest: GEMINI.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks
+ok 126 - GEMINI.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks
+  ---
+  duration_ms: 1128.072875
+  type: 'test'
+  ...
+# Subtest: .github/copilot-instructions.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes
+ok 127 - .github/copilot-instructions.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes
+  ---
+  duration_ms: 476.655625
+  type: 'test'
+  ...
+# Subtest: .github/copilot-instructions.md legacy adoption requires its exact acceptance ID and rollback retains original content
+ok 128 - .github/copilot-instructions.md legacy adoption requires its exact acceptance ID and rollback retains original content
+  ---
+  duration_ms: 464.651042
+  type: 'test'
+  ...
+# Subtest: .github/copilot-instructions.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks
+ok 129 - .github/copilot-instructions.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks
+  ---
+  duration_ms: 1011.388291
+  type: 'test'
+  ...
+# Subtest: instruction migration honors configured appRel Products/Main.md for create, refresh, and legacy adoption
+ok 130 - instruction migration honors configured appRel Products/Main.md for create, refresh, and legacy adoption
+  ---
+  duration_ms: 428.639792
+  type: 'test'
+  ...
+# Subtest: instruction migration honors configured appRel Apps/Nested/Main.md for create, refresh, and legacy adoption
+ok 131 - instruction migration honors configured appRel Apps/Nested/Main.md for create, refresh, and legacy adoption
+  ---
+  duration_ms: 437.3905
+  type: 'test'
+  ...
+# Subtest: instruction migration refuses to append inside an unclosed code fence
+ok 132 - instruction migration refuses to append inside an unclosed code fence
+  ---
+  duration_ms: 271.126667
+  type: 'test'
+  ...
+# Subtest: legacy config defaults to Codex without creating other agent files and rollback restores config
+ok 133 - legacy config defaults to Codex without creating other agent files and rollback restores config
+  ---
+  duration_ms: 238.154792
+  type: 'test'
+  ...
+# Subtest: migration rejects an unknown configured agent without target writes
+ok 134 - migration rejects an unknown configured agent without target writes
+  ---
+  duration_ms: 131.69675
+  type: 'test'
+  ...
+# Subtest: codex unmanaged adoption selects only its instruction file and rollback removes the adopted config
+ok 135 - codex unmanaged adoption selects only its instruction file and rollback removes the adopted config
+  ---
+  duration_ms: 568.092333
+  type: 'test'
+  ...
+# Subtest: cursor unmanaged adoption selects only its instruction file and rollback removes the adopted config
+ok 136 - cursor unmanaged adoption selects only its instruction file and rollback removes the adopted config
+  ---
+  duration_ms: 555.704083
+  type: 'test'
+  ...
+# Subtest: claude unmanaged adoption selects only its instruction file and rollback removes the adopted config
+ok 137 - claude unmanaged adoption selects only its instruction file and rollback removes the adopted config
+  ---
+  duration_ms: 547.139292
+  type: 'test'
+  ...
+# Subtest: gemini unmanaged adoption selects only its instruction file and rollback removes the adopted config
+ok 138 - gemini unmanaged adoption selects only its instruction file and rollback removes the adopted config
+  ---
+  duration_ms: 579.6565
+  type: 'test'
+  ...
+# Subtest: copilot unmanaged adoption selects only its instruction file and rollback removes the adopted config
+ok 139 - copilot unmanaged adoption selects only its instruction file and rollback removes the adopted config
+  ---
+  duration_ms: 648.456041
+  type: 'test'
+  ...
+# Subtest: migration refuses an agent override for an installed repo or rollback
+ok 140 - migration refuses an agent override for an installed repo or rollback
+  ---
+  duration_ms: 246.026041
+  type: 'test'
+  ...
+# Subtest: frozen historical fixtures match their checked-in SHA-256 manifests
+ok 141 - frozen historical fixtures match their checked-in SHA-256 manifests
+  ---
+  duration_ms: 3.535875
+  type: 'test'
+  ...
+# Subtest: a fresh 0.4.0 install is semantically migration-compliant without writes
+ok 142 - a fresh 0.4.0 install is semantically migration-compliant without writes
+  ---
+  duration_ms: 373.381625
+  type: 'test'
+  ...
+# Subtest: unmanaged audit is read-only and apply is idempotent and rollback-capable
+ok 143 - unmanaged audit is read-only and apply is idempotent and rollback-capable
+  ---
+  duration_ms: 653.153041
+  type: 'test'
+  ...
+# Subtest: mapping promotion preserves body and unspecified metadata and adds the app relationship
+ok 144 - mapping promotion preserves body and unspecified metadata and adds the app relationship
+  ---
+  duration_ms: 180.6815
+  type: 'test'
+  ...
+# Subtest: a custom note colliding with a managed seed path requires its exact acceptance
+ok 145 - a custom note colliding with a managed seed path requires its exact acceptance
+  ---
+  duration_ms: 442.6365
+  type: 'test'
+  ...
+# Subtest: dry-run and injected backup or target failures leave the target byte-identical
+ok 146 - dry-run and injected backup or target failures leave the target byte-identical
+  ---
+  duration_ms: 182.82325
+  type: 'test'
+  ...
+# Subtest: apply and rollback refuse a target changed after planning and before commit
+ok 147 - apply and rollback refuse a target changed after planning and before commit
+  ---
+  duration_ms: 195.970709
+  type: 'test'
+  ...
+# Subtest: rollback refuses every file when any post-migration target was edited
+ok 148 - rollback refuses every file when any post-migration target was edited
+  ---
+  duration_ms: 233.822291
+  type: 'test'
+  ...
+# Subtest: migration preserves Scripts casing and makes js-yaml available to production npm installs
+ok 149 - migration preserves Scripts casing and makes js-yaml available to production npm installs
+  ---
+  duration_ms: 1082.4445
+  type: 'test'
+  ...
+# Subtest: --resolve-lock repairs a missing transitive entry even when the root declaration already matches
+ok 150 - --resolve-lock repairs a missing transitive entry even when the root declaration already matches
+  ---
+  duration_ms: 691.799708
+  type: 'test'
+  ...
+# Subtest: known historical managed docs migrate cumulatively without acceptance
+ok 151 - known historical managed docs migrate cumulatively without acceptance
+  ---
+  duration_ms: 441.452209
+  type: 'test'
+  ...
+# Subtest: custom structures survive safe merges and ambiguous docs require exact acceptance
+ok 152 - custom structures survive safe merges and ambiguous docs require exact acceptance
+  ---
+  duration_ms: 376.528708
+  type: 'test'
+  ...
+# Subtest: invalid migration inputs fail with exit code 2 and no writes
+ok 153 - invalid migration inputs fail with exit code 2 and no writes
+  ---
+  duration_ms: 291.259625
+  type: 'test'
+  ...
+# Subtest: recommendations tell agents which opt-ins require approval without writing
+ok 154 - recommendations tell agents which opt-ins require approval without writing
+  ---
+  duration_ms: 71.859791
+  type: 'test'
+  ...
+# Subtest: configured contracts produce read-only commands and evidence-based CI prompts
+ok 155 - configured contracts produce read-only commands and evidence-based CI prompts
+  ---
+  duration_ms: 60.714542
+  type: 'test'
+  ...
+# Subtest: unsafe opt-in paths require attention and malformed command input exits two
+ok 156 - unsafe opt-in paths require attention and malformed command input exits two
+  ---
+  duration_ms: 135.8765
+  type: 'test'
+  ...
+# Subtest: recommend includes adoption gaps without turning them into validation failures
+ok 157 - recommend includes adoption gaps without turning them into validation failures
+  ---
+  duration_ms: 57.975708
+  type: 'test'
+  ...
+# Subtest: install and upgrade deliver and surface the agent recommendation command
+ok 158 - install and upgrade deliver and surface the agent recommendation command
+  ---
+  duration_ms: 190.172167
+  type: 'test'
+  ...
+# Subtest: search evaluation reports deterministic top-k metrics and JSON
+ok 159 - search evaluation reports deterministic top-k metrics and JSON
+  ---
+  duration_ms: 121.697791
+  type: 'test'
+  ...
+# Subtest: search evaluation exits one and shows actual results on a ranking miss
+ok 160 - search evaluation exits one and shows actual results on a ranking miss
+  ---
+  duration_ms: 60.894291
+  type: 'test'
+  ...
+# Subtest: search evaluation rejects malformed, unknown, and escaping inputs with exit two
+ok 161 - search evaluation rejects malformed, unknown, and escaping inputs with exit two
+  ---
+  duration_ms: 306.715666
+  type: 'test'
+  ...
+# Subtest: installed repos receive the evaluation command without overwriting a contract
+ok 162 - installed repos receive the evaluation command without overwriting a contract
+  ---
+  duration_ms: 95.143208
+  type: 'test'
+  ...
+# Subtest: notes search returns deterministic section results with metadata
+ok 163 - notes search returns deterministic section results with metadata
+  ---
+  duration_ms: 134.082042
+  type: 'test'
+  ...
+# Subtest: authority adjustments improve equal lexical matches without creating relevance
+ok 164 - authority adjustments improve equal lexical matches without creating relevance
+  ---
+  duration_ms: 118.285875
+  type: 'test'
+  ...
+# Subtest: authority policy is bounded and explicit for operational note classes
+ok 165 - authority policy is bounded and explicit for operational note classes
+  ---
+  duration_ms: 12.030291
+  type: 'test'
+  ...
+# Subtest: notes search supports type, status, since, limit, and template filters
+ok 166 - notes search supports type, status, since, limit, and template filters
+  ---
+  duration_ms: 121.667125
+  type: 'test'
+  ...
+# Subtest: notes search rejects invalid options and empty queries
+ok 167 - notes search rejects invalid options and empty queries
+  ---
+  duration_ms: 169.415792
+  type: 'test'
+  ...
+# Subtest: structured retrieval excludes invalid records and reports their source locations
+ok 168 - structured retrieval excludes invalid records and reports their source locations
+  ---
+  duration_ms: 51.721375
+  type: 'test'
+  ...
+# Subtest: installed repos receive the search command and script
+ok 169 - installed repos receive the search command and script
+  ---
+  duration_ms: 154.709167
+  type: 'test'
+  ...
+# Subtest: stats reports scale, graph health, evidence, freshness, and evaluation metrics
+ok 170 - stats reports scale, graph health, evidence, freshness, and evaluation metrics
+  ---
+  duration_ms: 74.266417
+  type: 'test'
+  ...
+# Subtest: stats adoption reports recorded state, helper drift, process status coverage, and v2 receipts
+ok 171 - stats adoption reports recorded state, helper drift, process status coverage, and v2 receipts
+  ---
+  duration_ms: 81.057916
+  type: 'test'
+  ...
+# Subtest: stats does not treat fenced marker examples as installed agent instructions
+ok 172 - stats does not treat fenced marker examples as installed agent instructions
+  ---
+  duration_ms: 86.337083
+  type: 'test'
+  ...
+# Subtest: stats adoption honors PROJECT_NOTES_CONFIG overrides
+ok 173 - stats adoption honors PROJECT_NOTES_CONFIG overrides
+  ---
+  duration_ms: 77.852375
+  type: 'test'
+  ...
+# Subtest: stats adoption supports a vault supplied only through environment overrides
+ok 174 - stats adoption supports a vault supplied only through environment overrides
+  ---
+  duration_ms: 75.465375
+  type: 'test'
+  ...
+# Subtest: stats treats an absent default evaluation contract as not configured
+ok 175 - stats treats an absent default evaluation contract as not configured
+  ---
+  duration_ms: 125.062042
+  type: 'test'
+  ...
+# Subtest: stats rejects invalid options without reading outside the repo
+ok 176 - stats rejects invalid options without reading outside the repo
+  ---
+  duration_ms: 104.966458
+  type: 'test'
+  ...
+# Subtest: stats creates an explicit versioned baseline and passes unchanged comparison
+ok 177 - stats creates an explicit versioned baseline and passes unchanged comparison
+  ---
+  duration_ms: 257.77225
+  type: 'test'
+  ...
+# Subtest: stats baseline exits one on health and retrieval regressions while size is informational
+ok 178 - stats baseline exits one on health and retrieval regressions while size is informational
+  ---
+  duration_ms: 224.476042
+  type: 'test'
+  ...
+# Subtest: stats baseline growth limits are opt-in and unsafe paths fail closed
+ok 179 - stats baseline growth limits are opt-in and unsafe paths fail closed
+  ---
+  duration_ms: 441.042708
+  type: 'test'
+  ...
+# Subtest: stats changed-since reports tracked existing and deleted notes without narrowing global health
+ok 180 - stats changed-since reports tracked existing and deleted notes without narrowing global health
+  ---
+  duration_ms: 265.418584
+  type: 'test'
+  ...
+# Subtest: wikilink and malformed-link extraction ignore backtick and tilde fences
+ok 181 - wikilink and malformed-link extraction ignore backtick and tilde fences
+  ---
+  duration_ms: 11.518125
+  type: 'test'
+  ...
+# Subtest: all templates are template notes with one parseable product scaffold
+ok 182 - all templates are template notes with one parseable product scaffold
+  ---
+  duration_ms: 5.456583
+  type: 'test'
+  ...
+# Subtest: notes:new instantiates all supported product types and routes new processes
+ok 183 - notes:new instantiates all supported product types and routes new processes
+  ---
+  duration_ms: 997.665333
+  type: 'test'
+  ...
+# Subtest: notes:new rejects bad scaffolds and route collisions without changing files
+ok 184 - notes:new rejects bad scaffolds and route collisions without changing files
+  ---
+  duration_ms: 706.117583
+  type: 'test'
+  ...
+# Subtest: draft graph notes are warning-exempt until promoted
+ok 185 - draft graph notes are warning-exempt until promoted
+  ---
+  duration_ms: 255.842208
+  type: 'test'
+  ...
+# Subtest: template links do not satisfy typed resolution or inbound requirements
+ok 186 - template links do not satisfy typed resolution or inbound requirements
+  ---
+  duration_ms: 243.008458
+  type: 'test'
+  ...
+# Subtest: closeout certification is explicit and invalid syntax is non-mutating
+ok 187 - closeout certification is explicit and invalid syntax is non-mutating
+  ---
+  duration_ms: 401.6975
+  type: 'test'
+  ...
+# Subtest: a phase closeout atomically updates its process Status note
+ok 188 - a phase closeout atomically updates its process Status note
+  ---
+  duration_ms: 562.016041
+  type: 'test'
+  ...
+# Subtest: installer defaults disabled; dry-run/enable/disable preserve selected-agent and custom content
+ok 189 - installer defaults disabled; dry-run/enable/disable preserve selected-agent and custom content
+  ---
+  duration_ms: 680.401167
+  type: 'test'
+  ...
+# Subtest: upgrade preserves enabled policy, customized npm command, instructions and vault
+ok 190 - upgrade preserves enabled policy, customized npm command, instructions and vault
+  ---
+  duration_ms: 391.266709
+  type: 'test'
+  ...
+# Subtest: instructions ignore fenced marker examples, reject damaged blocks and unclosed append
+ok 191 - instructions ignore fenced marker examples, reject damaged blocks and unclosed append
+  ---
+  duration_ms: 0.401417
+  type: 'test'
+  ...
+# Subtest: doctor reports unavailable without writing/downloading; unknown flags rejected
+ok 192 - doctor reports unavailable without writing/downloading; unknown flags rejected
+  ---
+  duration_ms: 398.505459
+  type: 'test'
+  ...
+# Subtest: registered runtime produces pending, packet-linked receipt; later review detects tampering and staleness
+ok 193 - registered runtime produces pending, packet-linked receipt; later review detects tampering and staleness
+  ---
+  duration_ms: 905.619209
+  type: 'test'
+  ...
+# Subtest: malformed receipts, mismatched identities/hashes/exits, source drift and stale inputs fail closed
+ok 194 - malformed receipts, mismatched identities/hashes/exits, source drift and stale inputs fail closed
+  ---
+  duration_ms: 1839.241666
+  type: 'test'
+  ...
+# Subtest: cloud requires host and per-job authorization; unauthorized cloud artifacts rejected
+ok 195 - cloud requires host and per-job authorization; unauthorized cloud artifacts rejected
+  ---
+  duration_ms: 826.176542
+  type: 'test'
+  ...
+# Subtest: host profile refuses network exposure, in-repo state/config, and malformed adapter
+ok 196 - host profile refuses network exposure, in-repo state/config, and malformed adapter
+  ---
+  duration_ms: 451.692875
+  type: 'test'
+  ...
+# Subtest: cancel stops the process tree including detached descendants; shared-state concurrent dispatch rejected
+ok 197 - cancel stops the process tree including detached descendants; shared-state concurrent dispatch rejected
+  ---
+  duration_ms: 1689.304042
+  type: 'test'
+  ...
+# Subtest: worker recommendation is opt-in and read-only after enabling
+ok 198 - worker recommendation is opt-in and read-only after enabling
+  ---
+  duration_ms: 277.317583
+  type: 'test'
+  ...
+1..198
+# tests 198
+# suites 0
+# pass 198
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 17039.740375

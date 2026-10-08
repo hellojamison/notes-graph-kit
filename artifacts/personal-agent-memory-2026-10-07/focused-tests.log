@@ -1,0 +1,22 @@
+✔ profiles are explicit, isolated, idempotent, and independent of repositories (22.472583ms)
+✔ CLI runs from an unrelated non-Git working directory and env selects profile (63.592541ms)
+✔ extensible kinds, source, subject and conjunctive tag filters survive reload (12.97875ms)
+✔ recall is deterministic and does not match source strings or history (13.629792ms)
+✔ revision compare-and-set rejects stale writers and preserves correction history (13.3025ms)
+✔ archive and expiry exclude memories from default recall and context (24.319083ms)
+✔ forget removes current content and all history from persisted data (17.076209ms)
+✔ bounded context counts attribution and text, discloses truncation and treats data as untrusted (9.379375ms)
+✔ export requires explicit inactive/history selection and leaves data untouched (13.719792ms)
+✔ invalid options, names, timestamps and conflicting metadata fail without writes (5.382875ms)
+✔ corrupt store identity, schema and history fail closed without overwriting data (10.747ms)
+✔ symlink store paths and dangling files are rejected without touching the target (5.764625ms)
+✔ busy writer lock fails promptly; read-only recall still works and new data is private (10.623916ms)
+✔ concurrent writers either succeed serially or report busy without losing successful records (48.070083ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 309.774458

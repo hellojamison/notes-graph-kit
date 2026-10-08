@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
+import { freshFixture } from './lib/fresh-fixture.mjs';
 
 const kitRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -26,6 +27,7 @@ function installRepo() {
     'install-notes-graph.cjs', '--repo', repoRoot, '--app', 'Smoke App', '--allow-non-git'
   ]);
   fs.symlinkSync(path.join(kitRoot, 'node_modules'), path.join(repoRoot, 'node_modules'));
+  freshFixture(repoRoot);
   return repoRoot;
 }
 

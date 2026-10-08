@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-07",
+  "focused": {
+    "command": "node --test tests/agent-memory.test.mjs",
+    "passed": 14,
+    "failed": 0,
+    "runner": "local worker command-only TESTER"
+  },
+  "full_suite": {
+    "command": "npm test -> node --test tests/*.test.mjs",
+    "passed": 198,
+    "failed": 0,
+    "runner": "host after worker sandbox npm/process limitations"
+  },
+  "source_sha256": "41f37bfc1b3ae5a2593f3f4a613deaac4d773a7bb647e08c724b0987e1067c58",
+  "limitations": [
+    "CLI integration only; no MCP server, automatic capture or automatic injection.",
+    "No shared-profile recall, import, encryption, or semantic search."
+  ],
+  "artifacts": {
+    "focused-tests.log": "590e5664b80fa939cf59c1f6f9a34d7049c5a5cc39583f9371365ec6ab96af72",
+    "full-suite.log": "965585efece0023f80512a1c74f6ec81d50d77f3341a4d68529351ed00f55127",
+    "staged-suite.log": "7126c166a11eec268b9f139f28ec407a6e33d36b77b0492bb65fd1932b4cec3e"
+  },
+  "staged_suite": {
+    "command": "npm test -> node --test tests/*.test.mjs",
+    "passed": 189,
+    "failed": 0,
+    "scope": "Personal memory and Hermes skill plus fixture freshness fixes; unrelated worker adapter excluded."
+  },
+  "log_format": "Captured test output with trailing line whitespace normalized."
+}

@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
+import { freshFixture } from './lib/fresh-fixture.mjs';
 
 const kitRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const requireFromTest = createRequire(import.meta.url);
@@ -17,7 +18,13 @@ function run(cwd, args) {
     && !args.includes('--allow-non-git')
     ? [...args, '--allow-non-git']
     : args;
-  return execFileSync('node', adjustedArgs, { cwd, encoding: 'utf8' });
+  const output = execFileSync('node', adjustedArgs, { cwd, encoding: 'utf8' });
+  if (args[0] === 'install-notes-graph.cjs' && !args.includes('--upgrade') && !args.includes('--dry-run')) {
+    const repoIndex = args.indexOf('--repo');
+    const vaultIndex = args.indexOf('--vault');
+    freshFixture(repoIndex >= 0 ? args[repoIndex + 1] : cwd, vaultIndex >= 0 ? args[vaultIndex + 1] : 'Project Notes');
+  }
+  return output;
 }
 
 function runRaw(cwd, args) {

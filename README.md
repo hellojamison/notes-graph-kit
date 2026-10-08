@@ -1,5 +1,10 @@
 # notes-graph-kit
 
+The kit also includes a standalone [personal agent memory toolbox](docs/agent-memory.md)
+for memories that follow an agent across projects. Start with
+`npm run memory -- init --agent codex`; use `node /absolute/path/to/agent-memory.cjs`
+from any folder. Personal memory is stored separately from repository vaults.
+
 Portable kit for the project notes graph workflow. This repo is the **single
 authoritative source** — earlier copies inside individual app repos are retired
 pointers.
