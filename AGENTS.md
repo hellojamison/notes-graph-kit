@@ -149,3 +149,56 @@ Prefer the repo-local notes helper:
 - `obsidian-bases` — `.base` dashboard files in the vault skeleton.
 - `json-canvas` — `.canvas` files if added to the graph.
 - `create-skill` — when authoring new per-project notes skills that wrap this kit.
+
+<!-- notes-graph-kit:start -->
+## Project Notes Graph
+
+When installing or upgrading this kit, select only the instruction file needed by the agent using the repo (`--agent codex|claude|gemini|copilot|cursor`); do not install every format. Preserve other agents' existing files.
+
+Keep concise date-and-time-stamped notes in this worktree's `Project Notes/` vault per substantive task.
+
+Use `Project Notes/_Codex/Start Here.md` as the graph entrypoint, then use `Project Notes/Notes System.md` as the note organization guide.
+
+For substantive tasks:
+- Start from `_Codex/Start Here.md`.
+- Pick the relevant app, process, and runbook before editing notes.
+- Update both today's daily note and one task-specific evidence/task note.
+- Link task notes to `Apps/My Project.md` plus the relevant process and runbook.
+- Record what is working, what was verified, what was tried and failed, and what was not verified.
+- Treat notes as evidence and navigation, not as source-of-truth policy; verify mutable facts against the repo, live system, logs, or artifacts before relying on old notes.
+- Preserve old flat notes unless promoting them materially improves retrieval.
+
+Prefer the repo-local notes helper:
+- After install or upgrade, run `npm run notes:recommend`. Present options marked `requires_user_approval: true` to the user before writing a contract/baseline or editing CI; do not silently enable them. Read-only recommendations may be run without approval.
+- Use `npm run notes:route -- "<task description>"` to choose the app/process/runbook path.
+- Use `npm run notes:search -- "<query>"` to retrieve ranked note sections; add `--type`, `--status`, or `--since` filters when needed.
+- Use `npm run notes:context -- "<query>"` to assemble ranked sections plus one-hop linked decisions, evidence, processes, and runbooks within a disclosed source-word budget.
+- Use `npm run notes:context:eval` after context assembly changes when the repo has a reviewed `notes-context-eval.yml`; treat failures as regressions to review, not expectations to rewrite automatically.
+- Use `npm run notes:search:eval` after ranking changes when the repo has a reviewed `notes-search-eval.yml`; treat failures as regressions to review, not baselines to rewrite automatically.
+- Use `npm run notes:stats` for a read-only snapshot of vault size, link health, orphan notes, evidence verification, stale current guides, and retrieval metrics. Orphans exclude templates, daily notes, indexes, and app hubs.
+- If the repo has a reviewed `notes-stats-baseline.json`, use `npm run notes:stats -- --baseline notes-stats-baseline.json` as a regression gate. Never replace a baseline merely to silence a failure.
+- Use `npm run notes:stats -- --changed-since <git-ref>` to add a tracked-note change inventory while retaining full-vault health checks.
+- Use `npm run notes:duplicates` only to identify review candidates. It is informational; never merge or delete notes solely from its similarity score.
+- Use `npm run notes:new -- --title "<title>" --type <type> --summary "<goal>"` with `task`, `evidence`, `app`, `process`, `runbook`, `decision`, `incident`, `release`, or `status`. Evidence also takes `--topic "one investigation topic"`; task, evidence, and status notes require `--process <process-alias>`; a process may have exactly one Status note. Creating a note is not a daily-log event.
+- Let `notes:new` unwrap the matching marked template scaffold. Do not copy fenced scaffold metadata into a note manually.
+- Structured evidence is `status: open|done`. Close it with `--verdict "current conclusion" --decision "Project Notes/Decisions/Current Decision.md"`; add `--certify` only for `verification: verified`. Keep its `## Current Verdict` first and current. The daily entry is one time/outcome/link line, never a second closeout paragraph. At a phase boundary, update the process Status note in the same command with `--status`, `--phase`, `--certified`, `--settled`, and optional `--open-item "id: summary"` or `--close-item id[,id]`.
+- Put verdicts in `Decisions/` and connect replacements with reciprocal `supersedes` / `superseded_by` links. Add tests, artifact paths/hashes/Git SHAs, decision links, and open-item IDs as marked YAML receipts in evidence; test totals must include their exact filter command. Run `npm run notes:artifacts -- --write` to generate the artifact map when receipts name artifacts.
+- Run `npm run notes:validate` after graph metadata, templates, Bases, validator, helper script, or structured note changes.
+- After a kit upgrade, keep the vault untouched until `node migrate-notes-graph.cjs audit --repo /path/to/repo --to 0.14.0`, run from the authoritative kit checkout, has classified every proposed migration. Apply only reviewed safe/item IDs with the backup-backed `apply` command; use `rollback --backup <id>` rather than overwriting later edits.
+
+Optional agent skills:
+- `obsidian-markdown` for wikilinks, frontmatter, callouts, and Obsidian-flavored Markdown.
+- `obsidian-bases` for `.base` dashboard edits.
+- `json-canvas` if this repo adds `.canvas` files.
+
+These skills are optional guidance only. This kit works without Obsidian, the `obsidian` CLI, or any Obsidian runtime dependency; the repo-local npm helpers and validator are the source of truth.
+<!-- notes-graph-kit:end -->
+<!-- notes-graph-kit:worker:start -->
+## Optional repository workers
+
+When notes-graph.config.json has workers.enabled:true, run npm run notes:worker -- doctor before the first worker job. If unavailable, report the limitation; never install a runtime or enable cloud fallback silently.
+The coordinator owns planning, architecture, ambiguity, risky changes and final acceptance. Route bounded mechanical work through npm run notes:worker -- run --role SCOUT|AUDITOR|TESTER --task "specific question" --input relevant/file (repeat inputs). Use real source/tool evidence; never a whole-repo dump.
+Workers default to read-only. Authorize exact test argv with --test-command; use --isolated-tests for artifact-writing tests. IMPLEMENTER requires separately authorized direct-runtime work in a clean isolated non-main worktree; this adapter does not dispatch it.
+For the local-coding profile, the selected coordinator may be GPT-6 Astra or GPT-6.1 Sol; both use Qwen first as the primary mechanical worker and Luna xhigh as the bounded fallback only when authorized. Additional Sol review from an Astra chat is reserved for difficult/risky work; a Sol coordinator does not launch another Sol for routine worker failure. A task exceeding about 90 seconds or lacking evidence must return promptly. Scope errors, stale packets and changed source return to the coordinator, not cloud.
+Consume the compact receipt and job artifact paths. Run npm run notes:worker -- review --job ID before using results later; review checks freshness and artifact integrity, not semantic correctness. Inspect material source/test evidence independently. Worker PASS and same-model agreement never certify evidence. Only the coordinator promotes accepted findings through notes:new/notes:closeout.
+<!-- notes-graph-kit:worker:end -->

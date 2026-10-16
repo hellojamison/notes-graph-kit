@@ -1,0 +1,267 @@
+
+> notes-graph-kit@0.18.0 test
+> node --test tests/*.test.mjs
+
+✔ context evaluation checks sources, order, exclusions, attribution, and budget (55.224541ms)
+✔ context evaluation exits one for reviewed expectation misses (55.60975ms)
+✔ context evaluation exits two for malformed and escaping contracts without writes (182.153541ms)
+✔ context packs ranked sections and one-hop operational links deterministically (98.559167ms)
+✔ context filters seed results but allows their reviewed one-hop relationships (52.205167ms)
+✔ context preserves structured-record diagnostics in JSON and text output (97.592958ms)
+✔ context rejects missing queries and invalid bounds without writing (171.593666ms)
+✔ installed repos receive the context command and managed script (107.204792ms)
+✔ structured evidence keeps the current verdict, open-item objects, receipts, and artifact index verifiable (745.355084ms)
+✔ validator rejects bare test totals, non-chronological managed daily entries, and asymmetric decisions (447.463584ms)
+✔ decisions and releases may supersede only their own type (258.920709ms)
+✔ duplicate detection is deterministic, informational, and excludes templates and daily notes (153.35825ms)
+✔ duplicate detection rejects unsafe or noisy option ranges without writes (181.698959ms)
+✔ installed repos receive the informational duplicate command (85.267958ms)
+✔ handoff create/check preserves source, embeds bounded context, and requires review (244.135458ms)
+✔ handoff detects dirty bytes and retrieved note edits without HEAD changes (209.467209ms)
+✔ handoff captures explicit untracked inputs and detects deletion (211.339708ms)
+✔ handoff detects HEAD changes even when captured file bytes match (208.907625ms)
+✔ handoff rejects another worktree identity even with matching HEAD and files (208.404625ms)
+✔ handoff rejects traversal and symlinks escaping the repository (228.952916ms)
+✔ handoff rejects malformed assignments, options, bounds, and packet digests (791.382708ms)
+✔ handoff output is exclusive and never overwrites existing files (277.353292ms)
+✔ handoff refuses output inside the canonical vault including symlink aliases (217.556541ms)
+✔ installer supports Scripts spelling and preserves customized handoff commands (196.2755ms)
+✔ upgrade adds handoff to older baseline but refuses an unknown colliding helper (252.494291ms)
+ERROR Bases/Active Work.base: invalid Base YAML: unexpected end of the stream within a flow collection (3:1)
+
+ 1 | views:
+ 2 |   - type: [
+ 3 | 
+-----^
+ERROR Bases/Active Work.base: views must be a non-empty array
+ERROR Bases/Active Work.base: views must be a non-empty array
+ERROR Bases/Active Work.base: views[0].type must be one of table, cards, list, or map
+ERROR Bases/Active Work.base: views[0].order[1] references undefined formula.missing
+ERROR Bases/Active Work.base: properties references undefined formula.missing
+--vault must be a simple directory name, not a path
+--force does not take a value
+Unknown option: --dryrun
+Write target parent must not be a symlink: /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-dry-run-yGgpNB/symlink/scripts
+package.json must be a regular file: /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-dry-run-yGgpNB/target-symlink/package.json
+Note already contains a closeout: Project Notes/Evidence/Unquoted Date.md
+Note is outside vault: Project Notes/Evidence/Linked.md
+ERROR Evidence/2026-10-05 Schema required smoke.md: schema-managed note date must be YYYY-MM-DD
+ERROR Evidence/2026-10-05 Schema required smoke.md: schema-managed note tags must be a non-empty array of strings
+WARN Summarized 1 recurring warning(s):
+WARN   1 typed notes without related_apps
+WARN Re-run with --verbose to print every warning.
+ERROR Evidence/Timestamp Managed.md: schema-managed note date must be YYYY-MM-DD
+ERROR Evidence/Timestamp Managed.md: schema-managed note last_verified must be YYYY-MM-DD
+WARN Summarized 6 recurring warning(s):
+WARN   1 typed notes without related_apps
+WARN   1 legacy daily notes without frontmatter
+WARN   1 other legacy notes without frontmatter
+WARN   3 legacy structured notes without frontmatter
+WARN Re-run with --verbose to print every warning.
+ERROR 2020-01-01.md: has broken wikilink [[Missing Daily Target]]
+ERROR Evidence/Legacy Structured.md: has broken wikilink [[Missing Structured Target]]
+ERROR Legacy Named Daily.md: has broken wikilink [[Missing Typed Daily Target]]
+ERROR Managed Root.md: has ambiguous wikilink [[Duplicate]] matching Evidence/Duplicate.md, Runbooks/Duplicate.md; use a vault-relative path
+ERROR Managed Root.md: has broken wikilink [[Totally/Made Up/_README]]
+ERROR Templates/App Template.md: has broken wikilink [[Missing Template Target]]
+ERROR Evidence/Relationship Source.md: related_evidence has ambiguous wikilink [[Shared]] matching Evidence/Shared.md, Incidents/Shared.md; use a vault-relative path
+ERROR 2026-10-05.md: malformed wikilink [[Evidence/Broken [target]|Alias]]
+ERROR route "bad-route": processRel must be a non-empty string
+Ambiguous notes route for "review the app": route "a-route" -> Processes/Notes Graph Maintenance.md, route "z-route" -> Processes/Notes Graph Maintenance.md; use an exact route id or process path
+ERROR route "bad-route": processRel Apps/Smoke App.md must target type process; found app
+Route "bad-route" points to missing or non-process note Apps/Smoke App.md
+ERROR route "missing-route": processRel Wrong/Notes Graph Maintenance.md must target an existing process note
+--app must not contain [, ], or | because those characters break Obsidian wikilinks
+scripts/lib/project-notes-graph.cjs already exists in /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-script-guard-6yFGOX. Use --force to overwrite managed helper scripts.
+Managed helpers changed since their recorded baseline; review required: scripts/project-notes.cjs=7c1caccce0cb9e7fea8ea29110dee3c398a5116c6bc054859217a83453a9e00a
+Managed helper baseline is unknown; review required: scripts/project-notes.cjs=d4f4f6828010e277c65707d09ad09478760a9289e55c34d1908823dbf6d3f884, scripts/search-project-notes.cjs=79d75b003b5871580af401d596891bbae2710a863f81dd5ba8c38d58e56cbac7, scripts/build-project-notes-context.cjs=1452cf2076a6df533a23826cec7ff9f5aa1c5112f697bb52d55eb356b5b64914, scripts/project-notes-handoff.cjs=b478c20c40044c170ed9d44284d7d50ddb5d8bf913d0442e99b5b4cf3d767db4, scripts/project-notes-worker.cjs=35ff69ae542b1495d01f7c4963fc37c2b8f8e0e6a7fb470cfdb7c7d18d61409d, scripts/evaluate-project-notes-context.cjs=5b1d62591674987f2d585ee78fa3df8c225f7c32b74515aa85b3b15511fb9dbc, scripts/evaluate-project-notes-search.cjs=8527ae14eeaeafc8101a5d4b6f6c02427ad18f91e4c098ecba65ecdd60efacc0, scripts/project-notes-stats.cjs=eb311bb6f37c2b5f82777193d412e06643b3e79f606cae18798ae4088e801af2, scripts/find-project-notes-duplicates.cjs=78815c796fe3d4d7b15efdd1027e081eb8391d1f68a1f7b8375d4d7f19f36909, scripts/recommend-project-notes-opt-ins.cjs=393dddf11ca1e871abe50e985692cd347a48cb450201b6a4871333d6b5698c35, scripts/build-project-notes-artifact-index.cjs=62d00d9a98701b5c5bf245e237c891214fbf5b3889e47273155b24ee69ce6e17, scripts/validate-project-notes-graph.cjs=569f32a5072cea570adf8ff4106f25c9751b7252f80754ad015ea5ea3a7f86b5, scripts/lib/project-notes-graph.cjs=b2f4c37b8272f59a73d86d8d51a57e8bcac9954503be8efad263868fe533f51c, scripts/lib/project-notes-receipts.cjs=93faf5637de5b59a409139223b3db0b14c47440822c5dacc3aa2c09f858ed167, scripts/lib/project-notes-adoption.cjs=515576fab2ef2cfedee18e8809424915da2a36b05676769aa65fbffc3684d975, scripts/lib/validate-project-notes-graph.cjs=76b08fa8e9e0cbc719d9e009507de0ffd9a5bcaa9048ea46021eaf711ca27817
+Refusing to downgrade notes graph kit 999.0.0 -> 0.18.0. Use --allow-downgrade to proceed intentionally.
+Managed helpers changed since their recorded baseline; review required: scripts/project-notes.cjs=a0fb6334e09ef982eafb3e4e335323342d7e5b437fd06fcda15630ad435e0eb8
+--upgrade cannot be combined with --app
+--upgrade cannot be combined with --vault
+--upgrade cannot be combined with --force
+--upgrade cannot be combined with --force, --force-vault
+Installed kitVersion must be valid semantic versioning; found "not-semver"
+Managed helpers changed since their recorded baseline; review required: scripts/project-notes.cjs=219893f20ab969332a86e51e61698b293c5188409bd1a88205feb49b32ae4047
+--force-vault requires --force
+AGENTS.md has incomplete or duplicate notes-graph-kit managed markers
+AGENTS.md has an unclosed fenced code block; cannot safely append
+CLAUDE.md has incomplete or duplicate notes-graph-kit managed markers
+CLAUDE.md has an unclosed fenced code block; cannot safely append
+/private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-repo-guard-M0ZC9d/non-git is not a Git worktree. Initialize Git or use --allow-non-git for an intentional non-Git install.
+--repo must be the exact Git worktree root (/private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-repo-guard-M0ZC9d/repo), not /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-repo-guard-M0ZC9d/repo/nested
+--repo must be the exact Git worktree root (/private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-repo-guard-M0ZC9d/repo), not /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-repo-guard-M0ZC9d/repo/nested
+Refusing to install into filesystem root: /
+Refusing to install into the user home directory: /Users/jamisonrabbe
+scripts/project-notes.cjs already exists in /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-kit-guard-3Dti6L. Use --force to overwrite managed helper scripts.
+CLAUDE.md has incomplete or duplicate notes-graph-kit managed markers
+Unknown agent "unknown"; choose codex, cursor, claude, gemini, copilot
+Unknown agent "unknown"; choose codex, cursor, claude, gemini, copilot
+Write target parent must not be a symlink: /private/var/folders/p7/_8x_n9xj2yj958dh763p1f880000gn/T/notes-graph-copilot-guard-lR9gzx/.github
+✔ template frontmatter identifies every source file as a template (2.978375ms)
+✔ fresh installs include the Status guide but never a kit-local living Status note (111.155875ms)
+✔ note index resolves explicit paths and rejects wrong or ambiguous basenames deterministically (10.569792ms)
+✔ fallback routes are skeleton-valid and alias matching is deterministic (5.16225ms)
+✔ starter Active Work Base uses explicit open statuses, operational types, and ordered columns (0.264584ms)
+✔ all shipped note dashboards exclude Templates globally (0.795292ms)
+✔ install, route, new, closeout, validate in a scaffolded repo (348.264375ms)
+✔ validator reports Base schema problems without requiring order (492.306375ms)
+✔ install rejects vault paths that would escape the target repo (39.528459ms)
+✔ installer rejects dangerous boolean values and unknown options before writing (66.074042ms)
+✔ installer dry-run is read-only and rejects symlinked write parents (138.469542ms)
+✔ project notes commands reject unknown, duplicate, missing, and misplaced arguments (2.109042ms)
+✔ install keeps punctuation-heavy app names valid in YAML and wikilinks (207.1755ms)
+✔ new sanitizes task filenames so generated wikilink targets are parseable (190.140542ms)
+✔ new honors task and evidence note types (255.568667ms)
+✔ new appends Graph Links when a customized task template omits the section (138.754417ms)
+✔ frontmatter dates remain canonical and repeated closeout is non-mutating (178.257291ms)
+✔ frontmatter loader preserves unquoted dates and dump normalizes Date objects (2.037958ms)
+✔ closeout refuses symlinked notes outside the vault (119.534708ms)
+✔ validator enforces required fields for schema-managed notes (203.041042ms)
+✔ validator preserves legacy frontmatter notes without schema_version (146.794ms)
+✔ validator rejects timestamp dates only for schema-managed notes (139.465541ms)
+✔ validator enforces strict paths and checks managed, template, structured, and daily bodies (138.459458ms)
+✔ validator reports ambiguous typed relationship links with deterministic candidates (135.961709ms)
+✔ validator summarizes recurring warnings by default and expands them with --verbose (166.839708ms)
+✔ validator reports malformed wikilinks in daily notes (206.747625ms)
+✔ validator reports malformed route config without a stack trace (108.171625ms)
+✔ route command reports phrase-level alias ambiguity and exact ids override it (150.771667ms)
+✔ route config processRel must target a process note (143.5565ms)
+✔ validator fails when configured route target is missing (105.073792ms)
+✔ buildRoute uses per-call env route config in a reused process (126.884459ms)
+✔ install rejects app names with Obsidian wikilink delimiters (34.852792ms)
+✔ install refuses to overwrite existing managed helper scripts without force (41.069916ms)
+✔ install still merges an existing package.json (58.243041ms)
+✔ install and upgrade warn when preserving custom notes scripts (105.711667ms)
+✔ upgrade refreshes scripts and stamps kitVersion (140.020625ms)
+✔ unknown managed baselines permit an upgrade only when every exact current hash is accepted (139.322375ms)
+✔ upgrade refuses downgrade unless explicitly allowed (169.241666ms)
+✔ semantic version comparison handles identifiers larger than Number safely (0.280083ms)
+✔ vault migration catalog is cumulative and upgrade guidance points to the auditor (0.221959ms)
+✔ upgrade output surfaces all applicable migrations for direct and previously stamped upgrades (409.310833ms)
+✔ upgrade rejects install-only flags without changing installed files (176.014917ms)
+✔ upgrade permits missing legacy kitVersion but rejects malformed values (191.225334ms)
+✔ vault overwrites require both --force and --force-vault (221.489209ms)
+✔ install skips AGENTS.md when Project Notes Graph section exists (66.761625ms)
+✔ install appends Project Notes Graph to existing AGENTS.md (71.953917ms)
+✔ AGENTS.md detection ignores prose and fenced examples but honors managed markers (316.5105ms)
+✔ install rejects incomplete AGENTS.md markers before writing anything else (92.373167ms)
+✔ install skips CLAUDE.md when Project Notes Graph section exists (74.205042ms)
+✔ install appends Project Notes Graph to existing CLAUDE.md (72.281708ms)
+✔ CLAUDE.md detection ignores prose and fenced examples but honors managed markers (331.631542ms)
+✔ install rejects incomplete CLAUDE.md markers before writing anything else (82.713958ms)
+✔ repo guard requires an exact Git root and supports explicit non-Git installs and worktrees (476.6415ms)
+✔ write transaction rolls back early, middle, late, and post-commit failures (8.795708ms)
+✔ write transaction refuses a target edited after staging and before replacement (0.803792ms)
+✔ upgrade retains the pre-resolution snapshot when npm resolution is slow (271.529625ms)
+✔ write transaction preflights parent collisions without partial writes (0.689208ms)
+✔ write transaction preserves permissions on successful replacements (0.983083ms)
+✔ install refuses to clobber an existing config without --force (116.536958ms)
+✔ install preserves an existing Scripts directory spelling and promotes js-yaml to runtime (63.579542ms)
+✔ fresh installs stamp all applicable vault migration IDs (63.472708ms)
+✔ install does not attest migrations when preserving a colliding vault component (61.647292ms)
+✔ callable validator reports stable prospective virtual-tree errors (2.07525ms)
+✔ upgrade adds CLAUDE instructions without changing existing blocks or vault content (307.521458ms)
+✔ upgrade instruction blocks honor configured appRel Products/Main.md (160.737041ms)
+✔ upgrade instruction blocks honor configured appRel Apps/Nested/Main.md (162.794833ms)
+✔ codex install and saved upgrade manage only AGENTS.md (208.069833ms)
+✔ cursor install and saved upgrade manage only AGENTS.md (215.734917ms)
+✔ claude install and saved upgrade manage only CLAUDE.md (232.262042ms)
+✔ gemini install and saved upgrade manage only GEMINI.md (232.801125ms)
+✔ copilot install and saved upgrade manage only .github/copilot-instructions.md (236.196166ms)
+✔ invalid agent fails before writes and legacy upgrades default to codex (206.872583ms)
+✔ Copilot instruction parent symlink is rejected without writes (48.035167ms)
+✔ codex migration creates only selected instructions with read-only previews, idempotency, and rollback (775.997083ms)
+✔ cursor migration creates only selected instructions with read-only previews, idempotency, and rollback (685.26175ms)
+✔ claude migration creates only selected instructions with read-only previews, idempotency, and rollback (681.208542ms)
+✔ gemini migration creates only selected instructions with read-only previews, idempotency, and rollback (692.426792ms)
+✔ copilot migration creates only selected instructions with read-only previews, idempotency, and rollback (600.616667ms)
+✔ AGENTS.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes (376.704459ms)
+✔ AGENTS.md legacy adoption requires its exact acceptance ID and rollback retains original content (382.420084ms)
+✔ AGENTS.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks (831.254959ms)
+✔ CLAUDE.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes (339.278292ms)
+✔ CLAUDE.md legacy adoption requires its exact acceptance ID and rollback retains original content (391.859959ms)
+✔ CLAUDE.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks (971.430833ms)
+✔ GEMINI.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes (375.60025ms)
+✔ GEMINI.md legacy adoption requires its exact acceptance ID and rollback retains original content (425.604375ms)
+✔ GEMINI.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks (927.249416ms)
+✔ .github/copilot-instructions.md migration refreshes the real managed block and preserves fenced examples and surrounding bytes (374.245ms)
+✔ .github/copilot-instructions.md legacy adoption requires its exact acceptance ID and rollback retains original content (415.9425ms)
+✔ .github/copilot-instructions.md migration appends live instructions after fenced marker examples and rejects malformed managed blocks (967.178625ms)
+✔ instruction migration honors configured appRel Products/Main.md for create, refresh, and legacy adoption (440.605125ms)
+✔ instruction migration honors configured appRel Apps/Nested/Main.md for create, refresh, and legacy adoption (432.382125ms)
+✔ instruction migration refuses to append inside an unclosed code fence (235.422333ms)
+✔ legacy config defaults to Codex without creating other agent files and rollback restores config (183.167209ms)
+✔ migration rejects an unknown configured agent without target writes (119.514875ms)
+✔ codex unmanaged adoption selects only its instruction file and rollback removes the adopted config (530.453459ms)
+✔ cursor unmanaged adoption selects only its instruction file and rollback removes the adopted config (508.774542ms)
+✔ claude unmanaged adoption selects only its instruction file and rollback removes the adopted config (597.188416ms)
+✔ gemini unmanaged adoption selects only its instruction file and rollback removes the adopted config (462.994292ms)
+✔ copilot unmanaged adoption selects only its instruction file and rollback removes the adopted config (453.061167ms)
+✔ migration refuses an agent override for an installed repo or rollback (187.544958ms)
+✔ frozen historical fixtures match their checked-in SHA-256 manifests (1.80475ms)
+✔ a fresh 0.4.0 install is semantically migration-compliant without writes (258.359666ms)
+✔ unmanaged audit is read-only and apply is idempotent and rollback-capable (519.859667ms)
+✔ mapping promotion preserves body and unspecified metadata and adds the app relationship (152.304333ms)
+✔ a custom note colliding with a managed seed path requires its exact acceptance (352.974542ms)
+✔ dry-run and injected backup or target failures leave the target byte-identical (124.490041ms)
+✔ apply and rollback refuse a target changed after planning and before commit (141.40525ms)
+✔ rollback refuses every file when any post-migration target was edited (213.169625ms)
+✔ migration preserves Scripts casing and makes js-yaml available to production npm installs (898.768667ms)
+✔ --resolve-lock repairs a missing transitive entry even when the root declaration already matches (642.862458ms)
+✔ known historical managed docs migrate cumulatively without acceptance (355.169416ms)
+✔ custom structures survive safe merges and ambiguous docs require exact acceptance (284.698791ms)
+✔ invalid migration inputs fail with exit code 2 and no writes (226.427ms)
+✔ recommendations tell agents which opt-ins require approval without writing (58.6815ms)
+✔ configured contracts produce read-only commands and evidence-based CI prompts (56.204208ms)
+✔ unsafe opt-in paths require attention and malformed command input exits two (105.637583ms)
+✔ recommend includes adoption gaps without turning them into validation failures (45.298417ms)
+✔ install and upgrade deliver and surface the agent recommendation command (155.093667ms)
+✔ search evaluation reports deterministic top-k metrics and JSON (102.201375ms)
+✔ search evaluation exits one and shows actual results on a ranking miss (53.073625ms)
+✔ search evaluation rejects malformed, unknown, and escaping inputs with exit two (266.653292ms)
+✔ installed repos receive the evaluation command without overwriting a contract (102.201875ms)
+✔ notes search returns deterministic section results with metadata (100.758834ms)
+✔ authority adjustments improve equal lexical matches without creating relevance (101.328583ms)
+✔ authority policy is bounded and explicit for operational note classes (10.540167ms)
+✔ notes search supports type, status, since, limit, and template filters (96.141833ms)
+✔ notes search rejects invalid options and empty queries (157.770875ms)
+✔ structured retrieval excludes invalid records and reports their source locations (55.349708ms)
+✔ installed repos receive the search command and script (134.305625ms)
+✔ stats reports scale, graph health, evidence, freshness, and evaluation metrics (66.044875ms)
+✔ stats adoption reports recorded state, helper drift, process status coverage, and v2 receipts (67.661583ms)
+✔ stats does not treat fenced marker examples as installed agent instructions (60.123459ms)
+✔ stats adoption honors PROJECT_NOTES_CONFIG overrides (64.31725ms)
+✔ stats adoption supports a vault supplied only through environment overrides (58.003833ms)
+✔ stats treats an absent default evaluation contract as not configured (117.716333ms)
+✔ stats rejects invalid options without reading outside the repo (106.535584ms)
+✔ stats creates an explicit versioned baseline and passes unchanged comparison (234.62525ms)
+✔ stats baseline exits one on health and retrieval regressions while size is informational (223.778917ms)
+✔ stats baseline growth limits are opt-in and unsafe paths fail closed (422.909667ms)
+✔ stats changed-since reports tracked existing and deleted notes without narrowing global health (191.54925ms)
+✔ wikilink and malformed-link extraction ignore backtick and tilde fences (9.616916ms)
+✔ all templates are template notes with one parseable product scaffold (4.209625ms)
+✔ notes:new instantiates all supported product types and routes new processes (897.779917ms)
+✔ notes:new rejects bad scaffolds and route collisions without changing files (660.947333ms)
+✔ draft graph notes are warning-exempt until promoted (256.275834ms)
+✔ template links do not satisfy typed resolution or inbound requirements (269.519541ms)
+✔ closeout certification is explicit and invalid syntax is non-mutating (440.815834ms)
+✔ a phase closeout atomically updates its process Status note (613.758541ms)
+✔ installer defaults disabled; dry-run/enable/disable preserve selected-agent and custom content (462.655709ms)
+✔ upgrade preserves enabled policy, customized npm command, instructions and vault (341.394625ms)
+✔ instructions ignore fenced marker examples, reject damaged blocks and unclosed append (0.58075ms)
+✔ doctor reports unavailable without writing/downloading; unknown flags rejected (338.535583ms)
+✔ registered runtime produces pending, packet-linked receipt; later review detects tampering and staleness (738.246417ms)
+✔ malformed receipts, mismatched identities/hashes/exits, source drift and stale inputs fail closed (1491.719917ms)
+✔ cloud requires host and per-job authorization; unauthorized cloud artifacts rejected (603.970667ms)
+✔ host profile refuses network exposure, in-repo state/config, and malformed adapter (350.217375ms)
+✔ cancel stops the process tree including detached descendants; shared-state concurrent dispatch rejected (1542.973958ms)
+✔ worker recommendation is opt-in and read-only after enabling (202.498083ms)
+ℹ tests 184
+ℹ suites 0
+ℹ pass 184
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14415.178875

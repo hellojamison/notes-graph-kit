@@ -1,0 +1,2 @@
+# Raw test receipts retain their original diagnostic whitespace and hashes.
+artifacts/worker-adapter-0.18/notes-graph-worker-tests.log -whitespace

@@ -15,5 +15,41 @@
         "notes graph"
       ]
     }
-  ]
+  ],
+  "kitVersion": "0.18.0",
+  "managedScriptHashes": {
+    "scripts/project-notes.cjs": "d4f4f6828010e277c65707d09ad09478760a9289e55c34d1908823dbf6d3f884",
+    "scripts/search-project-notes.cjs": "79d75b003b5871580af401d596891bbae2710a863f81dd5ba8c38d58e56cbac7",
+    "scripts/build-project-notes-context.cjs": "1452cf2076a6df533a23826cec7ff9f5aa1c5112f697bb52d55eb356b5b64914",
+    "scripts/project-notes-handoff.cjs": "b478c20c40044c170ed9d44284d7d50ddb5d8bf913d0442e99b5b4cf3d767db4",
+    "scripts/project-notes-worker.cjs": "8918c41513332d6ad6b94f09c4649c8c49a62041d6c4f81b74541a588b5a77b7",
+    "scripts/evaluate-project-notes-context.cjs": "5b1d62591674987f2d585ee78fa3df8c225f7c32b74515aa85b3b15511fb9dbc",
+    "scripts/evaluate-project-notes-search.cjs": "8527ae14eeaeafc8101a5d4b6f6c02427ad18f91e4c098ecba65ecdd60efacc0",
+    "scripts/project-notes-stats.cjs": "eb311bb6f37c2b5f82777193d412e06643b3e79f606cae18798ae4088e801af2",
+    "scripts/find-project-notes-duplicates.cjs": "78815c796fe3d4d7b15efdd1027e081eb8391d1f68a1f7b8375d4d7f19f36909",
+    "scripts/recommend-project-notes-opt-ins.cjs": "393dddf11ca1e871abe50e985692cd347a48cb450201b6a4871333d6b5698c35",
+    "scripts/build-project-notes-artifact-index.cjs": "62d00d9a98701b5c5bf245e237c891214fbf5b3889e47273155b24ee69ce6e17",
+    "scripts/validate-project-notes-graph.cjs": "569f32a5072cea570adf8ff4106f25c9751b7252f80754ad015ea5ea3a7f86b5",
+    "scripts/lib/project-notes-graph.cjs": "b2f4c37b8272f59a73d86d8d51a57e8bcac9954503be8efad263868fe533f51c",
+    "scripts/lib/project-notes-receipts.cjs": "93faf5637de5b59a409139223b3db0b14c47440822c5dacc3aa2c09f858ed167",
+    "scripts/lib/project-notes-adoption.cjs": "515576fab2ef2cfedee18e8809424915da2a36b05676769aa65fbffc3684d975",
+    "scripts/lib/validate-project-notes-graph.cjs": "76b08fa8e9e0cbc719d9e009507de0ffd9a5bcaa9048ea46021eaf711ca27817"
+  },
+  "agent": "codex",
+  "vaultMigrationState": {
+    "schemaVersion": 1,
+    "applied": [
+      "vault-0.2.16-schema-indexes",
+      "vault-0.3.0-typed-templates",
+      "vault-0.4.0-managed-sections",
+      "vault-0.13.0-status-notes",
+      "vault-0.14.0-current-evidence",
+      "vault-0.15.0-claude-instructions",
+      "vault-0.16.0-compatibility-safety"
+    ]
+  },
+  "workers": {
+    "enabled": true,
+    "profile": "local-coding"
+  }
 }

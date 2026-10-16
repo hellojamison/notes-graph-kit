@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-15",
+  "runtime_changed": false,
+  "files": [
+    {
+      "file": "ASTRA-INSTRUCTIONS.md",
+      "backup": "/Users/jamisonrabbe/Documents/Codex/2026-10-05/set-up-my-mac-studio-m5/outputs/local-worker/policy-history/2026-10-15-before-condensation/ASTRA-INSTRUCTIONS.md",
+      "before_sha256": "35fd2e9e98c0bf8143233398111a7b125e4cc1bdb278563af266ceef6f124a58",
+      "after_sha256": "a2dec6b22fa2c29f7d8deb452b2f0525a3087981991d8c9bd62a7ac4ad5684a5",
+      "lines_before": 693,
+      "lines_after": 124
+    },
+    {
+      "file": "EFFICIENT-WORKFLOW.md",
+      "backup": "/Users/jamisonrabbe/Documents/Codex/2026-10-05/set-up-my-mac-studio-m5/outputs/local-worker/policy-history/2026-10-15-before-condensation/EFFICIENT-WORKFLOW.md",
+      "before_sha256": "b9ae30f58865a6c9fe2bab15bce5a9af584c15591a9d9831a98620dfda185573",
+      "after_sha256": "e8d6859f58cdd1e3cc8ea4e4e149afa8530f998f3d3a1e1d87c587478345a250",
+      "lines_before": 737,
+      "lines_after": 57
+    }
+  ]
+}

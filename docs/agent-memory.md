@@ -186,3 +186,55 @@ Give an agent the absolute CLI path, a profile name, and this operating rule:
 
 This is a CLI integration contract for agents with local command access.
 There is no MCP server or automatic edit to global agent instructions yet.
+
+## Durable capture and inventory
+
+`stats --agent hermes` reports total/active/expired/archived counts and a breakdown
+by kind without exposing memory text. Use it to detect an episode-heavy store.
+Episodes and checkpoints stay recovery material; they are not automatically
+promoted into facts or lessons.
+
+A local adapter can call `capture --trusted-user --text "I prefer concise answers."
+--source "Human turn SESSION on DATE" --agent hermes` on the actual human turn,
+before generation. The flag is a caller assertion, not an access-control boundary.
+Never pass assistant summaries, tool results, emails, recalled memories, or background
+review output. Capture recognizes a narrow set of explicit first-person statements:
+“I prefer…”, “My preference is…”, “My name/timezone is…”, “I learned that…”,
+“My usual workflow is…”, and “My long-term goal is…”. Other messages return
+`captured: false` without writing. Captured lessons are user-reported, not proof.
+
+Capture keeps the exact statement and source, stores a durable typed record with
+no automatic expiry, and deduplicates active equivalents differing only in case,
+whitespace or trailing sentence punctuation. It does not overwrite similar or
+conflicting records. Resolve corrections using `show` and revision-checked `revise`;
+never rewrite an old record because a model inferred a preference.
+
+`context --query "current request" --include-preferences --agent hermes` includes
+active, unexpired user preferences before ordinary lexical matches within the
+same word and record limits. It labels each selection and discloses that profile
+preferences may not match the query. The default context behavior is unchanged.
+Memory remains advisory data and never grants execution permission.
+
+## Check the selected Hermes installation
+
+From the kit checkout (with its normal npm dependencies installed), run:
+
+```sh
+npm run memory:doctor -- --hermes-home "$HOME/.hermes/profiles/personal"
+```
+
+Use the actual home of the Hermes profile running the conversation; the default
+profile instead lives at `$HOME/.hermes`. The doctor requires this explicit path
+so a healthy default installation cannot hide a broken personal profile. It
+checks `skills.auto_load`, duplicate skill locations, skill version, bundled CLI
+hash, and memory-store validity. It reports paths and check results, never memory
+contents or configuration secrets, and never initializes or repairs a store.
+
+`--home /absolute/memory/store` and `--agent hermes` override memory settings.
+Otherwise an enabled `shared-agent` plugin's `memory_home` and `memory_agent`
+settings take precedence over `AGENT_MEMORY_HOME` and the standard store. The
+doctor also checks that plugin's configured CLI hash. Disabled plugins are ignored.
+An exit of 0 means these installation checks passed, 1 means a check failed, and
+2 means invalid arguments or an unavailable kit dependency. A passing check does
+not certify a running plugin hook or prove what a model recalled. Start a fresh
+Hermes session after updating an installed skill.

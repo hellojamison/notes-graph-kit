@@ -1,0 +1,187 @@
+{
+  "kit_version": "0.18.0",
+  "repo": "/Users/jamisonrabbe/Documents/Projects/notes-graph-kit",
+  "host_tests": {
+    "command": "npm test (node --test tests/*.test.mjs)",
+    "passed": 184,
+    "failed": 0
+  },
+  "search_eval": {
+    "passed": 4,
+    "total": 4
+  },
+  "context_eval": {
+    "passed": 2,
+    "total": 2
+  },
+  "jobs": [
+    {
+      "name": "notes-graph-worker-live-scout-final",
+      "id": "05cb67bc-bdc6-4d9f-a9d7-34cf8537f148",
+      "status": "PASS",
+      "elapsed_seconds": 22.574,
+      "command": [
+        "/Users/jamisonrabbe/Documents/Codex/2026-10-05/set-up-my-mac-studio-m5/outputs/local-worker/.venv/bin/python",
+        "/Users/jamisonrabbe/Documents/Codex/2026-10-05/set-up-my-mac-studio-m5/outputs/local-worker/worker.py",
+        "--repo",
+        "/Users/jamisonrabbe/Documents/Projects/notes-graph-kit",
+        "--role",
+        "SCOUT",
+        "--task",
+        "In scripts/project-notes-worker.cjs inspect runJob. Identify the allowed read-only roles and the condition that rejects cloud fallback without host authorization. Quote exact source lines for these two conditions only. Do not edit or run tests.",
+        "--output",
+        "/Users/jamisonrabbe/Library/Application Support/notes-graph-kit/worker-jobs/05cb67bc-bdc6-4d9f-a9d7-34cf8537f148/receipt.txt",
+        "--handoff-mode",
+        "required",
+        "--handoff-packet",
+        "/Users/jamisonrabbe/Library/Application Support/notes-graph-kit/worker-jobs/05cb67bc-bdc6-4d9f-a9d7-34cf8537f148/packet.json",
+        "--endpoint",
+        "http://127.0.0.1:8080/v1",
+        "--model",
+        "default_model",
+        "--budget",
+        "90",
+        "--metrics-kind",
+        "diagnostic"
+      ],
+      "files_modified": [],
+      "commands": [],
+      "packet_id": "4752c333-2431-432b-b6e9-b54c0114348e",
+      "fresh_at_completion": true
+    },
+    {
+      "name": "notes-graph-worker-live-tester-filtered",
+      "id": "249eb856-089f-4572-ad9d-8ba4b5a0ddd2",
+      "status": "PASS",
+      "elapsed_seconds": 9.82,
+      "command": [
+        "/Users/jamisonrabbe/Documents/Codex/2026-10-05/set-up-my-mac-studio-m5/outputs/local-worker/.venv/bin/python",
+        "/Users/jamisonrabbe/Documents/Codex/2026-10-05/set-up-my-mac-studio-m5/outputs/local-worker/worker.py",
+        "--repo",
+        "/Users/jamisonrabbe/Documents/Projects/notes-graph-kit",
+        "--role",
+        "TESTER",
+        "--task",
+        "Run the exact authorized filtered Node test command and report its exit code and test totals. Modify no source. Do not run additional commands.",
+        "--output",
+        "/Users/jamisonrabbe/Library/Application Support/notes-graph-kit/worker-jobs/249eb856-089f-4572-ad9d-8ba4b5a0ddd2/receipt.txt",
+        "--handoff-mode",
+        "required",
+        "--handoff-packet",
+        "/Users/jamisonrabbe/Library/Application Support/notes-graph-kit/worker-jobs/249eb856-089f-4572-ad9d-8ba4b5a0ddd2/packet.json",
+        "--endpoint",
+        "http://127.0.0.1:8080/v1",
+        "--model",
+        "default_model",
+        "--budget",
+        "90",
+        "--test-command",
+        "/Users/jamisonrabbe/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node --test --test-name-pattern 'instructions ignore|doctor reports|registered runtime produces' tests/worker.test.mjs"
+      ],
+      "files_modified": [],
+      "commands": [
+        {
+          "argv": [
+            "/Users/jamisonrabbe/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+            "--test",
+            "--test-name-pattern",
+            "instructions ignore|doctor reports|registered runtime produces",
+            "tests/worker.test.mjs"
+          ],
+          "exit_code": 0,
+          "output": "✔ instructions ignore fenced marker examples, reject damaged blocks and unclosed append (0.666416ms)\n✔ doctor reports unavailable without writing/downloading; unknown flags rejected (221.670167ms)\n✔ registered runtime produces pending, packet-linked receipt; later review detects tampering and staleness (445.103917ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 713.197084\n"
+        }
+      ],
+      "packet_id": "3318fb80-8716-4a07-a1c7-230049869e29",
+      "fresh_at_completion": true
+    },
+    {
+      "name": "notes-graph-worker-readonly-probe",
+      "id": "cd2188aa-9f8a-4298-b070-009f93e77df6",
+      "status": "FAIL",
+      "elapsed_seconds": 13.291,
+      "command": [
+        "/Users/jamisonrabbe/Documents/Codex/2026-10-05/set-up-my-mac-studio-m5/outputs/local-worker/.venv/bin/python",
+        "/Users/jamisonrabbe/Documents/Codex/2026-10-05/set-up-my-mac-studio-m5/outputs/local-worker/worker.py",
+        "--repo",
+        "/Users/jamisonrabbe/Documents/Projects/notes-graph-kit",
+        "--role",
+        "TESTER",
+        "--task",
+        "Execute the exact authorized command once. Report its actual exit code and any permission error. Do not edit other files or run additional commands.",
+        "--output",
+        "/Users/jamisonrabbe/Library/Application Support/notes-graph-kit/worker-jobs/cd2188aa-9f8a-4298-b070-009f93e77df6/receipt.txt",
+        "--handoff-mode",
+        "required",
+        "--handoff-packet",
+        "/Users/jamisonrabbe/Library/Application Support/notes-graph-kit/worker-jobs/cd2188aa-9f8a-4298-b070-009f93e77df6/packet.json",
+        "--endpoint",
+        "http://127.0.0.1:8080/v1",
+        "--model",
+        "default_model",
+        "--budget",
+        "90",
+        "--metrics-kind",
+        "diagnostic",
+        "--test-command",
+        "/usr/bin/touch .notes-worker-readonly-probe"
+      ],
+      "files_modified": [],
+      "commands": [
+        {
+          "argv": [
+            "/usr/bin/touch",
+            ".notes-worker-readonly-probe"
+          ],
+          "exit_code": 1,
+          "output": "touch: .notes-worker-readonly-probe: Operation not permitted\n"
+        }
+      ],
+      "packet_id": "cd21bb43-0e9a-434a-bb96-1c3703a2b647",
+      "fresh_at_completion": true
+    }
+  ],
+  "coordinator_review": {
+    "source_facts": "Accepted the two explicit runJob guard observations after source inspection; no architectural safety claim accepted.",
+    "tests": "Accepted filtered test-command evidence with its exact filter and exit; host suite independently validates full behavior.",
+    "write_guard": "Expected diagnostic FAIL: touch exited 1 with Operation not permitted; source probe file absent.",
+    "boundary": "Source facts/commands accepted at captured revisions. Note closeout may conservatively stale retrieved-note snapshots; no automated certification."
+  },
+  "limitations": [
+    "The first live job timed out in a stalled LM Studio request; reloading the same model recovered it.",
+    "Lifecycle test inside the worker sandbox failed because host process inventory was denied; full host suite passed and cancellation now records inventory limitations.",
+    "Existing notes-health baseline has two stale current guides, also present when the new adapter note is excluded.",
+    "No kit MCP/front-door installer or IMPLEMENTER dispatch; existing external bridge/direct runtime remain separate.",
+    "No live cloud fallback was invoked; authorization/protocol cases use simulated runtime fixtures.",
+    "One state-directory lock does not coordinate independent direct-worker/bridge jobs."
+  ],
+  "changed_files": [
+    "scripts/project-notes-worker.cjs",
+    "scripts/recommend-project-notes-opt-ins.cjs",
+    "install-notes-graph.cjs",
+    "AGENTS-snippet.md",
+    "README.md",
+    "package.json",
+    "package-lock.json",
+    "tests/worker.test.mjs",
+    "tests/lib/fresh-fixture.mjs",
+    "tests/install-smoke.test.mjs",
+    "tests/typed-creation.test.mjs",
+    "tests/current-evidence.test.mjs",
+    "notes-graph.config.json",
+    "AGENTS.md",
+    "Project Notes/Evidence/2026-10-05 Optional local repository worker adapter.md",
+    "Project Notes/2026-10-05.md",
+    "artifacts/INDEX.md",
+    "artifacts/worker-adapter-0.18/notes-graph-worker-tests.log",
+    "artifacts/worker-adapter-0.18/notes-graph-worker-validation.json",
+    "artifacts/worker-adapter-0.18/notes-graph-worker-final-review.json"
+  ],
+  "machine_profile": "/Users/jamisonrabbe/Library/Application Support/notes-graph-kit/workers.json",
+  "notes_health": {
+    "baseline": "FAIL",
+    "pre_existing_stale_current_guides": 2,
+    "proof": "notes-graph-worker-stats-before.log",
+    "scope": "No notes-health baseline expectations were rewritten."
+  }
+}

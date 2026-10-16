@@ -22,6 +22,7 @@ For substantive tasks:
 - Preserve old flat notes unless promoting them materially improves retrieval.
 
 Prefer the repo-local notes helper:
+- Repository workers are optional and disabled by default. If `workers.enabled` is true in `notes-graph.config.json`, follow the separate managed worker instructions and run `npm run notes:worker -- doctor` before dispatch. Do not enable a runtime or cloud fallback without authorization.
 - After install or upgrade, run `npm run notes:recommend`. Present options marked `requires_user_approval: true` to the user before writing a contract/baseline or editing CI; do not silently enable them. Read-only recommendations may be run without approval.
 - Use `npm run notes:route -- "<task description>"` to choose the app/process/runbook path.
 - Use `npm run notes:search -- "<query>"` to retrieve ranked note sections; add `--type`, `--status`, or `--since` filters when needed.

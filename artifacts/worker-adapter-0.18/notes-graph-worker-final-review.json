@@ -1,0 +1,9 @@
+{
+  "id": "05cb67bc-bdc6-4d9f-a9d7-34cf8537f148",
+  "status": "PASS",
+  "fresh": true,
+  "changes": [],
+  "integrity_errors": [],
+  "acceptance": "PENDING_COORDINATOR_REVIEW",
+  "boundary": "Integrity/freshness only; coordinator must independently assess claims and coverage."
+}

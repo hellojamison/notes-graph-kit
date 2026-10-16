@@ -22,18 +22,20 @@ related_runbooks:
 related_decisions:
   - "[[Decisions/Notes Graph Adoption Policy|Notes Graph Adoption Policy]]"
   - "[[Decisions/Structured Evidence Contract|Structured Evidence Contract]]"
-last_verified: "2026-09-05"
+last_verified: "2026-10-15"
 created_by: project-notes-cli
-last_updated: "2026-09-05"
+last_updated: "2026-10-15"
 ---
 
 # Notes Graph Maintenance Status
 
 ## Current Phase
 
-Phase 0.15 complete: one selected agent instruction file
+Kit 0.18.0: optional workers, durable personal memory and profile diagnostics; eight consumer upgrades validated locally
 
 ## Certified
+
+- 2026-10-15: kit suite 209/209 passed; eight consumer note validators and 20 search/20 context cases passed. Both installed Hermes profiles passed read-only diagnostics. See [[Evidence/2026-10-15 Agent memory diagnostics and repo retrieval rollout]]. These checks do not certify live model recall or product runtime.
 
 - Kit 0.15.0 install, upgrade, and migration tests passed 150/150; only the selected agent instruction file is managed across install, upgrade, unmanaged adoption, migration, and rollback. Consumer rollout and actual Claude behavior remain unverified.
 

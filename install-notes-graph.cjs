@@ -58,6 +58,7 @@ const MANAGED_SCRIPTS = [
   'scripts/search-project-notes.cjs',
   'scripts/build-project-notes-context.cjs',
   'scripts/project-notes-handoff.cjs',
+  'scripts/project-notes-worker.cjs',
   'scripts/evaluate-project-notes-context.cjs',
   'scripts/evaluate-project-notes-search.cjs',
   'scripts/project-notes-stats.cjs',
@@ -454,6 +455,7 @@ function notesNpmScripts(scriptsDir = 'scripts') {
     'notes:search': `node ${scriptsDir}/search-project-notes.cjs`,
     'notes:context': `node ${scriptsDir}/build-project-notes-context.cjs`,
     'notes:handoff': `node ${scriptsDir}/project-notes-handoff.cjs`,
+    'notes:worker': `node ${scriptsDir}/project-notes-worker.cjs`,
     'notes:context:eval': `node ${scriptsDir}/evaluate-project-notes-context.cjs`,
     'notes:search:eval': `node ${scriptsDir}/evaluate-project-notes-search.cjs`,
     'notes:stats': `node ${scriptsDir}/project-notes-stats.cjs`,
@@ -473,6 +475,7 @@ function buildConfig(appName, vaultDir, appFileBase, options = {}) {
     scriptName: 'project-notes',
     appRel: `Apps/${appFileBase}.md`,
     kitVersion,
+    workers: { enabled: false, profile: 'local-coding' },
     vaultMigrationState: {
       schemaVersion: 1,
       applied: [...appliedMigrations]
@@ -1088,6 +1091,7 @@ function upgrade(args) {
   assertManagedScriptsUnchanged(repoRoot, scriptsDir, config, args['accept-managed-change']);
   const writes = buildScriptWrites(scriptsDir);
   config.kitVersion = kitVersion;
+  config.workers ??= { enabled: false, profile: 'local-coding' };
   config.managedScriptHashes = managedScriptHashes();
   config.agent = args.agent ?? config.agent ?? 'codex';
   const instructionFile = instructionFileForAgent(config.agent);
@@ -1106,6 +1110,17 @@ function upgrade(args) {
   const appFileBase = fileBaseForApp(appName);
   const instructionResults = [instructionFile].map((file) =>
     buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase, file, config.appRel));
+  if (config.workers?.enabled === true) {
+    const worker = require('./scripts/project-notes-worker.cjs');
+    for (const result of instructionResults) {
+      const original = result.write?.content ?? fs.readFileSync(path.join(repoRoot, result.rel), 'utf8');
+      const content = worker.instructionContent(original, true);
+      if (content !== original) {
+        result.action = 'append';
+        result.write = { rel: result.rel, content, kind: 'agents' };
+      }
+    }
+  }
   writes.push(...instructionResults.flatMap((result) => result.write ? [result.write] : []));
   const preimages = captureWritePreimages(repoRoot, [
     ...writes,

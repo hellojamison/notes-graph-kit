@@ -645,6 +645,135 @@ hashes/commits resolve; it intentionally does not infer claims from prose.
 `notes:artifacts -- --write` generates `artifacts/INDEX.md` from those
 receipts.
 
+### Optional repository workers (0.18.0)
+
+Workers are disabled by default. Install/upgrade distributes `notes:worker` but
+does not download models, start services, dispatch jobs, or enable cloud usage.
+Normal notes commands and the standalone handoff format remain unchanged.
+
+This first adapter uses an existing trusted `local-worker-v1` macOS installation
+with `worker.py`, `route-worker.py`, `qwen`, `contract.txt`, and its Python venv.
+The external runtime owns repository tools, read-only sandbox enforcement,
+source coverage, evidence checks, and model execution. Register only a runtime
+you trust; the kit does not establish those capabilities from filenames alone.
+No Pi or additional agent framework is required. Other platforms/providers
+need their own adapter; an unavailable runtime fails explicitly.
+
+Register machine settings outside the repo at
+`~/Library/Application Support/notes-graph-kit/workers.json`, or set
+`PROJECT_NOTES_WORKER_PROFILE_FILE` to an absolute external JSON file:
+
+```json
+{
+  "schemaVersion": 1,
+  "profiles": {
+    "local-coding": {
+      "adapter": "local-worker-v1",
+      "coordinator": "astra",
+      "runtimeDir": "/absolute/path/to/local-worker",
+      "stateDir": "/absolute/path/outside/repos/worker-jobs",
+      "endpoint": "http://127.0.0.1:8080/v1",
+      "model": "default_model",
+      "allowCloudFallback": false
+    }
+  }
+}
+```
+
+The current runtime supports LM Studio's shared loaded Qwen service at loopback
+port 8080. Its fixed endpoint restriction is retained. Do not put credentials,
+user-specific executable paths, or job artifacts in repo configuration. Use a
+dedicated private state directory, shared across profiles using the same model
+service. The host runtime, service and any Codex authentication are installed
+separately. `doctor` checks registration, required runtime files and the model
+listing; it does not prove sandbox correctness or benchmark the model.
+
+Enable routing only with user authorization:
+
+```bash
+npm run notes:worker -- enable --profile local-coding --dry-run
+npm run notes:worker -- enable --profile local-coding
+npm run notes:worker -- doctor
+npm run notes:worker -- run --role SCOUT \
+  --task "Locate configuration parsing in src/config.ts and report accepted keys" \
+  --input src/config.ts
+```
+
+Enable/disable edits only the repo's `workers` configuration and a separate
+managed block in the selected agent's instructions. Unrelated content is
+preserved; upgrade preserves the opt-in and refreshes its worker block. Disabled
+repos never dispatch. `notes:recommend` reports the opt-in with explicit approval
+required before enabling. Repo config records just `enabled` and `profile`.
+
+SCOUT searches/traces; AUDITOR inspects diffs and invariants; TESTER executes
+explicitly authorized commands. All adapter jobs are read-only. Repeat `--input`
+for relevant source/tests/config/instructions; default instruction/config/README
+inputs are only anchors, not exhaustive coverage. Repeat `--test-command` with
+an exact quoted argv command. Use `--isolated-tests` when tests need build
+artifacts: the existing runtime runs them in a private source copy. IMPLEMENTER
+is deliberately not dispatched by this first adapter; use the existing direct
+runtime only with explicit authorization and a clean isolated non-main worktree.
+
+The `local-coding` routing instructions apply equally to GPT-6 Astra and
+GPT-6.1 Sol as coordinator. Both retain planning and final review, delegate
+mechanical work to Qwen first, and use Luna xhigh for bounded fallback.
+Additional Sol review from an Astra chat is reserved for difficult/risky work;
+a Sol coordinator does not dispatch another Sol for routine worker failure. Cloud fallback requires both
+`allowCloudFallback:true` in the trusted host profile **and** the individual job's
+`--allow-cloud-fallback` flag. Without the flag, the adapter calls `worker.py`
+directly. With it, `route-worker.py` retains its scope/staleness reconciliation
+rules and 180-second Luna limit. Model selection/authentication for Luna belong
+to that registered runtime, not this kit. Sol is never dispatched automatically.
+
+Mark controlled setup/evaluation jobs with `--metrics-kind diagnostic` so they
+do not distort production routing measurements. Ordinary jobs default to
+`production`; the classification never bypasses evidence review.
+
+Jobs create immutable v1 handoffs, receipts, runtime logs and a versioned job
+record outside the inspected repo and canonical vault. Run is foreground and
+prints its job ID to stderr, then its compact result/artifact record as JSON.
+One job may run across repos sharing a host state directory. This lock does not
+coordinate independent jobs launched directly through another runner or bridge.
+Qwen gets 90 seconds; the outer local ceiling is 100 seconds, or 280 seconds
+with authorized Luna fallback. No automatic retry restarts the budget.
+
+From another terminal:
+
+```bash
+npm run notes:worker -- status
+npm run notes:worker -- status --job <UUID>
+npm run notes:worker -- cancel --job <UUID>
+npm run notes:worker -- review --job <UUID>
+npm run notes:worker -- disable
+```
+
+Cancellation signals the runtime process group and captured descendants,
+including detached cloud children. If process inventory is denied, cancellation
+still signals the main group and records a detached-cleanup limitation.
+Launch this host adapter outside another restrictive sandbox; nested runtime
+sandboxing and host lifecycle tests can be denied. In the existing LM Studio
+bridge, use its host-side local_worker MCP tool instead of a nested shell.
+This foreground adapter is not a persistent
+daemon: ordinary terminal termination is handled, but forced termination/power
+loss can leave a lock or incomplete job. Inspect the saved supervisor PID and
+artifacts before manually removing a stale `active.json`; never steal an active
+lock. Existing LM Studio/Codex bridge persistence remains a separate capability.
+
+Receipt validation checks headings/status, runtime exit, packet identity,
+pending acceptance, source drift, freshness and artifact hashes. Later `review`
+rechecks stored hashes and the captured snapshot. A stale/invalid result returns
+INCONCLUSIVE for coordinator reconciliation. Luna's final receipt is tracked
+separately from Qwen's packet-linked response; its conclusions still require
+coordinator review and do not inherit Qwen's host evidence checks.
+
+PASS means a structurally valid worker report, not accepted truth. Matching
+hashes do not establish semantic correctness, complete source coverage or test
+environment equivalence. The coordinator independently assesses important
+findings; only accepted findings enter `notes:new`/`notes:closeout`. No worker
+automatically certifies evidence or writes shared Status/Decision notes.
+MCP dispatch/front-door installation and additional adapters are future opt-ins;
+the first release works through repo-local CLI commands inside Codex.
+
 ### Opt-in handoff mode (0.17.0)
 
 Handoff mode transfers a bounded assignment to another agent. It does not
@@ -745,3 +874,10 @@ If you cannot run the installer, copy `scripts/`, `Project Notes/`,
 hand, then customize per "Customize the graph" above. The installer is
 preferred because it handles renames and stamps `kitVersion`. Keep each
 template file intact; do not manually extract its marked scaffold.
+
+### Hermes profile health
+
+Run `npm run memory:doctor -- --hermes-home /absolute/hermes/profile/home`
+to check auto-load, installed skill/CLI currency, and the selected memory store
+without reading memory contents into the report. See [profile selection and
+exit codes](docs/agent-memory.md#check-the-selected-hermes-installation).

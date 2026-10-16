@@ -1,0 +1,219 @@
+{
+  "date": "2026-10-15",
+  "kit_version": "0.18.0",
+  "skill_version": "1.2.1",
+  "suite": {
+    "command": "npm test",
+    "exit": 0,
+    "passed": 209,
+    "failed": 0,
+    "skipped": 0,
+    "log": "artifacts/notes-maintenance-20261015/kit-tests.log.gz",
+    "log_sha256": "d12d89f3409b7ba9c789468206bb6a247de35d0a834641a40e7bf663b4022566"
+  },
+  "source_sha256": {
+    "agent-memory.cjs": "6b941e51da8c77d0929fa8c6ab1817d833acea6cdba7bc997123b488c8126111",
+    "scripts/doctor-agent-memory.cjs": "9d6364121860904992b0ff938fe8d2736f606578383ad5dc1b444e966d4604b0",
+    "scripts/project-notes-worker.cjs": "8918c41513332d6ad6b94f09c4649c8c49a62041d6c4f81b74541a588b5a77b7",
+    "install-notes-graph.cjs": "69c82122af91908c07a7380f61fd450c0b8191d77d4509ac20fc735a0ac5d0ef",
+    "tests/agent-memory-doctor.test.mjs": "f430350cb5c1a60ca7c42c3ecf49b52f81160c3725d4b27410fa9792115fa7f4",
+    "tests/agent-memory-durable.test.mjs": "d89135147dc4fb779ef66023715e3c5918fb68fca6beca57330fca47527b377e"
+  },
+  "npm_audit_omit_dev_vulnerabilities": 0,
+  "stats_baseline": "PASS; unchanged baseline",
+  "skill_validation": "PASS",
+  "hermes_installations": {
+    "default": "PASS",
+    "personal": "PASS",
+    "live_model_recall_verified": false
+  },
+  "staged_notes_checks": {
+    "notes-graph-kit": {
+      "validate-project-notes-graph.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "evaluate-project-notes-search.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "evaluate-project-notes-context.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "diff_check": {
+        "exit": 0,
+        "errors": []
+      }
+    },
+    "OverBus": {
+      "validate-project-notes-graph.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "diff_check": {
+        "exit": 0,
+        "errors": []
+      }
+    },
+    "OverCue": {
+      "validate-project-notes-graph.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "evaluate-project-notes-search.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "evaluate-project-notes-context.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "diff_check": {
+        "exit": 0,
+        "errors": []
+      }
+    },
+    "OverFlow": {
+      "validate-project-notes-graph.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "evaluate-project-notes-search.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "evaluate-project-notes-context.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "diff_check": {
+        "exit": 0,
+        "errors": []
+      }
+    },
+    "OverMarker": {
+      "validate-project-notes-graph.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "evaluate-project-notes-search.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "evaluate-project-notes-context.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "diff_check": {
+        "exit": 0,
+        "errors": []
+      }
+    },
+    "OverSync": {
+      "validate-project-notes-graph.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "diff_check": {
+        "exit": 0,
+        "errors": []
+      }
+    },
+    "PTMaestro": {
+      "validate-project-notes-graph.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "diff_check": {
+        "exit": 0,
+        "errors": []
+      }
+    },
+    "ptxExtractor": {
+      "validate-project-notes-graph.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "evaluate-project-notes-search.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "evaluate-project-notes-context.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "diff_check": {
+        "exit": 0,
+        "errors": []
+      }
+    },
+    "takeoneaudio.com": {
+      "validate-project-notes-graph.cjs": {
+        "exit": 0,
+        "errors": []
+      },
+      "diff_check": {
+        "exit": 0,
+        "errors": []
+      }
+    }
+  },
+  "guide_review": {
+    "reviewed": 43,
+    "notes_procedures_reverified": 12,
+    "historical_guides_marked_stale": 2,
+    "other_product_verification_dates": "preserved"
+  },
+  "worker_policy": {
+    "lines_before": 1430,
+    "lines_after": 181,
+    "runtime_or_model_settings_changed": false,
+    "originals": "See docs/local-workers/installed-policy-receipt.json"
+  },
+  "consumers": {
+    "OverBus": {
+      "commit": "cd4360eda1779fd85183d2779573c634cdcc9905",
+      "branch": "main",
+      "remote_verified": true
+    },
+    "OverCue": {
+      "commit": "353d015d33a62d7460d0dbf51fc8d0169180a0f1",
+      "branch": "main",
+      "remote_verified": true
+    },
+    "OverFlow": {
+      "commit": "2651024ed25bfe47f0fc3f90b48733c5394335eb",
+      "branch": "codex/notes-maintenance-20261015",
+      "remote_verified": true
+    },
+    "OverMarker": {
+      "commit": "143f1f30e41460db41477f52725bf5f2e6e07eec",
+      "branch": "main",
+      "remote_verified": true
+    },
+    "OverSync": {
+      "commit": "6ea8aaffab0fc9855813893224df91f6951978f2",
+      "branch": "main",
+      "remote_verified": true
+    },
+    "PTMaestro": {
+      "commit": "ade25ec3f7c6aff0f16837dd6fb9e2e712d57c62",
+      "branch": "main",
+      "remote_verified": true
+    },
+    "ptxExtractor": {
+      "commit": "9d534d6f7657e18762763659c669582af7c6a068",
+      "branch": "codex/notes-maintenance-20261015",
+      "remote_verified": true
+    },
+    "takeoneaudio.com": {
+      "commit": "5a9c7ab8deebcf9c390c7366ec31d673032f787d",
+      "branch": "main",
+      "remote_verified": true
+    }
+  },
+  "ci": "Commit messages include [skip ci]; no Actions workflows or schedules added.",
+  "worker_limitations": "Two Qwen coding attempts returned LocalWorkerBusy before source writes; coordinator implementation and host validation used. No worker success claimed.",
+  "cleanup": "Both doctor preparation worktrees and the prior review source snapshot removed after checking clean status and no open files; snapshot refs retained."
+}

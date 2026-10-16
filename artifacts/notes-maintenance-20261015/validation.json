@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-15",
+  "kit_version": "0.18.0",
+  "scope": "Notes/tools only; no product-runtime certification",
+  "checks": {
+    "notes:validate": 0,
+    "notes:recommend": 0
+  },
+  "guide_review_count": 0,
+  "notes_guides_reverified": [],
+  "ci_policy": "Local validation; commits use [skip ci] to avoid push-triggered Actions minutes."
+}

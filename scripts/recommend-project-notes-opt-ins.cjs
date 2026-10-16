@@ -99,6 +99,14 @@ function inspect(repoRoot) {
   const contextEvaluationCi = /npm\s+run\s+notes:context:eval\b/.test(workflows);
   const baselineCi = /npm\s+run\s+notes:stats\s+--\s+--baseline\b/.test(workflows);
   const recommendations = [];
+  const workersEnabled = config.workers?.enabled === true;
+  recommendations.push(recommendation('repository-workers', workersEnabled ? 'configured' : 'disabled', workersEnabled ? 'enabled' : 'optional', {
+    requiresUserApproval: !workersEnabled,
+    actionKind: workersEnabled ? 'read-only' : 'writes-config-and-instructions',
+    rationale: 'Optional bounded repository workers use an explicitly registered host runtime; installation never starts a model or enables cloud fallback.',
+    nextStep: workersEnabled ? 'Run doctor before dispatch. Review fresh packet-linked receipts; coordinator acceptance remains required.' : 'With user authorization, enable routing in the selected agent instructions and register an external machine profile. No runtime is downloaded automatically.',
+    command: workersEnabled ? 'npm run notes:worker -- doctor' : 'npm run notes:worker -- enable --profile local-coding'
+  }));
   const adoptionEnv = { ...process.env, PROJECT_NOTES_NOTES_REPO_ROOT: repoRoot };
   const adoption = adoptionReport(repoRoot, loadVaultGraph({ env: adoptionEnv, vaultRoot }), { env: adoptionEnv });
 
