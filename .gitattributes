@@ -1,2 +1,5 @@
 # Raw test receipts retain their original diagnostic whitespace and hashes.
 artifacts/worker-adapter-0.18/notes-graph-worker-tests.log -whitespace
+
+# Daily notes are append-only logs: keep both sides on merge (notes-graph-kit). Re-sort with npm run notes:daily:sort.
+"Project Notes/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md" merge=union

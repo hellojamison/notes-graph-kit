@@ -424,8 +424,26 @@ npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Evidence tit
 npm run notes:new -- --title "Notes Graph Maintenance Status" --type status --process notes-graph-maintenance --summary "Current phase"
 npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Evidence title.md" --working "..." --verified "..." --not-verified "..." --verdict "Current conclusion" --decision "Project Notes/Decisions/Decision title.md" --status "Project Notes/Status/Notes Graph Maintenance Status.md" --phase "Phase 0.14" --certified "..." --open-item "dense-lane-timing: Measure dense-lane timing" --settled "Receipt format adopted"
 npm run notes:artifacts -- --write
+npm run notes:daily:sort
 npm run notes:validate
 ```
+
+Daily logs (`Project Notes/YYYY-MM-DD.md`) are append-only, and most branches
+add a line to the same day's file. Install and upgrade therefore add one line
+to the repo's `.gitattributes` so Git keeps both sides when merging or rebasing
+a daily log instead of reporting a conflict:
+
+```gitattributes
+"Project Notes/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md" merge=union
+```
+
+A union merge can leave the day's timestamped lines out of order, which
+`notes:validate` reports. Run `npm run notes:daily:sort` to re-sort every daily
+log by time and drop exact-duplicate lines (`-- --check` only reports). Only
+daily logs get this rule: Status, Decision, Process, Runbook, and App notes are
+current-truth documents, so their conflicts stay real. GitHub's own merge
+button does not run union merges, so resolve a daily-log conflict with a local
+rebase or merge and push.
 
 `notes:new` writes dated work-log notes under `Project Notes/Evidence/`. It
 creates `type: task` by default. `--type` accepts `task`, `evidence`, `app`,
