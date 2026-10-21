@@ -452,6 +452,7 @@ function notesNpmScripts(scriptsDir = 'scripts') {
     'notes:route': `node ${scriptsDir}/project-notes.cjs route`,
     'notes:new': `node ${scriptsDir}/project-notes.cjs new`,
     'notes:closeout': `node ${scriptsDir}/project-notes.cjs closeout`,
+    'notes:daily:sort': `node ${scriptsDir}/project-notes.cjs daily-sort`,
     'notes:search': `node ${scriptsDir}/search-project-notes.cjs`,
     'notes:context': `node ${scriptsDir}/build-project-notes-context.cjs`,
     'notes:handoff': `node ${scriptsDir}/project-notes-handoff.cjs`,
@@ -586,6 +587,29 @@ function mergePackageJson(repoRoot, scriptsDir = detectScriptsDir(repoRoot)) {
       : null,
     preservedScripts
   };
+}
+
+const DAILY_UNION_COMMENT = '# Daily notes are append-only logs: keep both sides on merge (notes-graph-kit). Re-sort with npm run notes:daily:sort.';
+
+function dailyUnionAttributeLine(vaultDir) {
+  const escaped = vaultDir.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md" merge=union`;
+}
+
+// Add the daily-log union merge rule to the target repo's .gitattributes,
+// preserving existing content. Only root daily logs are covered: Status,
+// Decision, Process, Runbook, and App notes are current-truth documents whose
+// conflicts must stay visible.
+function mergeGitattributes(repoRoot, vaultDir) {
+  const attributesPath = path.join(repoRoot, '.gitattributes');
+  assertRegularFileIfExists(attributesPath, '.gitattributes');
+  const existing = pathExists(attributesPath) ? fs.readFileSync(attributesPath, 'utf8') : '';
+  const line = dailyUnionAttributeLine(vaultDir);
+  if (existing.split(/\r?\n/).some((candidate) => candidate.trim() === line)) {
+    return null;
+  }
+  const prefix = existing === '' ? '' : `${existing.endsWith('\n') ? existing : `${existing}\n`}\n`;
+  return { rel: '.gitattributes', content: `${prefix}${DAILY_UNION_COMMENT}\n${line}\n`, kind: 'gitattributes' };
 }
 
 function mergePackageLock(repoRoot, proposedPackageContent, options = {}) {
@@ -1018,6 +1042,10 @@ function install(args) {
   if (packageMerge.write) {
     writes.push(packageMerge.write);
   }
+  const attributesWrite = mergeGitattributes(repoRoot, vaultDir);
+  if (attributesWrite) {
+    writes.push(attributesWrite);
+  }
   const instructionResults = [instructionFile].map((file) =>
     buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase, file));
   writes.push(...instructionResults.flatMap((result) => result.write ? [result.write] : []));
@@ -1108,6 +1136,10 @@ function upgrade(args) {
   const appName = validateAppName(config.appName);
   const vaultDir = validateVaultDir(config.vaultDir);
   const appFileBase = fileBaseForApp(appName);
+  const attributesWrite = mergeGitattributes(repoRoot, vaultDir);
+  if (attributesWrite) {
+    writes.push(attributesWrite);
+  }
   const instructionResults = [instructionFile].map((file) =>
     buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase, file, config.appRel));
   if (config.workers?.enabled === true) {
@@ -1194,6 +1226,8 @@ module.exports = {
   buildVaultWrites,
   buildScriptWrites,
   managedScriptHashes,
+  mergeGitattributes,
+  dailyUnionAttributeLine,
   assertManagedScriptsUnchanged,
   mergePackageJson,
   mergePackageLock,
