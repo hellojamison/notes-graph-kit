@@ -12,6 +12,7 @@
     "notes:route": "node scripts/project-notes.cjs route",
     "notes:new": "node scripts/project-notes.cjs new",
     "notes:closeout": "node scripts/project-notes.cjs closeout",
+    "notes:daily:sort": "node scripts/project-notes.cjs daily-sort",
     "notes:search": "node scripts/search-project-notes.cjs",
     "notes:context": "node scripts/build-project-notes-context.cjs",
     "notes:context:eval": "node scripts/evaluate-project-notes-context.cjs",

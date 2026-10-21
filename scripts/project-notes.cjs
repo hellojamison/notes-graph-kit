@@ -115,6 +115,7 @@ Usage:
   node scripts/project-notes.cjs route "matisse dark mode buttons" [--json]
   node scripts/project-notes.cjs new --title "Note title" [--process theme-qa] [--summary "..."] [--topic "..."] [--type task|evidence|app|process|runbook|decision|incident|release|status] [--runbook "..."]
   node scripts/project-notes.cjs closeout --note "Project Notes/Evidence/2026-07-03 Task title.md" --working "..." --verified "..." --not-verified "..." [--verdict "..." --decision "Decisions/Current Verdict.md"] [--certify] [--status "Status/Theme QA Status.md" --phase "..." --certified "..." --settled "..." --open-item "id: summary" --close-item id[,id]]
+  node scripts/project-notes.cjs daily-sort [--check] [daily-note.md ...]
 `;
 }
 
@@ -136,6 +137,11 @@ const commandOptions = {
       'status', 'phase', 'certified', 'open', 'open-item', 'close-item', 'settled'
     ]),
     allowPositionals: false
+  },
+  'daily-sort': {
+    booleanFlags: new Set(['help', 'check']),
+    valueFlags: new Set(),
+    allowPositionals: true
   }
 };
 
@@ -396,6 +402,61 @@ function textWithChronologicalDailyLine(filePath, initialHeading, line) {
   }
   lines.splice(insertion, 0, line);
   return lines.join('\n');
+}
+
+// A union merge of a daily log keeps both sides' lines but can interleave them
+// out of time order. Re-sort timestamped entries in place (non-entry lines stay
+// where they are) and drop exact-duplicate entries; ties keep file order.
+function sortDailyText(text) {
+  const lines = text.split('\n');
+  const slots = new Set();
+  const entries = [];
+  lines.forEach((line, index) => {
+    const minutes = dailyLineMinutes(line);
+    if (minutes != null) {
+      slots.add(index);
+      entries.push({ line, minutes, index });
+    }
+  });
+  const seen = new Set();
+  const sorted = entries
+    .slice()
+    .sort((left, right) => (left.minutes - right.minutes) || (left.index - right.index))
+    .filter((entry) => !seen.has(entry.line) && seen.add(entry.line));
+  const output = [];
+  let next = 0;
+  lines.forEach((line, index) => {
+    if (!slots.has(index)) {
+      output.push(line);
+    } else if (next < sorted.length) {
+      output.push(sorted[next].line);
+      next += 1;
+    }
+  });
+  return output.join('\n');
+}
+
+function sortDailyNotes(args, options = {}) {
+  const env = options.env || process.env;
+  const vaultRoot = getVaultRoot({ env, vaultRoot: options.vaultRoot });
+  const files = args._ && args._.length > 0
+    ? args._.map((file) => path.resolve(file))
+    : (fs.existsSync(vaultRoot) ? fs.readdirSync(vaultRoot) : [])
+      .filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/.test(name))
+      .sort()
+      .map((name) => path.join(vaultRoot, name));
+  const changed = [];
+  for (const filePath of files) {
+    const text = fs.readFileSync(filePath, 'utf8');
+    const sorted = sortDailyText(text);
+    if (sorted !== text) {
+      changed.push({ filePath, content: sorted });
+    }
+  }
+  if (!args.check && changed.length > 0) {
+    atomicWriteFiles(changed);
+  }
+  return { checked: files.length, changed: changed.map((item) => item.filePath) };
 }
 
 function atomicWriteFiles(writes) {
@@ -1124,6 +1185,17 @@ function main(argv = process.argv.slice(2), options = {}) {
     const statusOutput = result.statusRel ? `Updated ${result.statusRel}\n` : '';
     return `Closed ${result.noteRel}\n${statusOutput}Updated ${noteKeyForRel(path.basename(result.dailyPath))}.md\n`;
   }
+  if (command === 'daily-sort') {
+    const result = sortDailyNotes(args, options);
+    const names = result.changed.map((filePath) => path.basename(filePath));
+    if (args.check && names.length > 0) {
+      throw new Error(`Daily notes out of order or with duplicate entries: ${names.join(', ')}. Run npm run notes:daily:sort.`);
+    }
+    if (names.length > 0) {
+      return `Sorted ${names.join(', ')}\n`;
+    }
+    return `${result.checked} daily note(s) already in order\n`;
+  }
 }
 
 if (require.main === module) {
@@ -1140,6 +1212,8 @@ module.exports = {
   printRoute,
   createNewNote,
   closeoutNote,
+  sortDailyText,
+  sortDailyNotes,
   main,
   sanitizeFileTitle,
   replaceOrAppendH2Section,
