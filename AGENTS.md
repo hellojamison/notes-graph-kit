@@ -205,4 +205,4 @@ Consume the compact receipt and job artifact paths. Run npm run notes:worker -- 
 
 ## Local coder and merge rules
 
-Follow the "Local coder and merge rules" section of ~/.codex/AGENTS.md and ~/Documents/Projects/local-llm-audit/merge-agent-instructions-2026-10-19.md; they are authoritative and kept current. Repo-specific: required CI check for this repo is `test` (GitHub-hosted `ci.yml`; it runs automatically on pull requests, so there is nothing to dispatch; locally the gate is `npm test`).
+Follow the "Local coder and merge rules" section of ~/.codex/AGENTS.md and ~/Documents/Projects/local-llm-audit/merge-agent-instructions-2026-10-19.md; they are authoritative and kept current. Repo-specific: required CI check for this repo is `test` (GitHub-hosted `ci.yml`, dispatch-only; dispatch before merging; locally `npm test`).

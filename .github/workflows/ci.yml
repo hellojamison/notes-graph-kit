@@ -1,10 +1,10 @@
 name: CI
 
+# Runs only when dispatched (no push/pull_request triggers).
+# Dispatch before merging: gh workflow run ci.yml --repo hellojamison/notes-graph-kit --ref <branch>
+# Minimal-CI policy, 2026-10-21.
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
