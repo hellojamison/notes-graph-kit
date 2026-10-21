@@ -424,6 +424,10 @@ function isInstallSkeletonRel(rel, filePath = null) {
   if (rel.startsWith('Status/') && basename !== '_README.md') {
     return false;
   }
+  // The kit's own per-change daily entries and generated views are local history.
+  if (rel.startsWith('Daily/')) {
+    return false;
+  }
   if (filePath && /(^|\n)created_by: project-notes-cli\s*(?:\n|$)/.test(fs.readFileSync(filePath, 'utf8'))) {
     return false;
   }
@@ -452,6 +456,8 @@ function notesNpmScripts(scriptsDir = 'scripts') {
     'notes:route': `node ${scriptsDir}/project-notes.cjs route`,
     'notes:new': `node ${scriptsDir}/project-notes.cjs new`,
     'notes:closeout': `node ${scriptsDir}/project-notes.cjs closeout`,
+    'notes:daily': `node ${scriptsDir}/project-notes.cjs daily`,
+    'notes:daily:build': `node ${scriptsDir}/project-notes.cjs daily-build`,
     'notes:daily:sort': `node ${scriptsDir}/project-notes.cjs daily-sort`,
     'notes:search': `node ${scriptsDir}/search-project-notes.cjs`,
     'notes:context': `node ${scriptsDir}/build-project-notes-context.cjs`,
@@ -610,6 +616,35 @@ function mergeGitattributes(repoRoot, vaultDir) {
   }
   const prefix = existing === '' ? '' : `${existing.endsWith('\n') ? existing : `${existing}\n`}\n`;
   return { rel: '.gitattributes', content: `${prefix}${DAILY_UNION_COMMENT}\n${line}\n`, kind: 'gitattributes' };
+}
+
+const DAILY_VIEW_IGNORE_COMMENT = '# Generated read-only daily views from npm run notes:daily:build (notes-graph-kit). Never commit them.';
+
+function dailyViewIgnoreLine(vaultDir) {
+  return `/${vaultDir.replace(/\\/g, '\\\\').replace(/^([#!])/, '\\$1')}/Daily/*.view.md`;
+}
+
+// Keep the generated daily views (notes:daily:build) out of Git. Existing
+// .gitignore content is preserved.
+function dailyEntryUpgradeNotes(vaultDir) {
+  return [
+    '0.19.0 daily entries:',
+    `  notes:closeout now writes one file per change under ${vaultDir}/Daily/YYYY-MM-DD/ and never edits the shared ${vaultDir}/YYYY-MM-DD.md.`,
+    '  Existing daily notes stay as they are and are still read by notes:daily, validate, search, context, and stats.',
+    '  Add to the agent instructions: closeout writes a per-change daily entry file; never edit the shared daily note in PRs.'
+  ];
+}
+
+function mergeGitignore(repoRoot, vaultDir) {
+  const ignorePath = path.join(repoRoot, '.gitignore');
+  assertRegularFileIfExists(ignorePath, '.gitignore');
+  const existing = pathExists(ignorePath) ? fs.readFileSync(ignorePath, 'utf8') : '';
+  const line = dailyViewIgnoreLine(vaultDir);
+  if (existing.split(/\r?\n/).some((candidate) => candidate.trim() === line)) {
+    return null;
+  }
+  const prefix = existing === '' ? '' : `${existing.endsWith('\n') ? existing : `${existing}\n`}\n`;
+  return { rel: '.gitignore', content: `${prefix}${DAILY_VIEW_IGNORE_COMMENT}\n${line}\n`, kind: 'gitignore' };
 }
 
 function mergePackageLock(repoRoot, proposedPackageContent, options = {}) {
@@ -1046,6 +1081,10 @@ function install(args) {
   if (attributesWrite) {
     writes.push(attributesWrite);
   }
+  const ignoreWrite = mergeGitignore(repoRoot, vaultDir);
+  if (ignoreWrite) {
+    writes.push(ignoreWrite);
+  }
   const instructionResults = [instructionFile].map((file) =>
     buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase, file));
   writes.push(...instructionResults.flatMap((result) => result.write ? [result.write] : []));
@@ -1140,6 +1179,10 @@ function upgrade(args) {
   if (attributesWrite) {
     writes.push(attributesWrite);
   }
+  const ignoreWrite = mergeGitignore(repoRoot, vaultDir);
+  if (ignoreWrite) {
+    writes.push(ignoreWrite);
+  }
   const instructionResults = [instructionFile].map((file) =>
     buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase, file, config.appRel));
   if (config.workers?.enabled === true) {
@@ -1174,6 +1217,9 @@ function upgrade(args) {
     '',
     ...vaultMigrationGuidance(kitVersion, repoRoot)
   ];
+  if (previousVersion === 'unversioned' || compareSemver(previousVersion, '0.19.0') < 0) {
+    lines.push('', ...dailyEntryUpgradeNotes(vaultDir));
+  }
   lines.push('', 'Agent opt-in review:', '  npm run notes:recommend  # ask before recommended writes or CI edits');
   if (packageMerge.preservedScripts.length > 0) {
     lines.push('', 'package.json has custom notes:* scripts; verify they call the refreshed kit or update them manually.');
@@ -1227,6 +1273,8 @@ module.exports = {
   buildScriptWrites,
   managedScriptHashes,
   mergeGitattributes,
+  mergeGitignore,
+  dailyViewIgnoreLine,
   dailyUnionAttributeLine,
   assertManagedScriptsUnchanged,
   mergePackageJson,

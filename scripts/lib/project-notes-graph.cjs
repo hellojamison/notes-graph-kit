@@ -493,8 +493,81 @@ function isTemplate(rel) {
   return rel.startsWith('Templates/');
 }
 
-function isDaily(rel) {
+// Daily outcomes live in two places: the legacy shared log at the vault root
+// (`YYYY-MM-DD.md`, still read but no longer written by closeout) and one
+// small entry file per closed note under `Daily/YYYY-MM-DD/`. Entry files are
+// unique per change, so parallel branches never edit the same file.
+const dailyEntriesFolder = 'Daily';
+
+function isLegacyDaily(rel) {
   return /^\d{4}-\d{2}-\d{2}\.md$/.test(rel);
+}
+
+function isDailyEntry(rel) {
+  return /^Daily\/\d{4}-\d{2}-\d{2}\/[^/]+\.md$/.test(rel);
+}
+
+// `notes:daily:build` renders `Daily/YYYY-MM-DD.view.md`: a generated,
+// git-ignored, read-only view. It is never part of the graph.
+function isGeneratedDailyView(rel) {
+  return /^Daily\/\d{4}-\d{2}-\d{2}\.view\.md$/.test(rel);
+}
+
+function isDaily(rel) {
+  return isLegacyDaily(rel) || isDailyEntry(rel);
+}
+
+function dailyEntryDir(vaultRoot, date) {
+  return path.join(vaultRoot, dailyEntriesFolder, date);
+}
+
+function dailyEntryMinutes(line) {
+  const match = String(line).match(/^- (\d{2}):(\d{2})(?: [A-Z]{2,5})?: /);
+  if (!match) {
+    return null;
+  }
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return hours <= 23 && minutes <= 59 ? (hours * 60) + minutes : null;
+}
+
+// All timestamped outcome lines for one day, from the legacy shared log and
+// the per-change entry files together, in time order (ties keep legacy lines
+// first, then entry files by name). Exact duplicate lines are dropped.
+function collectDailyEntries(vaultRoot, date) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+    throw new Error(`Daily date must be YYYY-MM-DD; found ${JSON.stringify(date)}`);
+  }
+  const sources = [];
+  const legacyPath = path.join(vaultRoot, `${date}.md`);
+  if (fs.existsSync(legacyPath)) {
+    sources.push({ rel: `${date}.md`, filePath: legacyPath });
+  }
+  const entryDir = dailyEntryDir(vaultRoot, date);
+  if (fs.existsSync(entryDir) && fs.statSync(entryDir).isDirectory()) {
+    for (const name of fs.readdirSync(entryDir).filter((item) => item.endsWith('.md') && !item.startsWith('.')).sort()) {
+      sources.push({ rel: `${dailyEntriesFolder}/${date}/${name}`, filePath: path.join(entryDir, name) });
+    }
+  }
+  const entries = [];
+  sources.forEach((source, sourceIndex) => {
+    const lines = fs.readFileSync(source.filePath, 'utf8').split(/\r?\n/);
+    lines.forEach((line, lineIndex) => {
+      const minutes = dailyEntryMinutes(line);
+      if (minutes != null) {
+        entries.push({ line, minutes, source: source.rel, order: (sourceIndex * 100000) + lineIndex });
+      }
+    });
+  });
+  const seen = new Set();
+  return {
+    date,
+    sources: sources.map((source) => source.rel),
+    entries: entries
+      .sort((left, right) => (left.minutes - right.minutes) || (left.order - right.order))
+      .filter((entry) => !seen.has(entry.line) && seen.add(entry.line))
+      .map(({ line, minutes, source }) => ({ line, minutes, source }))
+  };
 }
 
 function isStructured(rel) {
@@ -510,7 +583,8 @@ function asArray(value) {
 
 function loadVaultGraph(options = {}) {
   const vaultRoot = getVaultRoot(options);
-  const markdownFiles = walk(vaultRoot, (filePath) => filePath.endsWith('.md'));
+  const markdownFiles = walk(vaultRoot, (filePath) =>
+    filePath.endsWith('.md') && !isGeneratedDailyView(relativePath(filePath, vaultRoot)));
   const baseFiles = walk(vaultRoot, (filePath) => filePath.endsWith('.base'));
   const index = buildNoteIndex([...markdownFiles, ...baseFiles], vaultRoot);
   const notes = markdownFiles.map((filePath) => {
@@ -834,6 +908,13 @@ module.exports = {
   firstFolder,
   isTemplate,
   isDaily,
+  isLegacyDaily,
+  isDailyEntry,
+  isGeneratedDailyView,
+  dailyEntriesFolder,
+  dailyEntryDir,
+  dailyEntryMinutes,
+  collectDailyEntries,
   isStructured,
   asArray,
   loadVaultGraph,

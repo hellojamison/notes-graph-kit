@@ -127,7 +127,7 @@ Start from `Project Notes/_Codex/Start Here.md`, then use `Project Notes/Notes S
 For substantive tasks:
 
 - Pick the relevant app, process, and runbook before editing notes.
-- Update both today's daily note and one task-specific evidence/task note.
+- Update one task-specific evidence/task note and close it with `notes:closeout`. Closeout writes a per-change daily entry file (`Project Notes/Daily/YYYY-MM-DD/HHMM-<slug>.md`); never edit the shared daily note (`Project Notes/YYYY-MM-DD.md`) in PRs.
 - Link task notes to `Apps/My Project.md` plus the relevant process and runbook.
 - Record what is working, what was verified, what was tried and failed, and what was not verified.
 - Notes are a map, not source-of-truth policy; reverify mutable facts against the repo and smoke tests before relying on old notes.
@@ -162,7 +162,7 @@ Use `Project Notes/_Codex/Start Here.md` as the graph entrypoint, then use `Proj
 For substantive tasks:
 - Start from `_Codex/Start Here.md`.
 - Pick the relevant app, process, and runbook before editing notes.
-- Update both today's daily note and one task-specific evidence/task note.
+- Update one task-specific evidence/task note and close it with `notes:closeout`. Closeout writes a per-change daily entry file (`Project Notes/Daily/YYYY-MM-DD/HHMM-<slug>.md`); never edit the shared daily note (`Project Notes/YYYY-MM-DD.md`) in PRs.
 - Link task notes to `Apps/My Project.md` plus the relevant process and runbook.
 - Record what is working, what was verified, what was tried and failed, and what was not verified.
 - Treat notes as evidence and navigation, not as source-of-truth policy; verify mutable facts against the repo, live system, logs, or artifacts before relying on old notes.

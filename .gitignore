@@ -1,3 +1,6 @@
 node_modules/
 .DS_Store
 *.log
+
+# Generated read-only daily views from npm run notes:daily:build (notes-graph-kit). Never commit them.
+/Project Notes/Daily/*.view.md
