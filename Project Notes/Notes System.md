@@ -20,10 +20,10 @@ project notes are an operational memory system, not a diary. The notes should ma
 
 ## Core Rules
 
-- Daily notes stay at the vault root as `YYYY-MM-DD.md` and capture chronological project status.
+- Daily outcomes are one file per closed note under `Daily/YYYY-MM-DD/HHMM-<slug>.md`, written by `notes:closeout`. Older vaults also keep shared root daily notes (`YYYY-MM-DD.md`); they are still read, but never edit them in PRs. `npm run notes:daily` shows a day's combined outcomes.
 - CLI-created task and evidence work logs live under `Evidence/` so one dated operational trail captures both planned work and proof.
 - Focused task notes can stay at the vault root when they already exist, but new larger work should use the matching folder below or the CLI-managed `Evidence/` work-log folder.
-- Every substantive task should update one task-specific note and today's daily note.
+- Every substantive task should update one task-specific note and close it with `notes:closeout`, which writes the day's outcome entry.
 - Separate `Working`, `Not verified`, and `Tried and failed`. Do not let assumptions read like facts.
 - Production issues must cite direct evidence: logs, routes, database rows, migration rows, package hashes, notarization output, or exact commands.
 - Notes are a map, not the source of truth. If a route, DB row, package, or live app may have changed, verify it directly before relying on an old note.
@@ -170,23 +170,24 @@ Known gaps or cleanup.
 
 ## Daily Note Shape
 
-Daily notes should stay compact:
+`notes:closeout` writes one small entry file per closed note, for example `Daily/YYYY-MM-DD/1405-fix-export-crash.md`:
 
 ```md
 ---
-title: YYYY-MM-DD
+title: YYYY-MM-DD 14:05 Fix export crash
 schema_version: 1
+daily_format: 2
 type: daily
-status: active
+status: done
 date: YYYY-MM-DD
 tags:
   - notes/daily
 ---
 
-# YYYY-MM-DD
-
-- HH:MM: Concise status. Working: what was verified. Not verified: what was not checked.
+- 14:05 PDT: Concise outcome. — [[Evidence/YYYY-MM-DD Fix export crash|Fix export crash]]
 ```
+
+Because every change has its own file, parallel branches never conflict on the daily note. `npm run notes:daily -- --date YYYY-MM-DD` prints the day's outcomes from these files and any legacy root `YYYY-MM-DD.md` log together; `npm run notes:daily:build -- --date YYYY-MM-DD` writes the same view to the git-ignored `Daily/YYYY-MM-DD.view.md` (read-only, never committed).
 
 ## What Good Looks Like
 

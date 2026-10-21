@@ -116,7 +116,7 @@ test('structured evidence keeps the current verdict, open-item objects, receipts
     assert.equal(closedEvidence.value.verification, 'unverified');
     assert.match(closedEvidence.text, /# Focused Evidence\n\n## Current Verdict\n\nThe receipt is self-verifying\./);
     assert.match(closedEvidence.text, /Decision: \[\[Decisions\/Smoke Verdict\|Smoke Verdict\]\]/);
-    const dailyRel = closeOutput.match(/^Updated (\d{4}-\d{2}-\d{2}\.md)$/m)?.[1];
+    const dailyRel = closeOutput.match(/^Updated (Daily\/\d{4}-\d{2}-\d{2}\/\d{4}-focused-evidence\.md)$/m)?.[1];
     assert.ok(dailyRel, closeOutput);
     const dailyText = fs.readFileSync(path.join(repoRoot, 'Project Notes', dailyRel), 'utf8');
     assert.match(dailyText, /The receipt is self-verifying\. — \[\[Evidence\/.*Focused Evidence/);

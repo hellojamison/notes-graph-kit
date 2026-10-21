@@ -1,6 +1,6 @@
 {
   "name": "notes-graph-kit",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "private": true,
   "description": "Portable Obsidian project notes graph helper kit.",
   "license": "MIT",
@@ -12,6 +12,8 @@
     "notes:route": "node scripts/project-notes.cjs route",
     "notes:new": "node scripts/project-notes.cjs new",
     "notes:closeout": "node scripts/project-notes.cjs closeout",
+    "notes:daily": "node scripts/project-notes.cjs daily",
+    "notes:daily:build": "node scripts/project-notes.cjs daily-build",
     "notes:daily:sort": "node scripts/project-notes.cjs daily-sort",
     "notes:search": "node scripts/search-project-notes.cjs",
     "notes:context": "node scripts/build-project-notes-context.cjs",

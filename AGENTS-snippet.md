@@ -15,7 +15,7 @@ Use `Project Notes/_Codex/Start Here.md` as the graph entrypoint, then use `Proj
 For substantive tasks:
 - Start from `_Codex/Start Here.md`.
 - Pick the relevant app, process, and runbook before editing notes.
-- Update both today's daily note and one task-specific evidence/task note.
+- Update one task-specific evidence/task note and close it with `notes:closeout`. Closeout writes a per-change daily entry file (`Project Notes/Daily/YYYY-MM-DD/HHMM-<slug>.md`); never edit the shared daily note (`Project Notes/YYYY-MM-DD.md`) in PRs.
 - Link task notes to `Apps/My Project.md` plus the relevant process and runbook.
 - Record what is working, what was verified, what was tried and failed, and what was not verified.
 - Treat notes as evidence and navigation, not as source-of-truth policy; verify mutable facts against the repo, live system, logs, or artifacts before relying on old notes.
@@ -37,7 +37,7 @@ Prefer the repo-local notes helper:
 - Let `notes:new` unwrap the matching marked template scaffold. Do not copy fenced scaffold metadata into a note manually.
 - Structured evidence is `status: open|done`. Close it with `--verdict "current conclusion" --decision "Project Notes/Decisions/Current Decision.md"`; add `--certify` only for `verification: verified`. Keep its `## Current Verdict` first and current. The daily entry is one time/outcome/link line, never a second closeout paragraph. At a phase boundary, update the process Status note in the same command with `--status`, `--phase`, `--certified`, `--settled`, and optional `--open-item "id: summary"` or `--close-item id[,id]`.
 - Put verdicts in `Decisions/` and connect replacements with reciprocal `supersedes` / `superseded_by` links. Add tests, artifact paths/hashes/Git SHAs, decision links, and open-item IDs as marked YAML receipts in evidence; test totals must include their exact filter command. Run `npm run notes:artifacts -- --write` to generate the artifact map when receipts name artifacts.
-- A merge or rebase conflict confined to daily logs (`Project Notes/YYYY-MM-DD.md`) is routine: keep both sides (the `.gitattributes` union rule does this on a local rebase or merge), run `npm run notes:daily:sort`, and continue. A conflict in Status, Decision, Process, Runbook, or App notes, or in code, is a real conflict.
+- Read a day's outcomes with `npm run notes:daily -- --date YYYY-MM-DD` (legacy shared log plus per-change entry files). `npm run notes:daily:build -- --date YYYY-MM-DD` writes a read-only, git-ignored view; never commit it. A merge or rebase conflict confined to legacy daily logs (`Project Notes/YYYY-MM-DD.md`) is routine: keep both sides (the `.gitattributes` union rule does this on a local rebase or merge), run `npm run notes:daily:sort`, and continue. A conflict in Status, Decision, Process, Runbook, or App notes, or in code, is a real conflict.
 - Run `npm run notes:validate` after graph metadata, templates, Bases, validator, helper script, or structured note changes.
 - After a kit upgrade, keep the vault untouched until `node migrate-notes-graph.cjs audit --repo /path/to/repo --to 0.14.0`, run from the authoritative kit checkout, has classified every proposed migration. Apply only reviewed safe/item IDs with the backup-backed `apply` command; use `rollback --backup <id>` rather than overwriting later edits.
 

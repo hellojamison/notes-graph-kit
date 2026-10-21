@@ -77,10 +77,13 @@ The installer:
 3. Copies the vault skeleton with the app name substituted, excluding this
    kit repo's dated local task notes. Existing vault files are skipped unless
    both `--force` and `--force-vault` are supplied.
-4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:context`,
+4. Merges `notes`, `notes:route`, `notes:new`, `notes:closeout`, `notes:daily`, `notes:daily:build`,
+   `notes:daily:sort`, `notes:search`, `notes:context`,
    `notes:context:eval`, `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, and
    `notes:validate` into `package.json` (existing customized commands are
-   preserved with a warning) and adds the `js-yaml` dependency.
+   preserved with a warning) and adds the `js-yaml` dependency. It also adds
+   the legacy daily-log union rule to `.gitattributes` and ignores generated
+   daily views (`<vault>/Daily/*.view.md`) in `.gitignore`.
 5. Writes or appends a marked `## Project Notes Graph` block to only the selected agent's instruction file
    (creates the file if missing; skips a managed block or an exact legacy
    heading outside fenced code).
@@ -129,6 +132,15 @@ git diff --check
 ```
 
 ## Upgrade an existing install
+
+> **Upgrading to 0.19.0 (daily entry files).** No vault migration is needed and
+> existing daily notes are not touched. After the upgrade, `notes:closeout`
+> writes `Project Notes/Daily/YYYY-MM-DD/HHMM-<slug>.md` instead of inserting
+> into `Project Notes/YYYY-MM-DD.md`; `package.json` gains `notes:daily` and
+> `notes:daily:build`, and `.gitignore` gains the generated-view rule. Because
+> upgrade preserves an existing managed instruction block, add this line to the
+> repo's agent instructions by hand: "closeout writes a per-change daily entry
+> file; never edit the shared daily note in PRs."
 
 ```bash
 node install-notes-graph.cjs --repo /path/to/target/repo --upgrade
@@ -424,14 +436,44 @@ npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Evidence tit
 npm run notes:new -- --title "Notes Graph Maintenance Status" --type status --process notes-graph-maintenance --summary "Current phase"
 npm run notes:closeout -- --note "Project Notes/Evidence/YYYY-MM-DD Evidence title.md" --working "..." --verified "..." --not-verified "..." --verdict "Current conclusion" --decision "Project Notes/Decisions/Decision title.md" --status "Project Notes/Status/Notes Graph Maintenance Status.md" --phase "Phase 0.14" --certified "..." --open-item "dense-lane-timing: Measure dense-lane timing" --settled "Receipt format adopted"
 npm run notes:artifacts -- --write
+npm run notes:daily -- --date 2026-10-21
+npm run notes:daily:build -- --date 2026-10-21
 npm run notes:daily:sort
 npm run notes:validate
 ```
 
-Daily logs (`Project Notes/YYYY-MM-DD.md`) are append-only, and most branches
-add a line to the same day's file. Install and upgrade therefore add one line
-to the repo's `.gitattributes` so Git keeps both sides when merging or rebasing
-a daily log instead of reporting a conflict:
+### Daily outcomes (0.19.0+)
+
+`notes:closeout` writes the outcome line to its own file,
+`Project Notes/Daily/YYYY-MM-DD/HHMM-<slug>.md` (the slug comes from the closed
+note's title; a `-2` suffix keeps same-minute duplicates unique). It never
+edits the shared `Project Notes/YYYY-MM-DD.md`, so two PRs closing notes on the
+same day no longer conflict and merging one no longer makes the next one stale.
+**Closeout writes a per-change daily entry file; never edit the shared daily
+note in PRs.**
+
+The daily note is now a generated view:
+
+- `npm run notes:daily -- --date YYYY-MM-DD [--json]` prints the day's outcomes
+  from the per-day folder and the legacy daily file together, in time order.
+- `npm run notes:daily:build -- --date YYYY-MM-DD [--out path]` writes the same
+  view to `Project Notes/Daily/YYYY-MM-DD.view.md`. It is optional and
+  read-only; install and upgrade add a `.gitignore` rule for it, and agents
+  never commit it. Views are excluded from validation, search, context, and
+  stats.
+
+Entry files are ordinary `type: daily` notes, so `notes:validate`,
+`notes:search`, `notes:context`, `notes:stats`, and `notes:duplicates` read them
+together with legacy daily files. Existing vaults keep their old daily files
+untouched and valid.
+
+### Legacy shared daily logs
+
+Daily logs (`Project Notes/YYYY-MM-DD.md`) written before 0.19.0 are
+append-only, and branches used to add a line to the same day's file. Install
+and upgrade therefore still add one line to the repo's `.gitattributes` so Git
+keeps both sides when merging or rebasing a legacy daily log instead of
+reporting a conflict:
 
 ```gitattributes
 "Project Notes/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md" merge=union
@@ -452,8 +494,8 @@ evidence notes require `--process` and use date-prefixed filenames under
 `Evidence/`; status notes also require a process and use `Status/`. The other
 types use their matching structured folder and accept `--process` optionally.
 A process can have exactly one Status note. Creating a note does not add a
-daily-log entry; closing a note writes one chronological daily outcome line
-with its evidence link. New process notes also add a route
+daily-log entry; closing a note writes one daily entry file with a single
+outcome line and its evidence link. New process notes also add a route
 using a slug of the title and refuse route-ID or alias collisions instead of
 choosing a suffix.
 Draft process, runbook, decision, and release notes are exempt from operational
@@ -637,7 +679,7 @@ does not prove that either note is obsolete, so this command never rewrites,
 merges, deletes, or automatically fails CI. Invalid options fail with exit 2.
 
 `notes:closeout` refuses a note that already has a real `## Closeout` heading
-before changing the note or daily log. Date fields are serialized as
+before changing the note or writing a daily entry. Date fields are serialized as
 `YYYY-MM-DD`. If a command value itself begins with `--`, use the equals form,
 for example `--not-verified="--force path not tested"`.
 Structured evidence uses `status: open|done`; `--certify` records
