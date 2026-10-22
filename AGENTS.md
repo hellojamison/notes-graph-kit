@@ -1,5 +1,9 @@
 # notes-graph-kit
 
+## Local work goes straight to main (2026-10-21, Jamison)
+
+Agents on Jamison's Mac Studio (Codex, Claude Code, the local coder) commit and push finished work directly to `main`: no pull request, no CI dispatch. Run this repo's relevant local tests for what changed before pushing, then `git fetch origin && git rebase origin/main && git push origin HEAD:main` (rebase and retry if rejected; never force-push). Asana still records the work: In Progress at start, Solved and complete once pushed, with the commit link. This overrides the PR, branch, review and merge instructions below for local agents; those still apply to the remote agent on Jamison's other computer, which opens PRs for the merge agent. Full rule: `~/.codex/AGENTS.md` (Claude reads the same file as `~/.claude/CLAUDE.md`).
+
 Portable installer and helper scripts for the project notes graph workflow used across multiple project repos. This repo is the **single authoritative source** for the kit — retired copies inside individual app repos are pointers only; change the kit here, then install or upgrade target repos.
 
 The kit scaffolds an Obsidian vault skeleton, copies config-driven CLI helpers (`notes:route`, `notes:new`, `notes:closeout`, `notes:search`, `notes:context`, `notes:search:eval`, `notes:stats`, `notes:duplicates`, `notes:recommend`, `notes:validate`), merges npm scripts, stamps `kitVersion`, and writes the `## Project Notes Graph` block into the selected agent's instruction file.
