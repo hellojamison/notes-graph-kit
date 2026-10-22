@@ -1,5 +1,9 @@
 # notes-graph-kit
 
+## Cloud first (2026-10-22, Jamison)
+
+Agents on the Mac Studio do ordinary questions and code changes themselves; this overrides the "local coder first" / implementation-first / worker-delegation instructions below. Use the local coder only for background work nobody is waiting on, handed off with `local-job submit` and collected once with `local-job wait` (no polling). Measured: supervising local jobs cost more cloud tokens than it saved and was slower. Full rule: `~/.codex/AGENTS.md` (CLOUD FIRST).
+
 ## Local work goes straight to main (2026-10-21, Jamison)
 
 Agents on Jamison's Mac Studio (Codex, Claude Code, the local coder) commit and push finished work directly to `main`: no pull request, no CI dispatch. Run this repo's relevant local tests for what changed before pushing, then `git fetch origin && git rebase origin/main && git push origin HEAD:main` (rebase and retry if rejected; never force-push). Asana still records the work: In Progress at start, Solved and complete once pushed, with the commit link. This overrides the PR, branch, review and merge instructions below for local agents; those still apply to the remote agent on Jamison's other computer, which opens PRs for the merge agent. Full rule: `~/.codex/AGENTS.md` (Claude reads the same file as `~/.claude/CLAUDE.md`).
