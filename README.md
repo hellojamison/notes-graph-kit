@@ -774,11 +774,10 @@ artifacts: the existing runtime runs them in a private source copy. IMPLEMENTER
 is deliberately not dispatched by this first adapter; use the existing direct
 runtime only with explicit authorization and a clean isolated non-main worktree.
 
-The `local-coding` routing instructions apply equally to GPT-6 Astra and
-GPT-6.1 Sol as coordinator. Both retain planning and final review, delegate
-mechanical work to Qwen first, and use Luna xhigh for bounded fallback.
-Additional Sol review from an Astra chat is reserved for difficult/risky work;
-a Sol coordinator does not dispatch another Sol for routine worker failure. Cloud fallback requires both
+The `local-coding` routing instructions are the same whatever model the
+coordinating agent runs. It keeps planning and final review, delegates
+mechanical work to the local coder first, and uses the bounded cloud fallback
+only when authorized. Difficult or risky work may get a stronger model's review. Cloud fallback requires both
 `allowCloudFallback:true` in the trusted host profile **and** the individual job's
 `--allow-cloud-fallback` flag. Without the flag, the adapter calls `worker.py`
 directly. With it, `route-worker.py` retains its scope/staleness reconciliation

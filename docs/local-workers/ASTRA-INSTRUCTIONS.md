@@ -1,7 +1,6 @@
 # Local repository worker operating contract
 
-Current contract: 2026-10-15. Applies equally to the selected GPT-6 Astra or
-GPT-6.1 Sol coordinator; never changes the chat's model. Read
+Current contract: 2026-10-15, model-neutral since 2026-10-21. Applies to every coordinating agent whatever its model; never changes the chat's model. Read
 EFFICIENT-WORKFLOW.md before the first repository worker job. Historical
 qualification reports are references, not additional startup instructions.
 
@@ -103,11 +102,11 @@ not a paid model repeating the same known command. Report sandbox limitations.
 
 NEEDS_SCOPE, SOURCE_CHANGED and HANDOFF_RECONCILIATION require corrected scope or
 stable inputs before one bounded local follow-up. Genuine incomplete read-only
-work may use the existing bounded Luna xhigh fallback (180 seconds), carrying the
+work may use the existing bounded cloud fallback (180 seconds), carrying the
 residual question and retained evidence. No indefinite local retries, no automatic
 write fallback. Modified worktrees return to the coordinator for reconciliation.
-An Astra coordinator may seek Sol review for difficult/risky work; a Sol coordinator
-does not launch another Sol for ordinary worker failure.
+For difficult or risky work the coordinator may ask a stronger model for review;
+ordinary worker failure does not need one.
 
 Consume the compact stdout/.packet.txt once; inspect raw ledgers for concrete gaps.
 Wait about 30 seconds (at most 60) between updates, not repeated one-second polls.
