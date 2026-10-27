@@ -1,5 +1,9 @@
 # notes-graph-kit
 
+## Plain language
+
+Use plain language in user-facing communication. Use everyday words and short sentences. Explain any technical terms that are needed. Lead with the result or the decision needed. Keep technical internals out unless the user asks for them.
+
 ## Cloud first (2026-10-22, Jamison)
 
 Agents on the Mac Studio do ordinary questions and code changes themselves; this overrides the "local coder first" / implementation-first / worker-delegation instructions below. Use the local coder only for background work nobody is waiting on, handed off with `local-job submit` and collected once with `local-job wait` (no polling). Measured: supervising local jobs cost more cloud tokens than it saved and was slower. Full rule: `~/.codex/AGENTS.md` (CLOUD FIRST).
