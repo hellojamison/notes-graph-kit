@@ -27,7 +27,7 @@ project notes are an operational memory system, not a diary. The notes should ma
 - Separate `Working`, `Not verified`, and `Tried and failed`. Do not let assumptions read like facts.
 - Production issues must cite direct evidence: logs, routes, database rows, migration rows, package hashes, notarization output, or exact commands.
 - Notes are a map, not the source of truth. If a route, DB row, package, or live app may have changed, verify it directly before relying on an old note.
-- Keep release commits scoped. Do not stage SDK caches, generated build output, `.codex`, `dist`, or unrelated note churn by accident.
+- Keep release commits scoped. Do not stage SDK caches, generated build output, local agent state folders, `dist`, or unrelated note churn by accident.
 
 ## Metadata Contract
 
@@ -90,7 +90,7 @@ Audit is read-only. A mapping can adopt an exact existing unmanaged note in plac
 
 Apply only audited safe changes and individually reviewed item IDs. A real apply creates a durable backup; dry-run does not. Use `rollback --backup <backup-id>` when needed. Rollback refuses files changed after migration so later user work is never silently overwritten.
 
-This note, [[_Codex/Start Here|Start Here]], and [[Templates/_README|Templates]] mark their kit-owned body regions. Keep repo-specific sections outside the managed marker pairs so later migrations can preserve them deterministically.
+This note, [[_Agent/Start Here|Start Here]], and [[Templates/_README|Templates]] mark their kit-owned body regions. Keep repo-specific sections outside the managed marker pairs so later migrations can preserve them deterministically.
 
 ## Status Rules
 

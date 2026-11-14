@@ -60,11 +60,11 @@ cd notes-graph-kit
 node install-notes-graph.cjs \
   --repo /path/to/target/repo \
   --app "App Name" \
-  --agent codex \
+  --agent agents \
   --vault "Project Notes"
 ```
 
-Options: `--agent codex|claude|gemini|copilot|cursor` (saved selection; backward-compatible default `codex`), `--repo` (exact Git worktree root; defaults to cwd), `--app` (required; rejects `[`, `]`, and `|` because they break Obsidian wikilinks), `--vault` (directory name only, defaults to `Project Notes`), `--force` (overwrite managed scripts/config), `--force-vault` (with `--force`, also overwrite vault files), `--allow-non-git` (explicit bootstrap escape hatch), `--dry-run` (preview only).
+Options: `--agent agents|cursor|gemini|copilot|claude` (saved selection; default `agents`, legacy `codex` accepted), `--repo` (exact Git worktree root; defaults to cwd), `--app` (required; rejects `[`, `]`, and `|` because they break Obsidian wikilinks), `--vault` (directory name only, defaults to `Project Notes`), `--force` (overwrite managed scripts/config), `--force-vault` (with `--force`, also overwrite vault files), `--allow-non-git` (explicit bootstrap escape hatch), `--dry-run` (preview only).
 
 The installer:
 
@@ -115,7 +115,7 @@ GitHub Actions CI runs `npm ci`, `npm test`, `npm run notes:search:eval`, `npm r
 
 ## Hard rules and gotchas
 
-- **One agent file** — explicitly pass `--agent` for the agent using the target repo. Manage only its file: Codex/Cursor use `AGENTS.md`, Claude uses `CLAUDE.md`, Gemini uses `GEMINI.md`, Copilot uses `.github/copilot-instructions.md`. Do not install every format. Upgrades and migrations use saved `config.agent`; legacy missing values default to `codex`. Changing selection preserves other agents' files. Unmanaged migration adoption accepts `--agent`; repeat the same selection in audit and apply. Installed migrations use the saved choice and reject overrides.
+- **One agent file** — explicitly pass `--agent` for the agent using the target repo. Manage only its file: `agents`/`cursor` use `AGENTS.md`, `claude` uses `CLAUDE.md`, Gemini uses `GEMINI.md`, Copilot uses `.github/copilot-instructions.md`. Do not install every format. Upgrades and migrations use saved `config.agent`; legacy missing values default to `codex`. Changing selection preserves other agents' files. Unmanaged migration adoption accepts `--agent`; repeat the same selection in audit and apply. Installed migrations use the saved choice and reject overrides.
 
 - **Authoritative source only** — fix bugs and add features here, then `--upgrade` consuming repos. Do not edit retired `notes-graph-kit/` copies inside app repos.
 - **Target safety** — `--repo` must be the exact Git worktree root unless `--allow-non-git` is intentional. Filesystem root and the user home directory are always rejected.
@@ -126,7 +126,7 @@ GitHub Actions CI runs `npm ci`, `npm test`, `npm run notes:search:eval`, `npm r
 - **Custom npm scripts** — if a target repo customized a `notes:*` command, the installer preserves it instead of overwriting.
 - **Selected instruction file merge** — install creates or appends a managed `## Project Notes Graph` block; it does not replace an existing section. Heading and marker examples inside fenced blocks do not count. Migration refreshes an existing managed block automatically; a legacy unmarked heading is preserved unless its exact audited adoption item is accepted.
 - **Template contract** — all eight product templates are `type: template` source notes with exactly one marked fenced YAML mapping. Generate notes through `notes:new`; never copy scaffold metadata manually. Normal upgrade leaves these vault files untouched.
-- **Managed document sections** — `_Codex/Start Here.md`, `Notes System.md`, and `Templates/_README.md` wrap kit-owned body regions in path-specific managed markers. Put repo-specific additions outside those markers so later audited migrations can preserve them deterministically.
+- **Managed document sections** — `_Agent/Start Here.md`, `Notes System.md`, and `Templates/_README.md` wrap kit-owned body regions in path-specific managed markers. Put repo-specific additions outside those markers so later audited migrations can preserve them deterministically.
 - **Placeholder substitution** — only vault skeleton files get app/vault name substitution; scripts are copied verbatim.
 - **Version stamp** — bump `package.json` version when changing install behavior; target `notes-graph.config.json` `kitVersion` reflects what was installed.
 
@@ -134,7 +134,7 @@ GitHub Actions CI runs `npm ci`, `npm test`, `npm run notes:search:eval`, `npm r
 
 Keep concise date-and-time-stamped notes in `Project Notes/` for every substantive kit change.
 
-Start from `Project Notes/_Codex/Start Here.md`, then use `Project Notes/Notes System.md` as the organization guide.
+Start from `Project Notes/_Agent/Start Here.md`, then use `Project Notes/Notes System.md` as the organization guide.
 
 For substantive tasks:
 
@@ -165,14 +165,14 @@ Prefer the repo-local notes helper:
 <!-- notes-graph-kit:start -->
 ## Project Notes Graph
 
-When installing or upgrading this kit, select only the instruction file needed by the agent using the repo (`--agent codex|claude|gemini|copilot|cursor`); do not install every format. Preserve other agents' existing files.
+When installing or upgrading this kit, select only the instruction file needed by the agent using the repo (the installer's `--agent` option); do not install every format. Preserve other agents' existing files.
 
 Keep concise date-and-time-stamped notes in this worktree's `Project Notes/` vault per substantive task.
 
-Use `Project Notes/_Codex/Start Here.md` as the graph entrypoint, then use `Project Notes/Notes System.md` as the note organization guide.
+Use `Project Notes/_Agent/Start Here.md` as the graph entrypoint, then use `Project Notes/Notes System.md` as the note organization guide.
 
 For substantive tasks:
-- Start from `_Codex/Start Here.md`.
+- Start from `_Agent/Start Here.md`.
 - Pick the relevant app, process, and runbook before editing notes.
 - Update one task-specific evidence/task note and close it with `notes:closeout`. Closeout writes a per-change daily entry file (`Project Notes/Daily/YYYY-MM-DD/HHMM-<slug>.md`); never edit the shared daily note (`Project Notes/YYYY-MM-DD.md`) in PRs.
 - Link task notes to `Apps/My Project.md` plus the relevant process and runbook.
@@ -211,7 +211,7 @@ These skills are optional guidance only. This kit works without Obsidian, the `o
 When notes-graph.config.json has workers.enabled:true, run npm run notes:worker -- doctor before the first worker job. If unavailable, report the limitation; never install a runtime or enable cloud fallback silently.
 The coordinator owns planning, architecture, ambiguity, risky changes and final acceptance. Route bounded mechanical work through npm run notes:worker -- run --role SCOUT|AUDITOR|TESTER --task "specific question" --input relevant/file (repeat inputs). Use real source/tool evidence; never a whole-repo dump.
 Workers default to read-only. Authorize exact test argv with --test-command; use --isolated-tests for artifact-writing tests. IMPLEMENTER requires separately authorized direct-runtime work in a clean isolated non-main worktree; this adapter does not dispatch it.
-For the local-coding profile, the rules are the same whatever model the coordinating agent runs (Codex with any model, Claude Code): the local coder is the first mechanical worker and the bounded cloud fallback is used only when authorized. The coordinator may ask a stronger model to review difficult or risky work; routine worker failure does not need one. A task exceeding about 90 seconds or lacking evidence must return promptly. Scope errors, stale packets and changed source return to the coordinator, not cloud.
+For the local-coding profile, the rules are the same whatever model the coordinating agent runs: the local coder is the first mechanical worker and the bounded cloud fallback is used only when authorized. The coordinator may ask a stronger model to review difficult or risky work; routine worker failure does not need one. A task exceeding about 90 seconds or lacking evidence must return promptly. Scope errors, stale packets and changed source return to the coordinator, not cloud.
 Consume the compact receipt and job artifact paths. Run npm run notes:worker -- review --job ID before using results later; review checks freshness and artifact integrity, not semantic correctness. Inspect material source/test evidence independently. Worker PASS and same-model agreement never certify evidence. Only the coordinator promotes accepted findings through notes:new/notes:closeout.
 <!-- notes-graph-kit:worker:end -->
 

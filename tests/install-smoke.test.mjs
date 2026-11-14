@@ -1881,7 +1881,7 @@ test('upgrade output surfaces all applicable migrations for direct and previousl
         '--upgrade',
         '--dry-run'
       ]);
-      assert.match(output, new RegExp(`\\[dry-run\\] Upgraded notes graph kit ${escapeRegExp(installedVersion)} -> 0\\.19\\.0`));
+      assert.match(output, new RegExp(`\\[dry-run\\] Upgraded notes graph kit ${escapeRegExp(installedVersion)} -> 0\\.20\\.0`));
       assert.match(
         output,
         new RegExp(`migrate-notes-graph\\.cjs audit --repo ${escapeRegExp(JSON.stringify(fs.realpathSync(repoRoot)))} --to 0\\.16\\.0`)
@@ -1961,8 +1961,8 @@ test('upgrade permits missing legacy kitVersion but rejects malformed values', (
       'install-notes-graph.cjs', '--repo', repoRoot, '--upgrade',
       ...managedChangeArgs(repoRoot)
     ]);
-    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.19\.0/);
-    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.19.0');
+    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.20\.0/);
+    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.20.0');
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
@@ -2618,7 +2618,7 @@ for (const [agent, selectedFile] of Object.entries(agentFiles)) {
         assert.equal(fs.existsSync(path.join(repoRoot, file)), file === selectedFile, file);
       }
       const config = JSON.parse(fs.readFileSync(path.join(repoRoot, 'notes-graph.config.json'), 'utf8'));
-      assert.equal(config.agent, agent);
+      assert.equal(config.agent, agent === 'codex' ? 'agents' : agent);
       for (const file of new Set(Object.values(agentFiles))) {
         if (file === selectedFile) continue;
         fs.mkdirSync(path.dirname(path.join(repoRoot, file)), { recursive: true });

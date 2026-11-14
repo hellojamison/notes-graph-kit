@@ -5,7 +5,10 @@ const crypto = require('node:crypto');
 const { extractWikilinkTargets, resolveTargetDetailed, getConfig } = require('./project-notes-graph.cjs');
 const { extractReceiptBlocks, extractOpenItemsBlock, validateReceipt } = require('./project-notes-receipts.cjs');
 
-const AGENT_FILES = Object.freeze({ codex: 'AGENTS.md', cursor: 'AGENTS.md', claude: 'CLAUDE.md', gemini: 'GEMINI.md', copilot: '.github/copilot-instructions.md' });
+function instructionFileFromConfig(config) {
+  const rel = typeof config.instructionFile === 'string' ? config.instructionFile : 'AGENTS.md';
+  return /^(?!\/)(?!.*\.\.)[A-Za-z0-9._\/-]+\.md$/.test(rel) ? rel : null;
+}
 const SECTION_START = '<!-- notes-graph-kit:start -->';
 const SECTION_END = '<!-- notes-graph-kit:end -->';
 const LEGACY_SECTION_START = '<!-- notes-graph-kit:agents:start -->';
@@ -23,8 +26,8 @@ function scriptsDir(repoRoot, hashes = {}) {
   return 'scripts';
 }
 function instruction(config, repoRoot) {
-  const agent = typeof config.agent === 'string' && AGENT_FILES[config.agent] ? config.agent : 'codex';
-  const rel = AGENT_FILES[agent]; const file = path.join(repoRoot, rel); const state = regularState(file);
+  const agent = typeof config.agent === 'string' && config.agent ? config.agent : 'agents';
+  const rel = instructionFileFromConfig(config) || 'AGENTS.md'; const file = path.join(repoRoot, rel); const state = regularState(file);
   let presence = 'missing';
   if (state === 'configured') {
     const text = fs.readFileSync(file, 'utf8');

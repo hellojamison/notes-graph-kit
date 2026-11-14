@@ -20,7 +20,7 @@ related_apps:
 related_processes:
   - "[[Processes/Notes Graph Maintenance|Notes Graph Maintenance]]"
 related_runbooks:
-  - "[[Runbooks/Codex Notes Workflow|Codex Notes Workflow]]"
+  - "[[Runbooks/Agent Notes Workflow|Agent Notes Workflow]]"
 related_decisions: []
 created_by: project-notes-cli
 ---

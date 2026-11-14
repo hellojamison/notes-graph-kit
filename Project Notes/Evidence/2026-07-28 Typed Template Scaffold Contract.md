@@ -15,7 +15,7 @@ related_apps:
 related_processes:
   - "[[Processes/Notes Graph Maintenance|Notes Graph Maintenance]]"
 related_runbooks:
-  - "[[Runbooks/Codex Notes Workflow|Codex Notes Workflow]]"
+  - "[[Runbooks/Agent Notes Workflow|Agent Notes Workflow]]"
 related_decisions:
   - "[[Decisions/Notes Graph Adoption Policy|Notes Graph Adoption Policy]]"
 last_verified: "2026-07-28"
@@ -64,7 +64,7 @@ Ship a consistent machine-readable template contract and document typed note cre
 
 - App: [[Apps/My Project|My Project]]
 - Process: [[Processes/Notes Graph Maintenance|Notes Graph Maintenance]]
-- Runbook: [[Runbooks/Codex Notes Workflow|Codex Notes Workflow]]
+- Runbook: [[Runbooks/Agent Notes Workflow|Agent Notes Workflow]]
 
 ## Closeout 2026-07-28 13:25 PDT
 

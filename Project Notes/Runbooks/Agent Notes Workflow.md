@@ -1,5 +1,5 @@
 ---
-title: "Codex Notes Workflow"
+title: "Agent Notes Workflow"
 schema_version: 1
 type: "runbook"
 status: "current"
@@ -16,7 +16,7 @@ related_processes:
   - "[[Processes/Notes Graph Maintenance|Notes Graph Maintenance]]"
 ---
 
-# Codex Notes Workflow
+# Agent Notes Workflow
 
 Use this runbook for task-start and task-closeout note updates.
 

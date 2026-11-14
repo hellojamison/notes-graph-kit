@@ -15,7 +15,7 @@ related_apps:
 related_processes:
   - "[[Processes/Notes Graph Maintenance|Notes Graph Maintenance]]"
 related_runbooks:
-  - "[[Runbooks/Codex Notes Workflow|Codex Notes Workflow]]"
+  - "[[Runbooks/Agent Notes Workflow|Agent Notes Workflow]]"
   - "[[Notes System|Notes System]]"
 related_decisions:
   - "[[Decisions/Notes Graph Adoption Policy|Notes Graph Adoption Policy]]"

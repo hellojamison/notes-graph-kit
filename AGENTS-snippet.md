@@ -1,19 +1,19 @@
 # Agent Instructions Snippet
 
-The installer writes this managed block into only the selected agent's instruction file automatically (creating the file if needed, appending if it exists, and skipping if an installed marker pair or a real `## Project Notes Graph` heading already exists outside a fenced code block). Pass `--agent codex|claude|gemini|copilot|cursor` for the agent using the target repo; do not install every format. For manual installs, copy the complete marked block into only that agent's instruction file, replacing `Project Notes` and `My Project` if you changed `vaultDir` or `appName` in `notes-graph.config.json`.
+The installer writes this managed block into only the selected agent's instruction file automatically (creating the file if needed, appending if it exists, and skipping if an installed marker pair or a real `## Project Notes Graph` heading already exists outside a fenced code block). Pass `--agent <name>` (see the installer's `--help`) for the agent using the target repo; do not install every format. For manual installs, copy the complete marked block into only that agent's instruction file, replacing `Project Notes` and `My Project` if you changed `vaultDir` or `appName` in `notes-graph.config.json`.
 
 ```md
 <!-- notes-graph-kit:start -->
 ## Project Notes Graph
 
-When installing or upgrading this kit, select only the instruction file needed by the agent using the repo (`--agent codex|claude|gemini|copilot|cursor`); do not install every format. Preserve other agents' existing files.
+When installing or upgrading this kit, select only the instruction file needed by the agent using the repo (the installer's `--agent` option); do not install every format. Preserve other agents' existing files.
 
 Keep concise date-and-time-stamped notes in this worktree's `Project Notes/` vault per substantive task.
 
-Use `Project Notes/_Codex/Start Here.md` as the graph entrypoint, then use `Project Notes/Notes System.md` as the note organization guide.
+Use `Project Notes/_Agent/Start Here.md` as the graph entrypoint, then use `Project Notes/Notes System.md` as the note organization guide.
 
 For substantive tasks:
-- Start from `_Codex/Start Here.md`.
+- Start from `_Agent/Start Here.md`.
 - Pick the relevant app, process, and runbook before editing notes.
 - Update one task-specific evidence/task note and close it with `notes:closeout`. Closeout writes a per-change daily entry file (`Project Notes/Daily/YYYY-MM-DD/HHMM-<slug>.md`); never edit the shared daily note (`Project Notes/YYYY-MM-DD.md`) in PRs.
 - Link task notes to `Apps/My Project.md` plus the relevant process and runbook.

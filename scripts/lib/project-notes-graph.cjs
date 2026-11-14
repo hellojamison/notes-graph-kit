@@ -65,7 +65,7 @@ const relationshipTypeExpectations = {
 };
 
 const structuredFolders = new Set([
-  '_Codex',
+  '_Agent',
   'Apps',
   'Dashboards',
   'Processes',
@@ -100,7 +100,15 @@ function getConfig(env = process.env) {
     return {};
   }
   try {
-    return JSON.parse(fs.readFileSync(configPath, 'utf8')) || {};
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8')) || {};
+    // Vaults created before the entry folder was renamed keep their old folder
+    // name; the installer records it here so those notes stay structured.
+    if (Array.isArray(config.legacyStructuredFolders)) {
+      for (const folder of config.legacyStructuredFolders) {
+        if (typeof folder === 'string' && /^[A-Za-z0-9_-]+$/.test(folder)) structuredFolders.add(folder);
+      }
+    }
+    return config;
   } catch (error) {
     throw new Error(`Invalid notes graph config at ${configPath}: ${error.message}`);
   }

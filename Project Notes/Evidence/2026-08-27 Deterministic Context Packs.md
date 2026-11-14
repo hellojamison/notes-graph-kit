@@ -14,7 +14,7 @@ related_apps:
 related_processes:
   - "[[Processes/Notes Graph Maintenance|Notes Graph Maintenance]]"
 related_runbooks:
-  - "[[Runbooks/Codex Notes Workflow|Codex Notes Workflow]]"
+  - "[[Runbooks/Agent Notes Workflow|Agent Notes Workflow]]"
 related_decisions:
   - "[[Decisions/Notes Graph Adoption Policy|Notes Graph Adoption Policy]]"
 created_by: project-notes-cli
@@ -41,7 +41,7 @@ Add a read-only notes:context command that assembles ranked sections and one-hop
 
 - App: [[Apps/My Project|My Project]]
 - Process: [[Processes/Notes Graph Maintenance|Notes Graph Maintenance]]
-- Runbook: [[Runbooks/Codex Notes Workflow|Codex Notes Workflow]]
+- Runbook: [[Runbooks/Agent Notes Workflow|Agent Notes Workflow]]
 
 ## Closeout 2026-08-27 11:07 PDT
 

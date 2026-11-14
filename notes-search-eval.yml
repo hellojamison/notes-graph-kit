@@ -10,7 +10,7 @@ queries:
   - id: typed-release-workflow
     query: create typed release note
     expected:
-      - path: _Codex/Start Here.md
+      - path: _Agent/Start Here.md
         heading: Workflow
 
   - id: ambiguous-wikilink-validation

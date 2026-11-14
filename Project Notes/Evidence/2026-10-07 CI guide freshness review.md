@@ -14,7 +14,7 @@ related_apps:
 related_processes:
   - "[[Processes/Notes Graph Maintenance|Notes Graph Maintenance]]"
 related_runbooks:
-  - "[[Runbooks/Codex Notes Workflow|Codex Notes Workflow]]"
+  - "[[Runbooks/Agent Notes Workflow|Agent Notes Workflow]]"
 related_decisions:
   - "[[Decisions/Notes Graph Adoption Policy|Notes Graph Adoption Policy]]"
 created_by: project-notes-cli
@@ -65,6 +65,6 @@ Review guides again before the 90-day freshness threshold; do not refresh dates 
 
 ## Closeout 2026-10-07 21:12 PDT
 
-- Working: Reviewed Notes Graph Maintenance and Codex Notes Workflow against AGENTS.md, Notes System.md, the adoption decision, committed npm scripts, and .github/workflows/ci.yml. Updated their last_verified to the local review date and documented every CI check in the runbook. Preserved the stats baseline.
+- Working: Reviewed Notes Graph Maintenance and Agent Notes Workflow against AGENTS.md, Notes System.md, the adoption decision, committed npm scripts, and .github/workflows/ci.yml. Updated their last_verified to the local review date and documented every CI check in the runbook. Preserved the stats baseline.
 - Verified: The local command-only worker reproduced the same two stale guides reported by GitHub run 37724509879. Manual review confirmed existing guidance and command names match current source.
 - Not verified: The subsequent GitHub run is pending; all local CI checks passed on the scoped snapshot.

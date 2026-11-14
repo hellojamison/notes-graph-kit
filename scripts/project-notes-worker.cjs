@@ -12,7 +12,10 @@ const handoff = require('./project-notes-handoff.cjs');
 
 const START = '<!-- notes-graph-kit:worker:start -->';
 const END = '<!-- notes-graph-kit:worker:end -->';
-const AGENTS = { codex: 'AGENTS.md', cursor: 'AGENTS.md', claude: 'CLAUDE.md', gemini: 'GEMINI.md', copilot: '.github/copilot-instructions.md' };
+function instructionFileFromConfig(config) {
+  const rel = typeof config.instructionFile === 'string' ? config.instructionFile : 'AGENTS.md';
+  return /^(?!\/)(?!.*\.\.)[A-Za-z0-9._\/-]+\.md$/.test(rel) ? rel : null;
+}
 const SECTIONS = ['CLAIM', 'EVIDENCE', 'COMMANDS RUN', 'FILES READ', 'FILES MODIFIED', 'TESTS', 'RISKS / UNCERTAINTY', 'RECOMMENDED NEXT ACTION'];
 const HELP = `Optional repository workers (disabled by default)
   notes:worker enable [--profile local-coding] [--dry-run]
@@ -80,8 +83,8 @@ function repoContext(env = process.env) {
   const configFile = path.join(root, 'notes-graph.config.json');
   regular(configFile);
   const config = json(configFile);
-  const instruction = AGENTS[config.agent || 'codex'];
-  if (!instruction) throw new Error('Invalid selected agent');
+  const instruction = instructionFileFromConfig(config);
+  if (!instruction) throw new Error('Invalid instruction file in notes-graph.config.json');
   return { root, configFile, config, instruction,
     env: { ...env, PROJECT_NOTES_NOTES_REPO_ROOT: root, PROJECT_NOTES_CONFIG: configFile,
       PROJECT_NOTES_NOTES_VAULT_ROOT: path.resolve(root, config.vaultDir || 'Project Notes') } };
@@ -103,7 +106,7 @@ function instructionContent(content, enabled) {
     if (line.trim() === END) ends.push(index);
   });
   if (starts.length !== ends.length || starts.length > 1 || (starts.length && starts[0] >= ends[0])) throw new Error('Damaged worker instruction markers');
-  const block = `${START}\n## Optional repository workers\n\nWhen notes-graph.config.json has workers.enabled:true, run npm run notes:worker -- doctor before the first worker job. If unavailable, report the limitation; never install a runtime or enable cloud fallback silently.\nThe coordinator owns planning, architecture, ambiguity, risky changes and final acceptance. Route bounded mechanical work through npm run notes:worker -- run --role SCOUT|AUDITOR|TESTER --task "specific question" --input relevant/file (repeat inputs). Use real source/tool evidence; never a whole-repo dump.\nWorkers default to read-only. Authorize exact test argv with --test-command; use --isolated-tests for artifact-writing tests. IMPLEMENTER requires separately authorized direct-runtime work in a clean isolated non-main worktree; this adapter does not dispatch it.\nFor the local-coding profile, the rules are the same whatever model the coordinating agent runs (Codex with any model, Claude Code): the local coder is the first mechanical worker and the bounded cloud fallback is used only when authorized. The coordinator may ask a stronger model to review difficult or risky work; routine worker failure does not need one. A task exceeding about 90 seconds or lacking evidence must return promptly. Scope errors, stale packets and changed source return to the coordinator, not cloud.\nConsume the compact receipt and job artifact paths. Run npm run notes:worker -- review --job ID before using results later; review checks freshness and artifact integrity, not semantic correctness. Inspect material source/test evidence independently. Worker PASS and same-model agreement never certify evidence. Only the coordinator promotes accepted findings through notes:new/notes:closeout.\n${END}`;
+  const block = `${START}\n## Optional repository workers\n\nWhen notes-graph.config.json has workers.enabled:true, run npm run notes:worker -- doctor before the first worker job. If unavailable, report the limitation; never install a runtime or enable cloud fallback silently.\nThe coordinator owns planning, architecture, ambiguity, risky changes and final acceptance. Route bounded mechanical work through npm run notes:worker -- run --role SCOUT|AUDITOR|TESTER --task "specific question" --input relevant/file (repeat inputs). Use real source/tool evidence; never a whole-repo dump.\nWorkers default to read-only. Authorize exact test argv with --test-command; use --isolated-tests for artifact-writing tests. IMPLEMENTER requires separately authorized direct-runtime work in a clean isolated non-main worktree; this adapter does not dispatch it.\nFor the local-coding profile, the rules are the same whatever model the coordinating agent runs: the local coder is the first mechanical worker and the bounded cloud fallback is used only when authorized. The coordinator may ask a stronger model to review difficult or risky work; routine worker failure does not need one. A task exceeding about 90 seconds or lacking evidence must return promptly. Scope errors, stale packets and changed source return to the coordinator, not cloud.\nConsume the compact receipt and job artifact paths. Run npm run notes:worker -- review --job ID before using results later; review checks freshness and artifact integrity, not semantic correctness. Inspect material source/test evidence independently. Worker PASS and same-model agreement never certify evidence. Only the coordinator promotes accepted findings through notes:new/notes:closeout.\n${END}`;
   if (starts.length) {
     lines.splice(starts[0], ends[0] - starts[0] + 1, ...(enabled ? block.split('\n') : []));
     return lines.join('\n');

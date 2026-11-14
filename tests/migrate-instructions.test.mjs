@@ -236,7 +236,7 @@ test('legacy config defaults to Codex without creating other agent files and rol
     fs.writeFileSync(configPath, original);
     const applied = migrate(repo, 'apply', '--all-safe');
     assert.equal(applied.status, 0);
-    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).agent, 'codex');
+    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).agent, 'agents');
     for (const rel of ['CLAUDE.md', 'GEMINI.md', '.github/copilot-instructions.md']) {
       assert.equal(fs.existsSync(path.join(repo, rel)), false);
     }
@@ -288,7 +288,7 @@ for (const [agent, instructionFile] of Object.entries({ codex: 'AGENTS.md', curs
       assert.equal(fs.existsSync(path.join(repo, instructionFile)), false);
       const applied = migrate(repo, 'apply', ...acceptedOptions, '--all-safe');
       assert.equal(applied.status, 0);
-      assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).agent, agent);
+      assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).agent, agent === 'codex' ? 'agents' : agent);
       for (const file of ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', '.github/copilot-instructions.md']) {
         assert.equal(fs.existsSync(path.join(repo, file)), file === instructionFile, file);
       }

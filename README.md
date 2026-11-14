@@ -46,7 +46,7 @@ cd notes-graph-kit
 node install-notes-graph.cjs \
   --repo /path/to/target/repo \
   --app "App Name" \
-  --agent codex \
+  --agent agents \
   --vault "Project Notes"
 ```
 
@@ -133,6 +133,13 @@ git diff --check
 
 ## Upgrade an existing install
 
+> **Upgrading to 0.20.0 (neutral names).** New vaults use `_Agent/` as the entry
+> folder and `Runbooks/Agent Notes Workflow.md`, and the installed scripts no
+> longer contain agent product names. Existing vaults are not renamed: a vault
+> that still has the older entry folder keeps it, and the upgrade records it in
+> `legacyStructuredFolders` so validation is unchanged. A vault already renamed
+> to `_Agent/` is left as it is. A saved `agent` of `codex` becomes `agents`.
+
 > **Upgrading to 0.19.0 (daily entry files).** No vault migration is needed and
 > existing daily notes are not touched. After the upgrade, `notes:closeout`
 > writes `Project Notes/Daily/YYYY-MM-DD/HHMM-<slug>.md` instead of inserting
@@ -189,7 +196,7 @@ format or infer the active agent from files that happen to exist.
 
 | Agent | Option | File managed by the kit |
 | --- | --- | --- |
-| Codex | `--agent codex` | `AGENTS.md` |
+| Any agent that reads `AGENTS.md` (default) | `--agent agents` | `AGENTS.md` |
 | Cursor | `--agent cursor` | `AGENTS.md` |
 | Claude Code | `--agent claude` | `CLAUDE.md` |
 | Gemini CLI | `--agent gemini` | `GEMINI.md` |
@@ -212,7 +219,9 @@ The choice is saved as `agent` in `notes-graph.config.json`. Upgrade uses that
 choice; pass `--upgrade --agent gemini` to change it intentionally. Each invocation
 manages one file. Other agents' files are never deleted or refreshed. For backward
 compatibility, omitted `--agent` on install and legacy configs without `agent`
-default to `codex`; agents setting up a repo must select themselves explicitly.
+default to `agents` (`AGENTS.md`). The older value `codex` is still accepted and is
+saved as `agents`. The chosen file is also saved as `instructionFile`, which the
+installed helper scripts read.
 
 All formats use `AGENTS-snippet.md` as their shared source. Custom surrounding
 content is preserved. Existing instruction sections are left unchanged during
@@ -385,7 +394,7 @@ real apply or rollback commits writes; audit and dry-run always report
 Ordinary Markdown outside managed paths appears under `Preserved legacy`, even
 though its bytes are never rewritten.
 
-The 0.4.0 skeleton marks the kit-managed body regions in `_Codex/Start Here.md`,
+The 0.4.0 skeleton marks the kit-managed body regions in `_Agent/Start Here.md`,
 `Notes System.md`, and `Templates/_README.md`. Migration can update those
 regions deterministically. Keep repo-specific prose outside the managed marker
 pairs; migration must not replace unmarked content. Review any local edits
@@ -888,7 +897,7 @@ There is no automatic dispatch, lifecycle engine, or shared-note writer.
 
 Typical agent workflow:
 
-1. Read `Project Notes/_Codex/Start Here.md`.
+1. Read `Project Notes/_Agent/Start Here.md`.
 2. Run `npm run notes:route -- "<task>"`.
 3. Create the appropriate typed note with `npm run notes:new`.
 4. Do the work and record exact verification.

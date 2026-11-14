@@ -13,7 +13,7 @@ confidence: "medium"
 related_apps:
   - "[[Apps/My Project|My Project]]"
 related_runbooks:
-  - "[[Runbooks/Codex Notes Workflow|Codex Notes Workflow]]"
+  - "[[Runbooks/Agent Notes Workflow|Agent Notes Workflow]]"
 related_decisions:
   - "[[Decisions/Notes Graph Adoption Policy|Notes Graph Adoption Policy]]"
 related_evidence:
@@ -24,4 +24,4 @@ related_evidence:
 
 Maintain the notes graph without turning old notes into a migration project.
 
-Review mutable guidance against the current repository before updating `last_verified`. Use [[Runbooks/Codex Notes Workflow|Codex Notes Workflow]] for the local validation checklist. A freshness regression requires a real review; preserve the reviewed stats baseline and record the result in a dated task note.
+Review mutable guidance against the current repository before updating `last_verified`. Use [[Runbooks/Agent Notes Workflow|Agent Notes Workflow]] for the local validation checklist. A freshness regression requires a real review; preserve the reviewed stats baseline and record the result in a dated task note.

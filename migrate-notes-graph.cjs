@@ -20,7 +20,7 @@ Options:
   --repo             Exact Git worktree root. Defaults to the current directory.
   --app              Required with --vault when adopting an unmanaged vault.
   --vault            Existing vault directory name for unmanaged adoption.
-  --agent            Agent for unmanaged adoption: codex|claude|gemini|copilot|cursor.
+  --agent            Agent for unmanaged adoption: agents|cursor|gemini|copilot|claude.
                      Installed repos use their saved selection; change it via upgrade.
   --map              YAML mapping for explicit in-place legacy-note promotion.
   --to               Supported target version at or below this kit (default ${kitVersion}).

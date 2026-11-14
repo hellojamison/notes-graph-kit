@@ -28,6 +28,17 @@ const MANIFEST_NAME = 'manifest.json';
 
 class MigrationInputError extends Error {}
 
+// [legacy rel prefix, current rel prefix, legacy probe, current probe]
+const LEGACY_VAULT_RENAMES = Object.freeze([
+  ['_Codex/', '_Agent/', '_Codex', '_Agent'],
+  ['Runbooks/Codex Notes Workflow.md', 'Runbooks/Agent Notes Workflow.md', 'Runbooks/Codex Notes Workflow.md', 'Runbooks/Agent Notes Workflow.md']
+]);
+// Text rewrites [current, legacy] applied to kit source notes for vaults that keep a legacy name.
+const LEGACY_VAULT_TEXT = Object.freeze([
+  [['_Agent/', '_Codex/']],
+  [['Agent Notes Workflow', 'Codex Notes Workflow']]
+]);
+
 function hashBuffer(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
@@ -131,7 +142,7 @@ function resolveContext(options) {
   if (installedConfig && options.agent != null) {
     throw new MigrationInputError('--agent is only valid for unmanaged adoption; use install-notes-graph.cjs --upgrade --agent to change an installed selection');
   }
-  const agent = installedConfig?.agent ?? options.agent ?? 'codex';
+  const agent = installer.normalizeAgent(installedConfig?.agent ?? options.agent ?? 'agents');
   const instructionFile = installer.instructionFileForAgent(agent);
   if (!installedConfig && (!options.app || !options.vault)) {
     throw new MigrationInputError(
@@ -345,6 +356,24 @@ function makePlanner(context, options) {
     });
   }
 
+  // Migrations written before 0.20.0 name the entry folder and workflow runbook
+  // by their old names. Vaults that still have those names keep them; every
+  // other vault, and the kit's own source notes, use the current names.
+  const vaultHas = (rel) => fs.existsSync(path.join(context.repoRoot, context.vaultDir, ...rel.split('/')));
+  const renames = LEGACY_VAULT_RENAMES.map(([legacy, current, probeLegacy, probeCurrent]) => ({
+    legacy,
+    current,
+    keepLegacy: vaultHas(probeLegacy) && !vaultHas(probeCurrent)
+  }));
+  const sourceRel = (rel) => renames.reduce(
+    (value, { legacy, current }) => (value.startsWith(legacy) ? `${current}${value.slice(legacy.length)}` : value), rel);
+  const targetRel = (rel) => renames.reduce(
+    (value, { legacy, current, keepLegacy }) => (!keepLegacy && value.startsWith(legacy) ? `${current}${value.slice(legacy.length)}` : value), rel);
+  const sourceTextForTarget = (text) => renames.reduce(
+    (value, { keepLegacy }, index) => (keepLegacy
+      ? LEGACY_VAULT_TEXT[index].reduce((inner, [current, legacy]) => inner.split(current).join(legacy), value)
+      : value), text);
+
   const planner = {
     ...context,
     installer,
@@ -352,13 +381,13 @@ function makePlanner(context, options) {
     readRepo,
     readOriginalRepo,
     readVault(rel) {
-      return readRepo(`${context.vaultDir}/${rel}`);
+      return readRepo(`${context.vaultDir}/${targetRel(rel)}`);
     },
     readOriginalVault(rel) {
-      return readOriginalRepo(`${context.vaultDir}/${rel}`);
+      return readOriginalRepo(`${context.vaultDir}/${targetRel(rel)}`);
     },
     isKnownHistoricalVaultFile(rel) {
-      const original = readOriginalRepo(`${context.vaultDir}/${rel}`);
+      const original = readOriginalRepo(`${context.vaultDir}/${targetRel(rel)}`);
       if (original == null) {
         return false;
       }
@@ -386,13 +415,13 @@ function makePlanner(context, options) {
     },
     readSourceVault(rel) {
       const source = fs.readFileSync(
-        path.join(installer.kitVersion ? path.dirname(require.resolve('../install-notes-graph.cjs')) : '', 'Project Notes', ...rel.split('/')),
+        path.join(installer.kitVersion ? path.dirname(require.resolve('../install-notes-graph.cjs')) : '', 'Project Notes', ...sourceRel(rel).split('/')),
         'utf8'
       );
-      return installer.replaceAppPlaceholders(source, context.appName, context.appFileBase);
+      return installer.replaceAppPlaceholders(sourceTextForTarget(source), context.appName, context.appFileBase);
     },
     repoRelForVault(rel) {
-      return `${context.vaultDir}/${rel}`;
+      return `${context.vaultDir}/${targetRel(rel)}`;
     },
     frontmatter(text) {
       return splitFrontmatter(text).frontmatter || {};
@@ -627,6 +656,7 @@ function prospectiveConfig(context, state) {
   base.vaultDir = context.vaultDir;
   base.appRel = context.appRel;
   base.agent = context.agent;
+  base.instructionFile = context.instructionFile;
   base.kitVersion = installer.kitVersion;
   base.managedScriptHashes = installer.managedScriptHashes();
   base.vaultMigrationState = state;

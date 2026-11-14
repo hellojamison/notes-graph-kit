@@ -77,7 +77,7 @@ test('stats adoption reports recorded state, helper drift, process status covera
     fs.writeFileSync(helper, 'local helper\n');
     const digest = crypto.createHash('sha256').update('different baseline\n').digest('hex');
     fs.writeFileSync(path.join(repo, 'notes-graph.config.json'), JSON.stringify({
-      vaultDir: 'Project Notes', kitVersion: '0.16.0', agent: 'claude',
+      vaultDir: 'Project Notes', kitVersion: '0.16.0', agent: 'claude', instructionFile: 'CLAUDE.md',
       managedScriptHashes: { 'scripts/project-notes.cjs': digest },
       vaultMigrationState: { schemaVersion: 1, applied: ['vault-0.14.0-current-evidence'] },
       routes: [{ processRel: 'Processes/Active.md' }]
@@ -106,6 +106,7 @@ test('stats does not treat fenced marker examples as installed agent instruction
     const configPath = path.join(repo, 'notes-graph.config.json');
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     config.agent = 'claude';
+    config.instructionFile = 'CLAUDE.md';
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
     fs.writeFileSync(path.join(repo, 'CLAUDE.md'), [
       '# Local instructions', '', '```md', '<!-- notes-graph-kit:start -->',
@@ -121,7 +122,7 @@ test('stats adoption honors PROJECT_NOTES_CONFIG overrides', () => {
   const repo = fixture(false);
   try {
     const override = path.join(repo, 'alternate-notes-config.json');
-    fs.writeFileSync(override, JSON.stringify({ vaultDir: 'Project Notes', agent: 'claude' }));
+    fs.writeFileSync(override, JSON.stringify({ vaultDir: 'Project Notes', agent: 'claude', instructionFile: 'CLAUDE.md' }));
     fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '<!-- notes-graph-kit:start -->\nlive instructions\n<!-- notes-graph-kit:end -->\n');
     const result = run(repo, ['--json'], { PROJECT_NOTES_CONFIG: override });
     assert.equal(result.status, 0, result.stderr);
@@ -141,7 +142,7 @@ test('stats adoption supports a vault supplied only through environment override
     assert.equal(result.status, 0, result.stderr);
     const adoption = JSON.parse(result.stdout).adoption;
     assert.equal(adoption.kit_version, null);
-    assert.equal(adoption.instruction.selected_agent, 'codex');
+    assert.equal(adoption.instruction.selected_agent, 'agents');
   } finally { fs.rmSync(repo, { recursive: true, force: true }); }
 });
 

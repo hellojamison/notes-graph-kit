@@ -32,7 +32,13 @@ const VERIFIED_014_HASHES = Object.freeze({
   'scripts/lib/validate-project-notes-graph.cjs': '12be7d178b3190c13d63f3d07e67aa8e4d9fe6131e55a13740e7c816b9e08bce'
 });
 
+const DEFAULT_AGENT = 'agents';
+// Entry folder name used by vaults created before 0.20.0. Kept only so those
+// vaults keep working; new vaults use ENTRY_FOLDER.
+const ENTRY_FOLDER = '_Agent';
+const LEGACY_ENTRY_FOLDER = '_Codex';
 const AGENT_INSTRUCTION_FILES = Object.freeze({
+  agents: 'AGENTS.md',
   codex: 'AGENTS.md',
   cursor: 'AGENTS.md',
   claude: 'CLAUDE.md',
@@ -40,7 +46,7 @@ const AGENT_INSTRUCTION_FILES = Object.freeze({
   copilot: '.github/copilot-instructions.md'
 });
 
-function instructionFileForAgent(agent = 'codex') {
+function instructionFileForAgent(agent = DEFAULT_AGENT) {
   if (typeof agent !== 'string' || !Object.hasOwn(AGENT_INSTRUCTION_FILES, agent)) {
     throw new Error(`Unknown agent ${JSON.stringify(agent)}; choose ${Object.keys(AGENT_INSTRUCTION_FILES).join(', ')}`);
   }
@@ -114,8 +120,9 @@ Options:
   --repo      Exact target Git worktree root. Defaults to current working
               directory.
   --app       App/product name (required for install).
-  --agent     codex | claude | gemini | copilot | cursor. Install only its file.
-              Saved for upgrades; legacy/default agent is codex.
+  --agent     agents | cursor | gemini | copilot | claude. Install only its file.
+              Saved for upgrades; default is agents (AGENTS.md). The legacy
+              value codex is still accepted and saved as agents.
   --vault     Vault directory name. Defaults to "Project Notes".
   --upgrade   Re-copy kit-managed scripts, add missing agent instruction blocks,
               and bump kitVersion in the target
@@ -692,8 +699,28 @@ function preservedScriptLines(preservedScripts) {
 const AGENTS_SECTION_START = '<!-- notes-graph-kit:start -->';
 const AGENTS_SECTION_END = '<!-- notes-graph-kit:end -->';
 
-function agentsSnippet(appName, vaultDir, appFileBase, appRel) {
-  const raw = fs.readFileSync(path.join(kitRoot, 'AGENTS-snippet.md'), 'utf8');
+function normalizeAgent(agent) {
+  return agent === 'codex' ? DEFAULT_AGENT : agent;
+}
+
+function usesLegacyEntryFolder(repoRoot, vaultDir) {
+  if (!repoRoot) return false;
+  const vaultRoot = path.join(repoRoot, vaultDir);
+  return pathExists(path.join(vaultRoot, LEGACY_ENTRY_FOLDER)) && !pathExists(path.join(vaultRoot, ENTRY_FOLDER));
+}
+
+function applyLegacyEntryFolder(config, repoRoot, vaultDir) {
+  const others = Array.isArray(config.legacyStructuredFolders)
+    ? config.legacyStructuredFolders.filter((folder) => folder !== LEGACY_ENTRY_FOLDER)
+    : [];
+  const folders = usesLegacyEntryFolder(repoRoot, vaultDir) ? [...others, LEGACY_ENTRY_FOLDER] : others;
+  if (folders.length) config.legacyStructuredFolders = folders;
+  else delete config.legacyStructuredFolders;
+}
+
+function agentsSnippet(appName, vaultDir, appFileBase, appRel, repoRoot = null) {
+  let raw = fs.readFileSync(path.join(kitRoot, 'AGENTS-snippet.md'), 'utf8');
+  if (usesLegacyEntryFolder(repoRoot, vaultDir)) raw = raw.split(`${ENTRY_FOLDER}/`).join(`${LEGACY_ENTRY_FOLDER}/`);
   const blockMatch = raw.match(/```md\n([\s\S]*?)```/);
   const block = blockMatch ? blockMatch[1] : raw;
   const headingSentinel = '\u0000NOTES_GRAPH_AGENTS_HEADING\u0000';
@@ -742,7 +769,7 @@ function scanAgentsContent(content) {
 
 function buildAgentsBlock(repoRoot, appName, vaultDir, appFileBase, instructionFile = 'AGENTS.md', appRel) {
   const agentsPath = path.join(repoRoot, instructionFile);
-  const section = agentsSnippet(appName, vaultDir, appFileBase, appRel).trimEnd();
+  const section = agentsSnippet(appName, vaultDir, appFileBase, appRel, repoRoot).trimEnd();
   const result = { rel: instructionFile, kind: 'agents' };
 
   assertRegularFileIfExists(agentsPath, instructionFile);
@@ -1053,7 +1080,7 @@ function install(args) {
   const vaultWrites = buildVaultWrites(appName, vaultDir, appFileBase);
   const hasPreservedVaultCollision = !(force && forceVault)
     && vaultWrites.some((write) => pathExists(targetPathForWrite(repoRoot, write.rel)));
-  const agent = args.agent ?? 'codex';
+  const agent = normalizeAgent(args.agent ?? DEFAULT_AGENT);
   const instructionFile = instructionFileForAgent(agent);
   const config = buildConfig(appName, vaultDir, appFileBase, {
     appliedMigrations: hasPreservedVaultCollision
@@ -1062,6 +1089,7 @@ function install(args) {
   });
 
   config.agent = agent;
+  config.instructionFile = instructionFile;
   config.managedScriptHashes = managedScriptHashes();
 
   const writes = [
@@ -1160,8 +1188,10 @@ function upgrade(args) {
   config.kitVersion = kitVersion;
   config.workers ??= { enabled: false, profile: 'local-coding' };
   config.managedScriptHashes = managedScriptHashes();
-  config.agent = args.agent ?? config.agent ?? 'codex';
+  config.agent = normalizeAgent(args.agent ?? config.agent ?? DEFAULT_AGENT);
   const instructionFile = instructionFileForAgent(config.agent);
+  config.instructionFile = instructionFile;
+  applyLegacyEntryFolder(config, repoRoot, typeof config.vaultDir === 'string' ? config.vaultDir : SKELETON_VAULT_DIR);
   writes.push({
     rel: 'notes-graph.config.json',
     content: `${JSON.stringify(config, null, 2)}\n`,
@@ -1267,6 +1297,7 @@ module.exports = {
   main,
   upgrade,
   instructionFileForAgent,
+  normalizeAgent,
   parseArgs,
   buildConfig,
   buildVaultWrites,

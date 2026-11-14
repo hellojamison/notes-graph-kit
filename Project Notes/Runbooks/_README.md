@@ -14,4 +14,4 @@ related_apps:
 
 Repeatable commands and operational procedures.
 
-- [[Runbooks/Codex Notes Workflow|Codex Notes Workflow]]
+- [[Runbooks/Agent Notes Workflow|Agent Notes Workflow]]
