@@ -1881,7 +1881,7 @@ test('upgrade output surfaces all applicable migrations for direct and previousl
         '--upgrade',
         '--dry-run'
       ]);
-      assert.match(output, new RegExp(`\\[dry-run\\] Upgraded notes graph kit ${escapeRegExp(installedVersion)} -> 0\\.20\\.0`));
+      assert.match(output, new RegExp(`\\[dry-run\\] Upgraded notes graph kit ${escapeRegExp(installedVersion)} -> 0\\.20\\.1`));
       assert.match(
         output,
         new RegExp(`migrate-notes-graph\\.cjs audit --repo ${escapeRegExp(JSON.stringify(fs.realpathSync(repoRoot)))} --to 0\\.16\\.0`)
@@ -1961,8 +1961,8 @@ test('upgrade permits missing legacy kitVersion but rejects malformed values', (
       'install-notes-graph.cjs', '--repo', repoRoot, '--upgrade',
       ...managedChangeArgs(repoRoot)
     ]);
-    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.20\.0/);
-    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.20.0');
+    assert.match(output, /Upgraded notes graph kit unversioned -> 0\.20\.1/);
+    assert.equal(JSON.parse(fs.readFileSync(configPath, 'utf8')).kitVersion, '0.20.1');
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
@@ -2459,7 +2459,7 @@ test('fresh installs stamp all applicable vault migration IDs', () => {
         'vault-0.4.0-managed-sections',
         'vault-0.13.0-status-notes',
         'vault-0.14.0-current-evidence',
-        'vault-0.15.0-claude-instructions',
+        'vault-0.15.0-agent-instructions',
         'vault-0.16.0-compatibility-safety'
       ]
     });

@@ -102,7 +102,7 @@ function readConfig(repoRoot) {
     if (!config || typeof config !== 'object' || Array.isArray(config)) {
       throw new Error('root must be an object');
     }
-    return config;
+    return installer.normalizeMigrationState(config);
   } catch (error) {
     throw new MigrationInputError(`Invalid notes-graph.config.json: ${error.message}`);
   }

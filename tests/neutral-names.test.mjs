@@ -39,9 +39,7 @@ test('a default install and upgrade write no agent brand names', () => {
     assert.ok(fs.existsSync(path.join(repo, 'Project Notes/_Agent/Start Here.md')));
     const offenders = filesUnder(repo).filter((file) => {
       if (BRAND.test(path.relative(repo, file))) return true;
-      const text = fs.readFileSync(file, 'utf8');
-      // The 0.15.0 migration keeps its recorded id so applied state stays valid.
-      return BRAND.test(text.replaceAll('vault-0.15.0-claude-instructions', ''));
+      return BRAND.test(fs.readFileSync(file, 'utf8'));
     });
     assert.deepEqual(offenders.map((file) => path.relative(repo, file)), []);
   } finally {
@@ -72,11 +70,16 @@ test('upgrading a vault that still uses the legacy entry folder keeps it working
     const configPath = path.join(repo, 'notes-graph.config.json');
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     config.agent = 'codex';
+    const legacyMigrationId = 'vault-0.15.0-claude-instructions';
+    config.vaultMigrationState.applied = config.vaultMigrationState.applied
+      .map((id) => (id === 'vault-0.15.0-agent-instructions' ? legacyMigrationId : id));
     delete config.instructionFile;
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
     run(['install-notes-graph.cjs', '--repo', repo, '--upgrade']);
     const upgraded = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     assert.equal(upgraded.agent, 'agents');
+    assert.ok(upgraded.vaultMigrationState.applied.includes('vault-0.15.0-agent-instructions'));
+    assert.equal(upgraded.vaultMigrationState.applied.includes(legacyMigrationId), false);
     assert.equal(upgraded.instructionFile, 'AGENTS.md');
     assert.deepEqual(upgraded.legacyStructuredFolders, ['_Codex']);
     assert.match(fs.readFileSync(path.join(repo, 'AGENTS.md'), 'utf8'), /Project Notes\/_Codex\/Start Here\.md/);

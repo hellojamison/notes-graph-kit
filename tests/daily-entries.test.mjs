@@ -205,7 +205,7 @@ test('upgrading from 0.18.0 keeps legacy daily notes and adds the daily commands
     fs.writeFileSync(legacyPath, legacyText);
 
     const output = run(kitRoot, ['install-notes-graph.cjs', '--repo', repoRoot, '--upgrade']);
-    assert.match(output, /0\.18\.0 -> 0\.20\.0/);
+    assert.match(output, /0\.18\.0 -> 0\.20\.1/);
     assert.match(output, /0\.19\.0 daily entries:/);
     assert.match(output, /never edit the shared daily note in PRs/);
     assert.equal(fs.readFileSync(legacyPath, 'utf8'), legacyText);

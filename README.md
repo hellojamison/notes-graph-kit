@@ -139,6 +139,9 @@ git diff --check
 > that still has the older entry folder keeps it, and the upgrade records it in
 > `legacyStructuredFolders` so validation is unchanged. A vault already renamed
 > to `_Agent/` is left as it is. A saved `agent` of `codex` becomes `agents`.
+> From 0.20.1 the recorded id of the 0.15.0 migration is
+> `vault-0.15.0-agent-instructions`; an upgrade or migration rewrites the older
+> id in `vaultMigrationState.applied`.
 
 > **Upgrading to 0.19.0 (daily entry files).** No vault migration is needed and
 > existing daily notes are not touched. After the upgrade, `notes:closeout`

@@ -25,7 +25,7 @@ const MIGRATIONS = Object.freeze([
     module: './0.14.0.cjs'
   }),
   Object.freeze({
-    id: 'vault-0.15.0-claude-instructions',
+    id: 'vault-0.15.0-agent-instructions',
     version: '0.15.0',
     module: './0.15.0.cjs'
   }),

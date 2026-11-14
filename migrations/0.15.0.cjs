@@ -1,6 +1,6 @@
 const { planInstructionFile } = require('./instruction-files.cjs');
 
-const MIGRATION = 'vault-0.15.0-claude-instructions';
+const MIGRATION = 'vault-0.15.0-agent-instructions';
 
 function apply(planner) {
   if (planner.instructionFile !== 'AGENTS.md') {

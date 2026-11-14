@@ -59,7 +59,7 @@ test(`${agent} migration creates only selected instructions with read-only previ
     const item = audit.report.items.find(({ rel }) => rel === instructionFile);
     assert.equal(item.action, 'create');
     assert.equal(item.state, 'planned');
-    assert.equal(item.migration, instructionFile === 'AGENTS.md' ? 'vault-0.4.0-managed-sections' : 'vault-0.15.0-claude-instructions');
+    assert.equal(item.migration, instructionFile === 'AGENTS.md' ? 'vault-0.4.0-managed-sections' : 'vault-0.15.0-agent-instructions');
     assert.equal(fs.existsSync(file), false);
     migrate(repo, 'apply', '--all-safe', '--dry-run');
     assert.equal(fs.existsSync(file), false);

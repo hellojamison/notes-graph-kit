@@ -101,7 +101,7 @@ const VAULT_MIGRATIONS = [
   },
   {
     version: '0.15.0',
-    id: 'vault-0.15.0-claude-instructions'
+    id: 'vault-0.15.0-agent-instructions'
   },
   {
     version: '0.16.0',
@@ -699,6 +699,21 @@ function preservedScriptLines(preservedScripts) {
 const AGENTS_SECTION_START = '<!-- notes-graph-kit:start -->';
 const AGENTS_SECTION_END = '<!-- notes-graph-kit:end -->';
 
+// Migration ids recorded by kits before 0.20.1, mapped to their current ids.
+const LEGACY_MIGRATION_IDS = Object.freeze({
+  'vault-0.15.0-claude-instructions': 'vault-0.15.0-agent-instructions'
+});
+
+function normalizeMigrationIds(ids) {
+  return [...new Set(ids.map((id) => (Object.hasOwn(LEGACY_MIGRATION_IDS, id) ? LEGACY_MIGRATION_IDS[id] : id)))];
+}
+
+function normalizeMigrationState(config) {
+  const state = config?.vaultMigrationState;
+  if (state && Array.isArray(state.applied)) state.applied = normalizeMigrationIds(state.applied);
+  return config;
+}
+
 function normalizeAgent(agent) {
   return agent === 'codex' ? DEFAULT_AGENT : agent;
 }
@@ -1188,6 +1203,7 @@ function upgrade(args) {
   config.kitVersion = kitVersion;
   config.workers ??= { enabled: false, profile: 'local-coding' };
   config.managedScriptHashes = managedScriptHashes();
+  normalizeMigrationState(config);
   config.agent = normalizeAgent(args.agent ?? config.agent ?? DEFAULT_AGENT);
   const instructionFile = instructionFileForAgent(config.agent);
   config.instructionFile = instructionFile;
@@ -1298,6 +1314,7 @@ module.exports = {
   upgrade,
   instructionFileForAgent,
   normalizeAgent,
+  normalizeMigrationState,
   parseArgs,
   buildConfig,
   buildVaultWrites,

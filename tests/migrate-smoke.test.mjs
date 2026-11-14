@@ -124,7 +124,7 @@ test('unmanaged audit is read-only and apply is idempotent and rollback-capable'
       'vault-0.4.0-managed-sections',
       'vault-0.13.0-status-notes',
       'vault-0.14.0-current-evidence',
-      'vault-0.15.0-claude-instructions',
+      'vault-0.15.0-agent-instructions',
       'vault-0.16.0-compatibility-safety'
     ]);
     assert.ok(auditReport.items.some((item) =>
@@ -166,7 +166,7 @@ test('unmanaged audit is read-only and apply is idempotent and rollback-capable'
         'vault-0.4.0-managed-sections',
         'vault-0.13.0-status-notes',
         'vault-0.14.0-current-evidence',
-        'vault-0.15.0-claude-instructions',
+        'vault-0.15.0-agent-instructions',
         'vault-0.16.0-compatibility-safety'
       ]
     });
@@ -205,7 +205,7 @@ test('unmanaged audit is read-only and apply is idempotent and rollback-capable'
       'vault-0.4.0-managed-sections',
       'vault-0.13.0-status-notes',
       'vault-0.14.0-current-evidence',
-      'vault-0.15.0-claude-instructions',
+      'vault-0.15.0-agent-instructions',
       'vault-0.16.0-compatibility-safety'
     ]);
     assert.deepEqual(rollbackReport.prospectiveApplied, []);
